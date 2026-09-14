@@ -166,6 +166,55 @@ async function run() {
     check('duplicate action adds a copy', useEditorStore.getState().doc.elements.length === 2, String(useEditorStore.getState().doc.elements.length));
   }
 
+  console.log('\nEditor chrome');
+  const { TopBar } = await import('@/components/editor/TopBar');
+  const { ZoomControls } = await import('@/components/editor/ZoomControls');
+  const chromeHost = document.createElement('div');
+  document.body.appendChild(chromeHost);
+  const chromeRoot = createRoot(chromeHost);
+  act(() => {
+    chromeRoot.render(createElement(TopBar, { compact: true }) as never);
+  });
+  check('top bar renders the project name field', !!chromeHost.querySelector('input[aria-label="Project name"]'));
+  check('top bar has an AI entry', (chromeHost.textContent ?? '').includes('AI'));
+  const aiBtn = chromeHost.querySelector('button[title^="Design with AI"]');
+  if (aiBtn) {
+    await click(aiBtn);
+    check('AI button opens the copilot', useUIStore.getState().aiOpen === true);
+    await act(async () => useUIStore.getState().setAIOpen(false));
+  }
+  // "More" menu → theme switch
+  const moreBtn = chromeHost.querySelector('button[aria-label="More options"]');
+  if (moreBtn) {
+    await click(moreBtn);
+    const themeItem = Array.from(chromeHost.querySelectorAll('button[role="menuitem"]')).find((b) => (b.textContent ?? '').includes('theme'));
+    check('overflow menu exposes the theme switch', !!themeItem, chromeHost.textContent?.slice(0, 60) ?? '');
+    if (themeItem) {
+      await click(themeItem);
+      check('theme switch flips the theme', useSettingsStore.getState().theme === 'light', useSettingsStore.getState().theme);
+      await act(async () => useSettingsStore.getState().update({ theme: 'dark' }));
+    }
+  } else {
+    check('overflow menu exists', false);
+  }
+
+  const zoomHost = document.createElement('div');
+  document.body.appendChild(zoomHost);
+  const zoomRoot = createRoot(zoomHost);
+  act(() => {
+    zoomRoot.render(createElement(ZoomControls) as never);
+  });
+  const zoomBefore = useEditorStore.getState().zoom;
+  const zoomIn = zoomHost.querySelector('button[aria-label="Zoom in"]');
+  if (zoomIn) {
+    await click(zoomIn);
+    check('zoom control changes the viewport', useEditorStore.getState().zoom > zoomBefore, `${zoomBefore} → ${useEditorStore.getState().zoom}`);
+  } else {
+    check('zoom control renders', false);
+  }
+  const fitBtn = zoomHost.querySelector('button[aria-label="Fit to screen"]');
+  check('fit-to-screen control renders', !!fitBtn);
+
   console.log(`\n${failures === 0 ? '✅ all checks passed' : `❌ ${failures} check(s) failed`}\n`);
   process.exit(failures === 0 ? 0 : 1);
 }
