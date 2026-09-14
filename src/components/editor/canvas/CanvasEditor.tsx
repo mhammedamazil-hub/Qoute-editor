@@ -18,6 +18,19 @@ interface CanvasEditorProps {
   fitPadding?: number;
 }
 
+/** Detects 2D canvas support once — some embedded/legacy browsers lack it. */
+function detectCanvasSupport(): boolean {
+  if (typeof document === 'undefined') return false;
+  try {
+    const c = document.createElement('canvas');
+    return !!c.getContext('2d') && c.width > 0;
+  } catch {
+    return false;
+  }
+}
+
+const canvasSupported = detectCanvasSupport();
+
 function GuidesLayer({ zoom, pan, canvasW, canvasH }: { zoom: number; pan: { x: number; y: number }; canvasW: number; canvasH: number }) {
   const guides = useEditorStore((s) => s.guides);
   if (!guides.length) return null;
@@ -351,6 +364,18 @@ export function CanvasEditor({ interactive = true, fitPadding = 48 }: CanvasEdit
   };
 
   const backdropColor = backdrop === 'black' ? '#000000' : backdrop === 'gray' ? '#1b1e23' : '#0b0c0f';
+
+  // Very old browsers / constrained webviews may have no 2D canvas at all.
+  if (!canvasSupported) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center" style={{ background: backdropColor }}>
+        <p className="text-[13px] font-semibold">This browser can’t render the canvas</p>
+        <p className="max-w-sm text-[11.5px] leading-relaxed text-ink-300">
+          QuoteCraft draws with the HTML canvas API. Please open it in a current version of Chrome, Safari, Edge, Firefox or Samsung Internet. Your saved projects are untouched — project files can still be imported and exported from the Export dialog.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div

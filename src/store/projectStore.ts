@@ -6,7 +6,44 @@ import { useEditorStore } from './editorStore';
 import { useSettingsStore } from './settingsStore';
 import { uid } from '@/engine/ids';
 
-const store = typeof indexedDB !== 'undefined' ? createStore('quotecraft', 'projects') : undefined;
+const hasIdb = typeof indexedDB !== 'undefined';
+
+/** False in private-browsing modes without IndexedDB — the UI tells the user. */
+export const storageAvailable = hasIdb;
+const store = hasIdb ? createStore('quotecraft', 'projects') : undefined;
+
+/**
+ * IndexedDB is unavailable in some private-browsing modes and in embedded
+ * webviews. Every access goes through these helpers so the editor still runs
+ * (without persistence) instead of throwing.
+ */
+async function safeGet<T>(key: string): Promise<T | undefined> {
+  if (!hasIdb) return undefined;
+  try {
+    return await idbGet<T>(key, store);
+  } catch {
+    return undefined;
+  }
+}
+
+async function safeSet(key: string, value: unknown): Promise<boolean> {
+  if (!hasIdb) return false;
+  try {
+    await idbSet(key, value, store);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function safeDel(key: string): Promise<void> {
+  if (!hasIdb) return;
+  try {
+    await idbDel(key, store);
+  } catch {
+    /* ignore */
+  }
+}
 const INDEX_KEY = 'index';
 const LAST_KEY = 'lastProjectId';
 
@@ -26,7 +63,7 @@ interface ProjectState {
 
 async function readIndex(): Promise<ProjectSummary[]> {
   try {
-    return ((await idbGet<ProjectSummary[]>(INDEX_KEY, store)) ?? []).sort((a, b) => b.updatedAt - a.updatedAt);
+    return ((await safeGet<ProjectSummary[]>(INDEX_KEY)) ?? []).sort((a, b) => b.updatedAt - a.updatedAt);
   } catch {
     return [];
   }
@@ -34,7 +71,7 @@ async function readIndex(): Promise<ProjectSummary[]> {
 
 async function writeIndex(list: ProjectSummary[]) {
   try {
-    await idbSet(INDEX_KEY, list, store);
+    await safeSet(INDEX_KEY, list);
   } catch {
     /* ignore */
   }
@@ -46,7 +83,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
   ready: false,
 
   init: async () => {
-    const [projects, last] = await Promise.all([readIndex(), idbGet<string>(LAST_KEY, store).catch(() => null)]);
+    const [projects, last] = await Promise.all([readIndex(), safeGet<string>(LAST_KEY)]);
     set({ projects, lastProjectId: last ?? null, ready: true });
   },
 
@@ -56,7 +93,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     try {
       const existing = get().projects.find((p) => p.id === ed.projectId);
       const file = serializeProject(ed.doc, ed.assets, { id: ed.projectId, name: ed.projectName, createdAt: existing?.updatedAt });
-      await idbSet(`project:${file.id}`, file, store);
+      await safeSet(`project:${file.id}`, file);
       const summary: ProjectSummary = {
         id: file.id,
         name: file.name,
@@ -67,7 +104,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
       };
       const list = [summary, ...get().projects.filter((p) => p.id !== file.id)];
       await writeIndex(list);
-      await idbSet(LAST_KEY, file.id, store);
+      await safeSet(LAST_KEY, file.id);
       set({ projects: list, lastProjectId: file.id });
       ed.setSaveStatus('saved');
     } catch {
@@ -77,11 +114,11 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
 
   loadProject: async (id) => {
     try {
-      const raw = await idbGet<ProjectFile>(`project:${id}`, store);
+      const raw = await safeGet<ProjectFile>(`project:${id}`);
       if (!raw) return false;
       const file = deserializeProject(raw);
       useEditorStore.getState().loadDocument({ canvas: file.canvas, elements: file.elements }, file.assets, { id: file.id, name: file.name });
-      await idbSet(LAST_KEY, id, store);
+      await safeSet(LAST_KEY, id);
       set({ lastProjectId: id });
       return true;
     } catch {
@@ -90,17 +127,17 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
   },
 
   deleteProject: async (id) => {
-    await idbDel(`project:${id}`, store).catch(() => undefined);
+    await safeDel(`project:${id}`);
     const list = get().projects.filter((p) => p.id !== id);
     await writeIndex(list);
     set({ projects: list, lastProjectId: get().lastProjectId === id ? null : get().lastProjectId });
   },
 
   duplicateProject: async (id) => {
-    const raw = await idbGet<ProjectFile>(`project:${id}`, store).catch(() => undefined);
+    const raw = await safeGet<ProjectFile>(`project:${id}`).catch(() => undefined);
     if (!raw) return;
     const copy: ProjectFile = { ...raw, id: uid('proj'), name: `${raw.name} copy`, metadata: { ...raw.metadata, updatedAt: Date.now() } };
-    await idbSet(`project:${copy.id}`, copy, store);
+    await safeSet(`project:${copy.id}`, copy);
     const summary: ProjectSummary = { id: copy.id, name: copy.name, updatedAt: copy.metadata.updatedAt, width: copy.canvas.width, height: copy.canvas.height, elementCount: copy.elements.length };
     const list = [summary, ...get().projects];
     await writeIndex(list);
@@ -108,8 +145,8 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
   },
 
   renameProject: async (id, name) => {
-    const raw = await idbGet<ProjectFile>(`project:${id}`, store).catch(() => undefined);
-    if (raw) await idbSet(`project:${id}`, { ...raw, name }, store);
+    const raw = await safeGet<ProjectFile>(`project:${id}`).catch(() => undefined);
+    if (raw) await safeSet(`project:${id}`, { ...raw, name });
     const list = get().projects.map((p) => (p.id === id ? { ...p, name } : p));
     await writeIndex(list);
     set({ projects: list });
