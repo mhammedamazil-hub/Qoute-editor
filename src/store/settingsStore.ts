@@ -33,7 +33,6 @@ export interface SettingsState {
   geminiModel: string;
   /** Set when a stored model id was retired and auto-migrated. */
   modelMigratedFrom: string | null;
-  aiAutoApply: boolean;
   aiShowToolActivity: boolean;
   aiStatus: AIStatus;
   /** Models discovered on the user's key (cache for the settings picker). */
@@ -69,7 +68,6 @@ type Persisted = Pick<
   | 'defaultQuality'
   | 'defaultScale'
   | 'geminiModel'
-  | 'aiAutoApply'
   | 'aiShowToolActivity'
   | 'recentColors'
   | 'savedColors'
@@ -132,7 +130,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => {
       defaultQuality: s.defaultQuality,
       defaultScale: s.defaultScale,
       geminiModel: s.geminiModel,
-      aiAutoApply: s.aiAutoApply,
       aiShowToolActivity: s.aiShowToolActivity,
       recentColors: s.recentColors,
       savedColors: s.savedColors,
@@ -150,7 +147,6 @@ export const useSettingsStore = create<SettingsState>()((set, get) => {
     geminiKeyPersisted: !!persistedKey,
     geminiModel: migrated.model,
     modelMigratedFrom: migrated.replaced ?? null,
-    aiAutoApply: true,
     aiShowToolActivity: true,
     aiStatus: persistedKey ? 'configured' : 'not-configured',
     discoveredModels: [],

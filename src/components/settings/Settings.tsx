@@ -187,10 +187,6 @@ function AISettings() {
           <Toggle checked={s.aiShowToolActivity} onChange={(aiShowToolActivity) => s.update({ aiShowToolActivity })} label="Show tool activity" />
           <span className="text-[11px] text-ink-400">List every editor action the copilot performs</span>
         </Row>
-        <Row label="Auto-apply">
-          <Toggle checked={s.aiAutoApply} onChange={(aiAutoApply) => s.update({ aiAutoApply })} label="Apply automatically" />
-          <span className="text-[11px] text-ink-400">Act immediately instead of asking first</span>
-        </Row>
       </div>
 
       <div className="flex flex-wrap gap-2">
