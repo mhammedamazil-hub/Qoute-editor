@@ -1,0 +1,427 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Design tokens — dark (default) theme.
+ * Tailwind v4 utilities compile to var(--color-*), so a theme is just a
+ * variable override. JS sets --color-accent from the user's choice.
+ * ------------------------------------------------------------------ */
+
+@theme {
+  --color-ink-950: #07080a;
+  --color-ink-900: #0b0c0f;
+  --color-ink-850: #0f1114;
+  --color-ink-800: #14161a;
+  --color-ink-750: #191c21;
+  --color-ink-700: #1f2228;
+  --color-ink-600: #2a2e35;
+  --color-ink-500: #3a3f48;
+  --color-ink-400: #5b6270;
+  --color-ink-300: #8b93a1;
+  --color-ink-200: #b8bec9;
+  --color-ink-100: #e6e8ec;
+  --color-accent: #d9a441;
+  --color-accent-soft: rgba(217, 164, 65, 0.16);
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.16);
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius-panel: 14px;
+}
+
+:root {
+  color-scheme: dark;
+  --surface-glass: rgba(15, 17, 20, 0.82);
+  --surface-sheet: rgba(11, 12, 15, 0.96);
+  --shadow-panel: 0 18px 50px rgba(0, 0, 0, 0.55);
+  --checker-a: #2a2e35;
+  --checker-b: #14161a;
+  --scrim: rgba(0, 0, 0, 0.62);
+  --control-h: 32px;
+  --control-h-sm: 28px;
+  --focus: color-mix(in srgb, var(--color-accent) 65%, transparent);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-ink-950: #ffffff;
+  --color-ink-900: #f8f7f5;
+  --color-ink-850: #f1efec;
+  --color-ink-800: #ffffff;
+  --color-ink-750: #eae7e2;
+  --color-ink-700: #e4e0da;
+  --color-ink-600: #d5d0c8;
+  --color-ink-500: #beb8ae;
+  --color-ink-400: #8d8779;
+  --color-ink-300: #6d6759;
+  --color-ink-200: #454039;
+  --color-ink-100: #16150f;
+  --color-line: rgba(20, 18, 12, 0.12);
+  --color-line-strong: rgba(20, 18, 12, 0.22);
+  --surface-glass: rgba(255, 255, 255, 0.86);
+  --surface-sheet: rgba(252, 251, 249, 0.98);
+  --shadow-panel: 0 18px 45px rgba(30, 26, 18, 0.18);
+  --checker-a: #d7d2c9;
+  --checker-b: #f4f2ee;
+  --scrim: rgba(28, 24, 16, 0.42);
+}
+
+[data-density="compact"] {
+  --control-h: 28px;
+  --control-h-sm: 24px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 999px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* dvh keeps the layout correct under mobile browser toolbars; the vh line is the fallback. */
+html {
+  background: var(--color-ink-950);
+}
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
+body {
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+  overscroll-behavior: none;
+  font-size: 14px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Surfaces & primitives
+ * ------------------------------------------------------------------ */
+
+.glass {
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.panel {
+  background: var(--color-ink-900);
+  border-color: var(--color-line);
+}
+
+.sheet {
+  background: var(--surface-sheet);
+}
+
+.elevated {
+  box-shadow: var(--shadow-panel);
+}
+
+.field {
+  @apply w-full rounded-md border border-line bg-ink-800 px-2 text-[12px] text-ink-100 outline-none transition-colors focus:border-accent/60;
+  height: var(--control-h);
+}
+
+textarea.field {
+  height: auto;
+  min-height: calc(var(--control-h) * 2);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-md border border-line bg-ink-800 px-3 text-[12px] font-medium text-ink-100 transition-colors hover:bg-ink-700 focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40;
+  height: var(--control-h);
+}
+.btn-primary {
+  @apply border-accent/50 bg-accent text-ink-950 hover:brightness-110;
+}
+.btn-ghost {
+  @apply border-transparent bg-transparent hover:bg-ink-800;
+}
+.btn-danger {
+  @apply border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20;
+}
+.icon-btn {
+  @apply inline-flex items-center justify-center rounded-md border border-transparent text-ink-300 transition-colors hover:bg-ink-800 hover:text-ink-100 focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40;
+  height: var(--control-h);
+  width: var(--control-h);
+}
+.icon-btn-sm {
+  height: var(--control-h-sm);
+  width: var(--control-h-sm);
+}
+.icon-btn.active {
+  @apply bg-accent-soft text-accent;
+}
+
+/* Comfortable touch targets on touch devices (WCAG 2.5.5). */
+@media (pointer: coarse) {
+  :root {
+    --control-h: 38px;
+    --control-h-sm: 34px;
+  }
+  input[type="range"] {
+    height: 26px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    width: 18px;
+    height: 18px;
+    margin-top: -7.5px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+  }
+  .hover-only {
+    display: none !important;
+  }
+  /* Rows that only reveal actions on hover must stay reachable on touch. */
+  .touch-visible {
+    opacity: 1 !important;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Range inputs
+ * ------------------------------------------------------------------ */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+  width: 100%;
+  touch-action: pan-y;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-ink-600);
+}
+input[type="range"]::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-ink-600);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: var(--color-ink-100);
+  border: 2px solid var(--color-ink-900);
+  box-shadow: 0 0 0 1px var(--color-ink-500);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--color-ink-100);
+  border: 2px solid var(--color-ink-900);
+}
+input[type="range"].hue-range::-webkit-slider-runnable-track,
+input[type="range"].alpha-range::-webkit-slider-runnable-track,
+input[type="range"].fancy-range::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 10px;
+}
+input[type="range"].hue-range::-moz-range-track,
+input[type="range"].alpha-range::-moz-range-track,
+input[type="range"].fancy-range::-moz-range-track {
+  background: transparent;
+  height: 10px;
+}
+input[type="range"].hue-range::-webkit-slider-thumb,
+input[type="range"].alpha-range::-webkit-slider-thumb,
+input[type="range"].fancy-range::-webkit-slider-thumb {
+  margin-top: -2px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Utilities
+ * ------------------------------------------------------------------ */
+
+.checker {
+  background-image:
+    linear-gradient(45deg, var(--checker-a) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--checker-a) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--checker-a) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--checker-a) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-color: var(--checker-b);
+}
+
+.no-touch-action {
+  touch-action: none;
+}
+.touch-pan-y {
+  touch-action: pan-y;
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.select-none-all {
+  user-select: none;
+  -webkit-user-select: none;
+}
+.text-balance {
+  text-wrap: balance;
+}
+.mono-num {
+  font-variant-numeric: tabular-nums;
+}
+.hairline {
+  border-color: var(--color-line);
+}
+.scroll-shadow {
+  background-image: linear-gradient(to bottom, var(--color-ink-900), transparent);
+}
+
+/* Sheet grabber used by mobile bottom sheets. */
+.grabber {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-ink-500);
+}
+
+/* ------------------------------------------------------------------ *
+ * Motion
+ * ------------------------------------------------------------------ */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fade-up 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.pop-in {
+  animation: pop-in 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.sheet-up {
+  animation: sheet-up 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-ink-100) 8%, transparent), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] *::before,
+[data-reduce-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* ------------------------------------------------------------------ *
+ * Misc
+ * ------------------------------------------------------------------ */
+
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 5px;
+  padding: 1px 5px;
+  background: var(--color-ink-800);
+  color: var(--color-ink-200);
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
