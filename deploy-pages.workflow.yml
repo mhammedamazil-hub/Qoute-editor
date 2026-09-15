@@ -1,0 +1,84 @@
+# ============================================================================
+#  TEMPLATE — move this file to  .github/workflows/deploy-pages.yml  to enable
+#  it (GitHub only runs workflows that live in that exact folder).
+#
+#  Fastest way, no terminal needed:
+#    GitHub -> Actions tab -> "New workflow" -> "set up a workflow yourself"
+#    -> replace the sample content with this file -> Commit changes.
+#
+#  Why it exists: Pages was serving the repo source, so the browser received
+#  the Vite template + raw TSX and rendered nothing. This workflow builds the
+#  app and publishes dist/ instead.
+# ============================================================================
+name: Deploy to GitHub Pages
+
+# This repo is a Vite + React + TypeScript app: the HTML you see in the repo root
+# is only a *template*. It points at /src/main.tsx (raw JSX/TS), which a browser
+# cannot execute — so serving the repo files directly (the old "Deploy from a
+# branch" mode) renders a blank page. The site must be built first, and this
+# workflow does that and publishes the compiled output.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Required by actions/deploy-pages (OIDC) and the Pages API.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two Pages deploys race; queue them instead of cancelling so that a
+# running production deploy is always allowed to finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      # Harmless safety net: keeps GitHub Pages from running Jekyll on the
+      # artifact if the repo is ever switched back to branch-based deploys.
+      - name: Disable Jekyll processing
+        run: touch dist/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

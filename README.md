@@ -27,6 +27,24 @@ npm run smoke:ai   # streaming, tool calls, retries, model healing
 npm run smoke:ui   # renders the real UI in a DOM shim
 ```
 
+## Deploying (GitHub Pages)
+
+The publishable site is a **build artifact, not the repo files**. The repo-root `index.html` is the
+Vite *template*: it points at `/src/main.tsx` (raw TypeScript/JSX), which a browser cannot execute.
+If Pages serves the branch source directly, that script is delivered as `application/octet-stream`,
+React never mounts, and the page is blank.
+
+1. **Settings → Pages → Build and deployment → Source = `GitHub Actions`** — one-time, and the easy
+   one to miss. While it still says *Deploy from a branch*, Pages serves the raw template and the
+   site stays blank no matter how many times you push.
+2. Push to `main`. [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)
+   installs dependencies, typechecks, builds, and publishes `dist/` to
+   <https://mhammedamazil-hub.github.io/Qoute-editor/>. It can also be triggered by hand from the
+   Actions tab (*Run workflow*).
+
+Because the build uses `vite-plugin-singlefile`, `dist/index.html` is one self-contained file that
+also runs from `file://`, a USB stick, or any other static host.
+
 ## What changed in this revision
 
 **1. Model fix — retired models are gone, newest Flash is the default**
