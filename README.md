@@ -37,10 +37,11 @@ React never mounts, and the page is blank.
 1. **Settings → Pages → Build and deployment → Source = `GitHub Actions`** — one-time, and the easy
    one to miss. While it still says *Deploy from a branch*, Pages serves the raw template and the
    site stays blank no matter how many times you push.
-2. Push to `main`. [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)
-   installs dependencies, typechecks, builds, and publishes `dist/` to
-   <https://mhammedamazil-hub.github.io/Qoute-editor/>. It can also be triggered by hand from the
-   Actions tab (*Run workflow*).
+2. **Add the workflow.** Copy [`deploy-pages.workflow.yml`](deploy-pages.workflow.yml) to
+   `.github/workflows/deploy-pages.yml` — or paste its contents into *Actions → New workflow →
+   set up a workflow yourself* and commit. It installs dependencies, typechecks, builds, and
+   publishes `dist/` to <https://mhammedamazil-hub.github.io/Qoute-editor/> on every push to
+   `main`; it can also be run by hand from the Actions tab (*Run workflow*).
 
 Because the build uses `vite-plugin-singlefile`, `dist/index.html` is one self-contained file that
 also runs from `file://`, a USB stick, or any other static host.
