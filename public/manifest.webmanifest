@@ -1,0 +1,26 @@
+{
+  "name": "QuoteCraft — Quote Poster Editor",
+  "short_name": "QuoteCraft",
+  "description": "Layer-based quote poster editor with an AI copilot that operates the whole app. Works offline on phone, tablet and desktop.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07080a",
+  "theme_color": "#07080a",
+  "categories": ["graphics", "productivity", "design"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

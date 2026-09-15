@@ -1,0 +1,41 @@
+{
+  "name": "react-vite-tailwind",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "smoke": "vite-node scripts/smoke.ts",
+    "typecheck": "tsc --noEmit",
+    "smoke:ai": "vite-node scripts/smoke-ai.ts",
+    "verify": "npm run typecheck && npm run smoke && npm run smoke:ai && npm run smoke:ui && npm run build",
+    "smoke:ui": "vite-node scripts/smoke-ui.tsx"
+  },
+  "dependencies": {
+    "clsx": "2.1.1",
+    "idb-keyval": "^6.3.0",
+    "konva": "^10.5.0",
+    "lucide-react": "^1.45.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-konva": "^19.2.7",
+    "tailwind-merge": "3.4.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.14.5",
+    "@tailwindcss/vite": "4.1.17",
+    "@types/node": "22.19.17",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "happy-dom": "^20.14.5",
+    "tailwindcss": "4.1.17",
+    "typescript": "5.9.3",
+    "vite": "7.3.2",
+    "vite-node": "^6.0.0",
+    "vite-plugin-singlefile": "2.3.0"
+  }
+}

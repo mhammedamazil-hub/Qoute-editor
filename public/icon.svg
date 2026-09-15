@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="QuoteCraft">
+  <defs>
+    <radialGradient id="glow" cx="72%" cy="18%" r="70%">
+      <stop offset="0%" stop-color="#d89b35" stop-opacity="0.95" />
+      <stop offset="55%" stop-color="#d89b35" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#d89b35" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glow2" cx="16%" cy="88%" r="65%">
+      <stop offset="0%" stop-color="#12a37f" stop-opacity="0.75" />
+      <stop offset="100%" stop-color="#12a37f" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0c96a" />
+      <stop offset="100%" stop-color="#b8862c" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#050608" />
+  <rect width="512" height="512" rx="96" fill="url(#glow)" />
+  <rect width="512" height="512" rx="96" fill="url(#glow2)" />
+  <circle cx="368" cy="150" r="118" fill="none" stroke="#d9a441" stroke-opacity="0.45" stroke-width="3" />
+  <rect x="72" y="72" width="368" height="368" rx="40" fill="none" stroke="#d9a441" stroke-opacity="0.5" stroke-width="3" />
+  <path d="M148 300c0-62 34-104 84-118l10 30c-30 10-46 30-48 54h40v72H148v-38z" fill="url(#gold)" />
+  <path d="M268 300c0-62 34-104 84-118l10 30c-30 10-46 30-48 54h40v72H268v-38z" fill="url(#gold)" opacity="0.85" />
+  <rect x="148" y="392" width="216" height="8" rx="4" fill="#f5f1e7" fill-opacity="0.85" />
+</svg>
