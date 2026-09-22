@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=JARVIS Apps
+Comment=App manager
+Exec=jarvis-appmanager
+Icon=software-center
+Terminal=false
+Categories=System;
+StartupNotify=true

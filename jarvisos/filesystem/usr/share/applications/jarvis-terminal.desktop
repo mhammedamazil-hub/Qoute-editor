@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=JARVIS Terminal
+Comment=Terminal
+Exec=jarvis-terminal
+Icon=utilities-terminal
+Terminal=false
+Categories=System;
+StartupNotify=true

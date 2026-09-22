@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Install JARVISOS
+Comment=Guided installer — install the live system to disk
+Exec=jarvis-terminal -e jarvis-install
+Icon=drive-harddisk
+Terminal=false
+Categories=System;
+StartupNotify=true
+X-Live-Only=true

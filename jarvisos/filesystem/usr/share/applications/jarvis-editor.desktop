@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=JARVIS Editor
+Comment=Text editor
+Exec=jarvis-editor
+Icon=text-editor
+Terminal=false
+Categories=System;
+StartupNotify=true

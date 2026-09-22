@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Run a structured automation batch from a JSON file.
+
+Usage: jarvis-automate plan.json [--dry-run] [--yes]
+"""
+import json
+import os
+import sys
+
+sys.path.insert(0, "/usr/lib/jarvisos")
+
+from jarvis.automation.engine import AutomationEngine, MockBackend, RealBackend
+from jarvis import permissions as perm
+
+
+def main():
+    args = sys.argv[1:]
+    dry = "--dry-run" in args
+    yes = "--yes" in args
+    files = [a for a in args if not a.startswith("--")]
+    if not files:
+        print("usage: jarvis-automate plan.json [--dry-run] [--yes]")
+        return 2
+    with open(files[0], encoding="utf-8") as fh:
+        plan = json.load(fh)
+    actions = plan.get("actions", [])
+    print("task: %s (%d actions)" % (plan.get("task", "?"), len(actions)))
+    denied = [a for a in actions
+              if perm.classify_action(a).level == perm.DENY]
+    need = [a for a in actions
+            if perm.classify_action(a).level == perm.CONFIRM]
+    for a in denied:
+        print("  DENY: %s" % a)
+    for a in need:
+        print("  CONFIRM: %s" % a)
+    if dry:
+        print("dry-run: %d would execute, %d denied, %d need confirm." % (
+            len(actions) - len(denied) - len(need), len(denied), len(need)))
+        return 0 if not denied else 1
+    backend = RealBackend() if os.environ.get("DISPLAY") else MockBackend()
+    engine = AutomationEngine(backend=backend)
+
+    def ask(question):
+        if yes:
+            print(question + " [auto-yes]")
+            return True
+        try:
+            return input(question + " [y/N] ").strip().lower() == "y"
+        except (EOFError, KeyboardInterrupt):
+            return False
+
+    report = engine.run_batch(actions, task=plan.get("task", ""),
+                              require_confirm=True, confirm_callback=ask)
+    print(report["say"])
+    for r in report["results"]:
+        print("  [%s] %s: %s" % ("OK" if r["ok"] else "FAIL",
+                                 r["action"], r["say"][:100]))
+    return 0 if report["failed"] == 0 else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

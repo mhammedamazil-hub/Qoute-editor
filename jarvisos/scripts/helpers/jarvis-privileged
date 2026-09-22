@@ -1,0 +1,27 @@
+#!/bin/bash
+# jarvis-privileged — the ONLY root helper on JARVISOS.
+# Allowed via sudoers NOPASSWD (see chroot hook). Strictly validates every
+# argument; anything unexpected → refusal. Currently supports ONLY:
+#   jarvis-privileged backlight <0..max>
+set -euo pipefail
+
+die() { echo "jarvis-privileged: $*" >&2; exit 1; }
+
+[ "$(id -u)" = "0" ] || exec sudo -n /usr/bin/jarvis-privileged "$@"
+
+cmd="${1:-}"
+case "$cmd" in
+  backlight)
+    val="${2:-}"
+    [[ "$val" =~ ^[0-9]+$ ]] || die "bad brightness value"
+    bl="$(ls -d /sys/class/backlight/* 2>/dev/null | head -n1)"
+    [ -n "$bl" ] || die "no backlight device"
+    max="$(cat "$bl/max_brightness")"
+    [ "$val" -ge 0 ] && [ "$val" -le "$max" ] || die "value out of range"
+    echo "$val" > "$bl/brightness"
+    echo "brightness=$val"
+    ;;
+  *)
+    die "refusing unknown command '$cmd'"
+    ;;
+esac

@@ -1,0 +1,32 @@
+[global]
+    monitor = 0
+    follow = mouse
+    width = 340
+    height = 120
+    origin = top-right
+    offset = 20x20
+    frame_width = 1
+    frame_color = "#35e0ff"
+    font = DejaVu Sans 10
+    padding = 12
+    horizontal_padding = 14
+    background = "#04101ecc"
+    foreground = "#cfeeff"
+    timeout = 6
+    idle_threshold = 120
+
+[urgency_low]
+    background = "#04101ecc"
+    foreground = "#8fb8cc"
+    timeout = 4
+
+[urgency_normal]
+    background = "#04101ecc"
+    foreground = "#cfeeff"
+    timeout = 6
+
+[urgency_critical]
+    background = "#3a0a0acc"
+    foreground = "#ffe0e0"
+    frame_color = "#ff5c5c"
+    timeout = 0

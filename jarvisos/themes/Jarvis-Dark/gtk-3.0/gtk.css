@@ -1,0 +1,71 @@
+/* JARVISOS GTK3 theme: dark glass + cyan accents. Lightweight: flat colors,
+   no heavy gradients, so weak iGPUs stay responsive. */
+@define-color jarvis_bg #060f1c;
+@define-color jarvis_bg2 #0a1a30;
+@define-color jarvis_fg #cfeeff;
+@define-color jarvis_accent #35e0ff;
+@define-color jarvis_dim #4a7d99;
+@define-color jarvis_sel #0e3a55;
+
+* {
+  background-color: @jarvis_bg;
+  color: @jarvis_fg;
+  border-color: @jarvis_dim;
+  outline-color: @jarvis_accent;
+}
+window, dialog, assistant, popover {
+  background-color: @jarvis_bg;
+}
+headerbar, .titlebar {
+  background-color: @jarvis_bg2;
+  color: @jarvis_fg;
+  border-bottom: 1px solid @jarvis_dim;
+}
+button {
+  background-color: @jarvis_bg2;
+  border: 1px solid @jarvis_dim;
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+button:hover {
+  border-color: @jarvis_accent;
+  background-color: @jarvis_sel;
+}
+entry, textview text, spinbutton {
+  background-color: #081426;
+  color: #e4faff;
+  border: 1px solid @jarvis_dim;
+  border-radius: 6px;
+}
+entry:focus {
+  border-color: @jarvis_accent;
+}
+treeview, list, iconview {
+  background-color: @jarvis_bg;
+}
+treeview:selected, list row:selected {
+  background-color: @jarvis_sel;
+}
+menu, menuitem:hover, .menuitem:hover {
+  background-color: @jarvis_bg2;
+}
+scrollbar slider {
+  background-color: @jarvis_dim;
+  border-radius: 4px;
+}
+scrollbar slider:hover {
+  background-color: @jarvis_accent;
+}
+progressbar trough, scale trough {
+  background-color: #0a2036;
+}
+progressbar progress, scale highlight {
+  background-color: @jarvis_accent;
+}
+switch:checked {
+  background-color: @jarvis_accent;
+}
+tooltip {
+  background-color: @jarvis_bg2;
+  border: 1px solid @jarvis_accent;
+}

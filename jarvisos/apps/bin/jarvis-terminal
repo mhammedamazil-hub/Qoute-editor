@@ -1,0 +1,36 @@
+#!/bin/bash
+# JARVIS terminal — real shell (bash) with the JARVIS look.
+# Uses lxterminal with a generated config; falls back to xterm.
+set -u
+
+CONF="$HOME/.config/jarvisos/lxterminal.conf"
+mkdir -p "$(dirname "$CONF")"
+if [ ! -f "$CONF" ]; then
+  cat > "$CONF" <<'EOF'
+[general]
+fontname=DejaVu Sans Mono 11
+bgcolor=#060f1c
+fgcolor=#cfeeff
+cursorfg=#35e0ff
+cursorbg=#35e0ff
+palette=#060f1c:#ff5c5c:#7dff9a:#ffd75c:#35a0ff:#d07dff:#35e0ff:#cfeeff:#1a2f4a:#ff8c8c:#a8ffc0:#ffe08c:#7dc4ff:#e0a8ff:#8cf4ff:#f0fcff
+scrollback=2000
+geometry=100x30
+hidemenubar=true
+hideborders=false
+EOF
+fi
+
+# JARVIS prompt (only when interactive and not already set)
+if [ -z "${JARVIS_PROMPT_SET:-}" ]; then
+  export JARVIS_PROMPT_SET=1
+  export PS1='\[\e[38;5;45m\]┌─[\[\e[38;5;195m\]\u@jarvisos\[\e[38;5;45m\]]─[\[\e[38;5;195m\]\w\[\e[38;5;45m\]]\n└─╼ \[\e[0m\]'
+fi
+
+if command -v lxterminal >/dev/null 2>&1; then
+  exec lxterminal --config-file="$CONF" "$@"
+elif command -v xfce4-terminal >/dev/null 2>&1; then
+  exec xfce4-terminal "$@"
+else
+  exec xterm -fa 'DejaVu Sans Mono:size=11' -bg '#060f1c' -fg '#cfeeff' "$@"
+fi

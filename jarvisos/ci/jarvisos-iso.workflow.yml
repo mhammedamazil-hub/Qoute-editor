@@ -1,0 +1,94 @@
+name: JARVISOS ISO
+
+# Builds the real bootable JARVISOS.iso on runners with Debian-mirror access.
+# - test: pytest + headless smoke test (fast, always runs)
+# - build: live-build ISO per profile, validated, uploaded as artifact
+# - qemu-boot: advisory boot check (serial log uploaded for inspection)
+
+on:
+  push:
+    branches: [main, "arena/**"]
+    paths: ["jarvisos/**", ".github/workflows/jarvisos-iso.yml"]
+  pull_request:
+    paths: ["jarvisos/**", ".github/workflows/jarvisos-iso.yml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pytest
+        run: pip install pytest
+      - name: Pytest
+        run: cd jarvisos && python -m pytest tests/ -q
+      - name: Smoke test
+        run: cd jarvisos && bash scripts/smoke-test.sh
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [minimal, full]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: |
+          sudo apt-get clean
+          docker system prune -af 2>/dev/null || true
+          df -h
+      - name: Install live-build toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y live-build debootstrap squashfs-tools \
+            xorriso isolinux syslinux-efi grub-pc-bin grub-efi-amd64-bin \
+            mtools dosfstools parted rsync curl
+      - name: Build ISO (${{ matrix.profile }})
+        run: |
+          cd jarvisos
+          sudo -E ./build.sh ${{ matrix.profile }}
+          ls -la dist/
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVISOS-${{ matrix.profile }}
+          path: |
+            jarvisos/dist/*.iso
+            jarvisos/dist/*.sha256
+            jarvisos/dist/build-*.log
+          retention-days: 90
+
+  qemu-boot:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Advisory in v0.1: TCG boot of a full desktop ISO on shared runners is
+    # slow/flaky; the serial log is always uploaded for human inspection.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: JARVISOS-minimal
+          path: iso
+      - name: Install QEMU + OVMF
+        run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 ovmf
+      - name: Boot ISO (BIOS, serial check)
+        run: |
+          cd jarvisos
+          ls -la ../iso/
+          bash scripts/qemu-test.sh ../iso/*.iso --timeout 1500 || true
+      - name: Upload serial log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-serial-log
+          path: /tmp/*/jarvis-qemu.log
+          if-no-files-found: warn
+          retention-days: 30
