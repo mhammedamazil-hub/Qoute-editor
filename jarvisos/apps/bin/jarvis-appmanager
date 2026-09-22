@@ -1,0 +1,2 @@
+#!/bin/bash
+exec /usr/bin/python3 /usr/lib/jarvisos/apps/appmanager_app.py "$@"

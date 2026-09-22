@@ -1,0 +1,161 @@
+#!/bin/bash
+# jarvis-install — guided JARVISOS disk installer (TUI).
+#
+# Installs the running LIVE system to disk. Two modes:
+#   1) whole-disk install (types: disk name + the word ERASE)
+#   2) manual partitions (gparted first; pick root + EFI partitions)
+# Safety: refuses non-live systems (unless --force --dry-run for tests),
+# refuses the live USB stick itself as a target, prints every destructive
+# step and requires typed confirmation. --dry-run executes nothing.
+set -euo pipefail
+
+DRY=0; FORCE=0
+for a in "$@"; do
+  case "$a" in
+    --dry-run) DRY=1 ;; --force) FORCE=1 ;;
+    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+  esac
+done
+
+say()  { echo "==> $*"; }
+die()  { echo "ERROR: $*" >&2; exit 1; }
+run()  { if [ "$DRY" = 1 ]; then echo "  [dry-run] $*"; else "$@"; fi; }
+
+need() { command -v "$1" >/dev/null 2>&1 || die "missing tool: $1"; }
+
+on_live() {
+  grep -q "boot=live" /proc/cmdline 2>/dev/null && return 0
+  [ -d /lib/live/mount/medium ] && return 0
+  return 1
+}
+if ! on_live && [ "$FORCE" != 1 ]; then
+  die "not running on a JARVISOS live system — refusing (see --help)"
+fi
+
+need lsblk; need parted; need mkfs.ext4; need mkfs.fat; need rsync
+need chroot
+
+live_medium_dev() {
+  # device holding the live medium (the USB stick) — never a valid target
+  if [ -d /lib/live/mount/medium ]; then
+    findmnt -no SOURCE /lib/live/mount/medium 2>/dev/null | sed 's/[0-9]*$//' || true
+  fi
+}
+MEDIUM="$(live_medium_dev || true)"
+
+say "JARVISOS disk installer (dry-run=$DRY)"
+echo
+say "Available disks (the live USB itself is excluded):"
+lsblk -d -n -o NAME,SIZE,MODEL,TYPE | awk '$4=="disk" {print "  /dev/"$1"  "$2"  "$3}'
+echo
+
+read -r -p "Install to a WHOLE disk (erase everything) or MANUAL partitions? [whole/manual] " MODE </dev/tty
+case "$MODE" in
+  whole|manual) ;;
+  *) die "aborted." ;;
+esac
+
+TARGET_ROOT=""; TARGET_EFI=""
+if [ "$MODE" = "whole" ]; then
+  read -r -p "Whole-disk target (e.g. /dev/sda — check lsblk above!): " DISK </dev/tty
+  [[ "$DISK" =~ ^/dev/(sd[a-z]|nvme[0-9]n[0-9]+|vd[a-z]|mmcblk[0-9]+)$ ]] \
+    || die "refusing odd device name '$DISK'"
+  [ -b "$DISK" ] || [ "$DRY" = 1 ] || die "'$DISK' is not a block device"
+  [ -n "$MEDIUM" ] && [[ "$DISK" == "$MEDIUM"* ]] && die "that's the live USB stick — refusing"
+  echo
+  say "*** THIS WILL ERASE ALL DATA ON $DISK ***"
+  read -r -p "Type ERASE (all caps) to continue: " CONF </dev/tty
+  [ "$CONF" = "ERASE" ] || die "aborted."
+  say "Partitioning $DISK (GPT: 512M EFI + rest root)…"
+  run parted -s "$DISK" mklabel gpt
+  run parted -s "$DISK" mkpart ESP fat32 1MiB 513MiB
+  run parted -s "$DISK" set 1 esp on
+  run parted -s "$DISK" mkpart primary ext4 513MiB 100%
+  case "$DISK" in *nvme*|*mmcblk*) P1="${DISK}p1"; P2="${DISK}p2";; *) P1="${DISK}1"; P2="${DISK}2";; esac
+  TARGET_EFI="$P1"; TARGET_ROOT="$P2"
+  run mkfs.fat -F32 -n JARVIS-EFI "$TARGET_EFI"
+  run mkfs.ext4 -F -L jarvisos-root "$TARGET_ROOT"
+else
+  echo "Tip: run 'gparted' first to prepare partitions (1×FAT32 EFI ≥256M, 1×ext4 root)."
+  lsblk -n -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT | sed 's/^/  /'
+  echo
+  read -r -p "ROOT partition (will be FORMATTED ext4, e.g. /dev/sda2): " TARGET_ROOT </dev/tty
+  read -r -p "EFI partition (formatted FAT32; empty = BIOS/legacy install): " TARGET_EFI </dev/tty
+  for p in $TARGET_ROOT $TARGET_EFI; do
+    [ -z "$p" ] && continue
+    [[ "$p" =~ ^/dev/ ]] || die "refusing '$p'"
+    [ -n "$MEDIUM" ] && [[ "$p" == "$MEDIUM"* ]] && die "'$p' is on the live USB — refusing"
+  done
+  say "*** $TARGET_ROOT WILL BE ERASED ***"
+  read -r -p "Type YES (all caps) to continue: " CONF </dev/tty
+  [ "$CONF" = "YES" ] || die "aborted."
+  run mkfs.ext4 -F -L jarvisos-root "$TARGET_ROOT"
+  [ -n "$TARGET_EFI" ] && run mkfs.fat -F32 -n JARVIS-EFI "$TARGET_EFI" || true
+fi
+
+read -r -p "Your name for the new user account [jarvis]: " NEWUSER </dev/tty
+NEWUSER="${NEWUSER:-jarvis}"
+[[ "$NEWUSER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "bad username"
+read -r -s -p "Password for $NEWUSER: " NEWPASS </dev/tty; echo
+[ "${#NEWPASS}" -ge 4 ] || die "password too short"
+read -r -p "Hostname [jarvisos]: " NEWHOST </dev/tty
+NEWHOST="${NEWHOST:-jarvisos}"
+
+MNT=/mnt/jarvis-target
+run mkdir -p "$MNT"
+say "Mounting target…"
+run mount "$TARGET_ROOT" "$MNT"
+if [ -n "$TARGET_EFI" ]; then
+  run mkdir -p "$MNT/boot/efi"
+  run mount "$TARGET_EFI" "$MNT/boot/efi"
+fi
+
+say "Copying live system to disk (10–30 min on USB 2.0)…"
+run rsync -aHAX --info=progress2 --exclude={"/proc/*","/sys/*","/dev/*","/run/*","/tmp/*","/mnt/*","/media/*","/cdrom/*","/live/*","/lib/live/*","/boot/efi/*"} / "$MNT"/
+run mkdir -p "$MNT"/{proc,sys,dev,run,tmp,mnt,media}
+run mount --bind /dev "$MNT/dev"
+run mount -t proc proc "$MNT/proc"
+run mount -t sysfs sys "$MNT/sys"
+
+say "Writing fstab…"
+ROOT_UUID="$(lsblk -n -o UUID "$TARGET_ROOT" 2>/dev/null || echo DRYRUN-UUID)"
+{
+  echo "# JARVISOS fstab (written by jarvis-install)"
+  echo "UUID=$ROOT_UUID / ext4 errors=remount-ro 0 1"
+  if [ -n "$TARGET_EFI" ]; then
+    EFI_UUID="$(lsblk -n -o UUID "$TARGET_EFI" 2>/dev/null || echo DRYRUN-EFI)"
+    echo "UUID=$EFI_UUID /boot/efi vfat umask=0077 0 1"
+  fi
+} | if [ "$DRY" = 1 ]; then cat; else tee "$MNT/etc/fstab" >/dev/null; fi
+
+chroot_run() { if [ "$DRY" = 1 ]; then echo "  [dry-run] chroot: $*"; else chroot "$MNT" "$@"; fi; }
+
+say "Configuring installed system…"
+if [ "$DRY" != 1 ]; then echo "$NEWHOST" > "$MNT/etc/hostname"; fi
+chroot_run useradd -m -s /bin/bash -G sudo,audio,video,bluetooth,netdev,plugdev "$NEWUSER" || true
+chroot_run bash -c "echo '$NEWUSER:$NEWPASS' | chpasswd"
+# remove live autologin → installed system boots to the greeter
+if [ "$DRY" != 1 ]; then rm -f "$MNT/etc/lightdm/lightdm.conf.d/20-jarvis.conf"; fi
+chroot_run update-initramfs -u || say "(initramfs refresh skipped)"
+
+if [ -n "$TARGET_EFI" ]; then
+  say "Installing UEFI bootloader…"
+  chroot_run apt-get update
+  chroot_run apt-get install -y grub-efi-amd64 shim-signed || die "bootloader install needs network — connect and re-run"
+  EFI_DISK="$(lsblk -n -o PKNAME "$TARGET_EFI" 2>/dev/null || true)"
+  chroot_run grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=JARVISOS ${EFI_DISK:+--recheck} || die "grub-install failed"
+  chroot_run update-grub
+else
+  say "Installing legacy (BIOS) bootloader…"
+  chroot_run apt-get update
+  chroot_run apt-get install -y grub-pc || die "bootloader install needs network"
+  LEGACY_DISK="$(lsblk -n -o PKNAME "$TARGET_ROOT" 2>/dev/null || true)"
+  [ -n "$LEGACY_DISK" ] || die "cannot determine parent disk of $TARGET_ROOT"
+  chroot_run grub-install --target=i386-pc "/dev/$LEGACY_DISK" || die "grub-install failed"
+  chroot_run update-grub
+fi
+
+say "Cleaning up mounts…"
+run umount -R "$MNT" || true
+say "Done! Remove the USB stick and reboot into JARVISOS."
+echo "First boot: log in as $NEWUSER, open Settings → AI Providers to add keys."

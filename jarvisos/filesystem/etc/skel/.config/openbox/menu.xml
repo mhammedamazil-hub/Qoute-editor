@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- JARVISOS right-click root menu (normal Linux behavior preserved). -->
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="JARVISOS">
+    <item label="◉ JARVIS Command"><action name="Execute"><command>jarvis-hud-focus</command></action></item>
+    <item label="🎙 Voice Command"><action name="Execute"><command>jarvis-listen --seconds 6</command></action></item>
+    <separator/>
+    <item label="Files"><action name="Execute"><command>jarvis-files</command></action></item>
+    <item label="Terminal"><action name="Execute"><command>jarvis-terminal</command></action></item>
+    <item label="Text Editor"><action name="Execute"><command>jarvis-editor</command></action></item>
+    <item label="Web Browser"><action name="Execute"><command>firefox-esr</command></action></item>
+    <item label="App Manager"><action name="Execute"><command>jarvis-appmanager</command></action></item>
+    <item label="Settings"><action name="Execute"><command>jarvis-settings</command></action></item>
+    <item label="System Monitor"><action name="Execute"><command>jarvis-monitor</command></action></item>
+    <separator/>
+    <item label="Lock Screen"><action name="Execute"><command>jarvis lock the screen</command></action></item>
+    <item label="Log Out"><action name="Execute"><command>openbox --exit</command></action></item>
+  </menu>
+</openbox_menu>

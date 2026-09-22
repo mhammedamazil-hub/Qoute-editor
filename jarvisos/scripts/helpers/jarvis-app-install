@@ -1,0 +1,72 @@
+#!/bin/bash
+# jarvis-app-install — visible, confirmed installer backend.
+# Usage: jarvis-app-install <apt|vendor-script|update> <detail>
+# Always runs in a VISIBLE terminal (launched by Core/App Manager only after
+# the user confirms). Nothing is downloaded silently.
+set -euo pipefail
+
+die() { echo "ERROR: $*" >&2; exit 1; }
+say() { echo "==> $*"; }
+
+kind="${1:-}"; detail="${2:-}"
+SUDO="sudo"
+[ "$(id -u)" = "0" ] && SUDO=""
+
+valid_pkg() { [[ "$1" =~ ^[a-z0-9][a-z0-9+.\-]{0,63}$ ]]; }
+
+case "$kind" in
+  update)
+    say "Updating package lists…"
+    $SUDO apt-get update
+    say "Upgrading packages (this may take a while)…"
+    $SUDO apt-get upgrade -y
+    say "System is up to date."
+    ;;
+  apt)
+    valid_pkg "$detail" || die "refusing suspicious package name '$detail'"
+    say "Installing '$detail' from Debian repositories…"
+    $SUDO apt-get update
+    $SUDO apt-get install -y "$detail"
+    say "'$detail' installed."
+    ;;
+  vendor-script)
+    case "$detail" in
+      vscode)
+        say "Adding Microsoft's official VS Code repository…"
+        curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+          | gpg --dearmor | $SUDO tee /usr/share/keyrings/vscode.gpg >/dev/null
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/vscode.gpg] https://packages.microsoft.com/repos/code stable main" \
+          | $SUDO tee /etc/apt/sources.list.d/vscode.list >/dev/null
+        $SUDO apt-get update
+        $SUDO apt-get install -y code
+        say "VS Code installed."
+        ;;
+      brave)
+        say "Adding Brave's official repository…"
+        curl -fsSL https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg \
+          | $SUDO tee /usr/share/keyrings/brave-browser-archive-keyring.gpg >/dev/null
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" \
+          | $SUDO tee /etc/apt/sources.list.d/brave-browser-release.list >/dev/null
+        $SUDO apt-get update
+        $SUDO apt-get install -y brave-browser
+        say "Brave installed."
+        ;;
+      discord)
+        say "Downloading Discord from discord.com (official build)…"
+        tmp="$(mktemp -d)"
+        trap 'rm -rf "$tmp"' EXIT
+        curl -fsSL -o "$tmp/discord.deb" "https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=linux&arch=x64"
+        dpkg-deb --info "$tmp/discord.deb" | grep -q "^ Package: discord" \
+          || die "downloaded file is not the Discord package — aborting"
+        $SUDO apt-get install -y "$tmp/discord.deb"
+        say "Discord installed."
+        ;;
+      *)
+        die "unknown vendor recipe '$detail'"
+        ;;
+    esac
+    ;;
+  *)
+    die "usage: jarvis-app-install <apt|vendor-script|update> <detail>"
+    ;;
+esac

@@ -1,0 +1,60 @@
+#!/bin/sh
+# live-build chroot hook: final JARVISOS system configuration.
+# Runs INSIDE the target chroot during lb build. Keep idempotent.
+set -e
+
+echo "JARVISOS hook: configuring system..."
+
+# --- user -----------------------------------------------------------------
+# live-build creates $USERNAME via live-config; ensure sudo + groups here too
+if id jarvis >/dev/null 2>&1; then
+  usermod -aG sudo,audio,video,bluetooth,netdev,plugdev jarvis || true
+  echo "jarvis ALL=(ALL) NOPASSWD: /usr/bin/jarvis-privileged" > /etc/sudoers.d/jarvis
+  chmod 440 /etc/sudoers.d/jarvis
+fi
+
+# --- lightdm autologin (live session) --------------------------------------
+mkdir -p /etc/lightdm/lightdm.conf.d
+cat > /etc/lightdm/lightdm.conf.d/20-jarvis.conf <<'EOF'
+[Seat:*]
+greeter-session=lightdm-gtk-greeter
+user-session=jarvis
+autologin-user=jarvis
+autologin-user-timeout=0
+EOF
+
+# --- default session: openbox + jarvis shell -------------------------------
+mkdir -p /usr/share/xsessions
+cat > /usr/share/xsessions/jarvis.desktop <<'EOF'
+[Desktop Entry]
+Name=JARVIS
+Comment=JARVISOS desktop (Openbox + JARVIS shell)
+Exec=/usr/bin/jarvis-session
+Type=Application
+DesktopNames=JARVIS;Openbox;
+EOF
+
+# --- Python deps that Debian doesn't package (pip, pinned when possible) ---
+# PyAutoGUI + vosk are optional at runtime; install best-effort so the build
+# never fails on PyPI flakiness. Everything else is stdlib/apt.
+pip3 install --no-cache-dir --break-system-packages \
+  pyautogui==0.9.54 mss==9.0.1 vosk==0.3.45 2>/tmp/jarvis-pip.log \
+  || echo "JARVISOS hook: pip extras failed (non-fatal, see /tmp/jarvis-pip.log)"
+
+# --- enable services --------------------------------------------------------
+systemctl enable NetworkManager 2>/dev/null || true
+systemctl enable bluetooth 2>/dev/null || true
+systemctl enable acpid 2>/dev/null || true
+systemctl enable lightdm 2>/dev/null || true
+
+# --- plymouth theme ----------------------------------------------------------
+if [ -f /usr/share/plymouth/themes/jarvis/jarvis.plymouth ]; then
+  plymouth-set-default-theme jarvis 2>/dev/null || \
+    update-alternatives --set default.plymouth \
+      /usr/share/plymouth/themes/jarvis/jarvis.plymouth || true
+fi
+
+# --- locale/timezone defaults ---------------------------------------------
+update-locale LANG=en_US.UTF-8 2>/dev/null || true
+
+echo "JARVISOS hook: done."

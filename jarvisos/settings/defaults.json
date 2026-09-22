@@ -1,0 +1,55 @@
+{
+  "_note": "JARVISOS factory defaults. User overrides live in ~/.config/jarvisos/config.json (same keys). Secrets live in ~/.config/jarvisos/secrets.json — NEVER here.",
+  "appearance": {
+    "theme": "jarvis-dark",
+    "accent": "#35e0ff",
+    "font": "DejaVu Sans 10",
+    "performance_mode": "auto",
+    "animations": true,
+    "transparency": true
+  },
+  "ai": {
+    "provider": "gemini",
+    "gemini_model": "gemini-3.8-flash",
+    "openrouter_model": "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "huggingface_model": "HuggingFaceH4/zephyr-7b-beta",
+    "vision_max_width": 1280,
+    "max_batch_actions": 25
+  },
+  "voice": {
+    "stt_engine": "auto",
+    "vosk_model": "~/.local/share/jarvisos/vosk-model",
+    "speak_replies": true,
+    "rate": 175,
+    "push_to_talk_seconds": 6
+  },
+  "gestures": {
+    "clap_enabled": true,
+    "sensitivity": 3.0,
+    "double_window_ms": 700,
+    "cooldown_ms": 1800,
+    "clap_map": {
+      "single": "open discord",
+      "double": "open vs code",
+      "triple": "stop automation"
+    }
+  },
+  "hotkeys": {
+    "command": "Super+Space",
+    "voice": "Super+V",
+    "launcher": "Super+A",
+    "files": "Super+F",
+    "stop": "Escape"
+  },
+  "memory": {
+    "enabled": true
+  },
+  "automation": {
+    "confirm_first_batch": true,
+    "max_batch_actions": 25
+  },
+  "privacy": {
+    "send_screenshots_to_ai": true,
+    "send_voice_to_cloud": true
+  }
+}

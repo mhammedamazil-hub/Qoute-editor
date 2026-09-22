@@ -1,0 +1,5 @@
+#!/bin/bash
+# Openbox autostart (runs under jarvis-session; kept minimal — daemons are
+# started by jarvis-session itself so re-running openbox never duplicates).
+(sleep 3; nm-applet 2>/dev/null) &
+(sleep 3; blueman-applet 2>/dev/null) &

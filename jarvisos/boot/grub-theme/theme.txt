@@ -1,0 +1,36 @@
+# JARVISOS GRUB theme (UEFI menu styling).
+title-text: ""
+desktop-image: ""
+desktop-color: "#020810"
+terminal-font: "Unifont Regular 16"
++ boot_menu {
+  left = 20%
+  top = 30%
+  width = 60%
+  height = 40%
+  item_font = "Unifont Regular 16"
+  item_color = "#9fe8ff"
+  selected_item_color = "#02131f"
+  selected_item_pixmap_style = "select_*.png"
+  item_height = 32
+  item_spacing = 8
+  selected_item_color = "#35e0ff"
+}
++ label {
+  top = 15%
+  left = 20%
+  width = 60%
+  text = "J A R V I S O S"
+  color = "#c8f4ff"
+  font = "Unifont Regular 32"
+  align = "center"
+}
++ label {
+  top = 85%
+  left = 10%
+  width = 80%
+  text = "Use arrows + Enter to boot · 'e' to edit · Live session, nothing is installed unless you choose to"
+  color = "#4a7d99"
+  font = "Unifont Regular 12"
+  align = "center"
+}

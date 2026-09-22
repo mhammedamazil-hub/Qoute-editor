@@ -1,0 +1,50 @@
+#!/bin/sh
+# live-build BINARY hook: render JARVISOS bootloader menus with the real
+# kernel/initrd filenames (only known after bootstrap). Runs on the HOST,
+# in the lb build dir; the ISO tree is ./binary. Never touches host disks.
+set -e
+
+echo "JARVISOS binary hook: rendering boot menus..."
+
+VMLINUZ="$(ls binary/live/vmlinuz-* 2>/dev/null | head -n1 || true)"
+INITRD="$(ls binary/live/initrd.img-* 2>/dev/null | head -n1 || true)"
+
+if [ -z "$VMLINUZ" ] || [ -z "$INITRD" ]; then
+  echo "JARVISOS binary hook: no kernel found under binary/live — leaving default menus"
+  exit 0
+fi
+
+VK="/live/$(basename "$VMLINUZ")"
+IR="/live/$(basename "$INITRD")"
+echo "JARVISOS binary hook: kernel=$VK initrd=$IR"
+
+render() {
+  # render <template> <dest>
+  sed -e "s|@VMLINUZ@|$VK|g" -e "s|@INITRD@|$IR|g" "$1" > "$2"
+}
+
+# --- UEFI GRUB --------------------------------------------------------------
+if [ -f config/bootloaders/grub.cfg ]; then
+  if [ -d binary/boot/grub ]; then
+    render config/bootloaders/grub.cfg binary/boot/grub/grub.cfg
+    echo "JARVISOS binary hook: wrote binary/boot/grub/grub.cfg"
+  else
+    echo "JARVISOS binary hook: no binary/boot/grub dir — grub-efi menu left default"
+  fi
+fi
+
+# --- BIOS syslinux/isolinux ---------------------------------------------------
+if [ -f config/bootloaders/syslinux.cfg ]; then
+  for d in binary/isolinux binary/syslinux; do
+    if [ -d "$d" ]; then
+      for main in "$d/isolinux.cfg" "$d/syslinux.cfg"; do
+        if [ -f "$main" ]; then
+          render config/bootloaders/syslinux.cfg "$main"
+          echo "JARVISOS binary hook: wrote $main"
+        fi
+      done
+    fi
+  done
+fi
+
+echo "JARVISOS binary hook: done."

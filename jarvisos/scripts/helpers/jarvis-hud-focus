@@ -1,0 +1,12 @@
+#!/bin/bash
+# Focus the JARVIS HUD command entry (Super+Space). Starts the shell if needed.
+if ! pgrep -f "jarvisos/shell/main.py" >/dev/null 2>&1; then
+  (jarvis-shell &)
+  sleep 1
+fi
+if command -v wmctrl >/dev/null 2>&1; then
+  wmctrl -a "JARVIS" || true
+elif command -v xdotool >/dev/null 2>&1; then
+  id="$(xdotool search --onlyvisible --name '^JARVIS$' 2>/dev/null | head -n1)"
+  [ -n "$id" ] && xdotool windowactivate "$id" || true
+fi

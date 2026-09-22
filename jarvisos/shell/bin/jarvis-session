@@ -1,0 +1,30 @@
+#!/bin/bash
+# JARVIS X session: daemons + openbox + shell. Used by lightdm (Exec=...).
+set -u
+
+export XDG_CURRENT_DESKTOP=JARVIS
+export GTK_THEME=Jarvis-Dark
+
+# user dirs + wallpaper default
+xdg-user-dirs-update 2>/dev/null || true
+if [ -f /usr/share/backgrounds/jarvis-default.png ]; then
+  (sleep 2; feh --bg-fill /usr/share/backgrounds/jarvis-default.png) &
+fi
+
+# core services (idempotent restarts)
+pkill -x jarvis-core 2>/dev/null; pkill -x jarvis-clapd 2>/dev/null; pkill -f jarvis-shell 2>/dev/null
+/usr/bin/jarvis-core &          # socket daemon (Core + automation engine)
+/usr/bin/jarvis-clapd &         # clap listener (self-disables via config)
+(sleep 1; /usr/bin/jarvis-shell) &   # HUD + launcher + status + dock
+
+# notification daemon + polkit agent
+/usr/bin/dunst & 2>/dev/null || true
+/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1 & 2>/dev/null || true
+
+# optional compositor in cinematic mode only (checked inside)
+if [ -x /usr/bin/jarvis-compositor ]; then
+  /usr/bin/jarvis-compositor &
+fi
+
+# window manager (this process IS the session: openbox exiting ends it)
+exec /usr/bin/openbox-session

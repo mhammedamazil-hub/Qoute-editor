@@ -1,0 +1,18 @@
+# JARVISOS intelligence layer: python libs for automation/voice/vision.
+# NOTE: no local LLM here — cloud providers only (4 GB RAM target).
+python3-xlib
+python3-evdev
+python3-requests
+python3-numpy
+python3-pyaudio
+flac
+python3-dbus
+python3-cairo
+gir1.2-notify-0.1
+libnotify-bin
+tesseract-ocr
+tesseract-ocr-eng
+imagemagick
+jq
+sox
+curl

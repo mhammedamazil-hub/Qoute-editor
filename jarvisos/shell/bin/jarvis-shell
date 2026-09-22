@@ -1,0 +1,3 @@
+#!/bin/bash
+# JARVIS shell launcher (installed to /usr/bin/jarvis-shell).
+exec /usr/bin/python3 /usr/lib/jarvisos/shell/main.py "$@"

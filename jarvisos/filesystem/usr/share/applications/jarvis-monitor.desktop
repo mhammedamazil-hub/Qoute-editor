@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=JARVIS Monitor
+Comment=System monitor
+Exec=jarvis-monitor
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;
+StartupNotify=true

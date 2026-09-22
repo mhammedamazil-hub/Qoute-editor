@@ -1,3 +1,15 @@
+# Qoute-editor
+
+This repo hosts two projects:
+
+- **[JARVISOS](jarvisos/)** — a real bootable AI operating system
+  (Debian-based live ISO, JARVIS shell + Core, voice/clap control).
+  Start at [jarvisos/README.md](jarvisos/README.md) · build with
+  `cd jarvisos && ./build.sh` · CI builds the ISO automatically.
+- **QuoteCraft** (below) — layer-based quote poster editor.
+
+---
+
 # QuoteCraft — layer-based quote poster editor
 
 A browser-native poster editor for quote graphics, with an **AI copilot that actually operates the app**.

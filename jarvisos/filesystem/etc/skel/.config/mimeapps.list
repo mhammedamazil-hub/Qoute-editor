@@ -1,0 +1,10 @@
+[Default Applications]
+inode/directory=jarvis-files.desktop
+text/plain=jarvis-editor.desktop
+text/markdown=jarvis-editor.desktop
+text/x-python=jarvis-editor.desktop
+application/x-shellscript=jarvis-editor.desktop
+text/html=firefox-esr.desktop
+application/pdf=org.gnome.Evince.desktop
+image/png=org.gnome.eog.desktop
+image/jpeg=org.gnome.eog.desktop

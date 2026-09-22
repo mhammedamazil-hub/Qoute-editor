@@ -1,0 +1,10 @@
+# JARVISOS-local ignores (inherits root .gitignore too)
+dist/
+build-tmp/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+cache/
+*.iso
+*.sha256

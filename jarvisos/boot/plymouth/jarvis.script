@@ -1,0 +1,45 @@
+# JARVISOS Plymouth boot splash — fast, minimal, no heavy animation.
+# Dark background + cyan progress bar + status lines. No artificial delays.
+Window.SetBackgroundTopColor(0.01, 0.05, 0.10);
+Window.SetBackgroundBottomColor(0.00, 0.02, 0.05);
+
+title = Image.Text("J A R V I S O S", 0.78, 0.95, 1.0, "DejaVu Sans 42");
+title_sprite = Sprite(title);
+screen_w = Window.GetX() + Window.GetWidth();
+screen_h = Window.GetY() + Window.GetHeight();
+title_sprite.SetPosition(screen_w / 2 - title.GetWidth() / 2, screen_h * 0.30, 0);
+
+sub = Image.Text("INITIALIZING SYSTEM", 0.35, 0.75, 0.90, "DejaVu Sans 16");
+sub_sprite = Sprite(sub);
+sub_sprite.SetPosition(screen_w / 2 - sub.GetWidth() / 2, screen_h * 0.42, 0);
+
+bar_w = 420;
+bar_h = 10;
+bar_x = screen_w / 2 - bar_w / 2;
+bar_y = screen_h * 0.52;
+bar_bg = Image(bar_w, bar_h);
+bar_bg.Fill(0.05, 0.12, 0.18);
+bar_bg_sprite = Sprite(bar_bg);
+bar_bg_sprite.SetPosition(bar_x, bar_y, 0);
+
+fun progress_callback(duration, progress) {
+  filled = progress * bar_w;
+  if (filled > 2) {
+    bar_fg = Image(filled, bar_h);
+    bar_fg.Fill(0.20, 0.88, 1.0);
+    bar_fg_sprite = Sprite(bar_fg);
+    bar_fg_sprite.SetPosition(bar_x, bar_y, 1);
+  }
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+fun message_callback(text) {
+  line = Image.Text(text, 0.35, 0.70, 0.85, "DejaVu Sans Mono 12");
+  line_sprite = Sprite(line);
+  line_sprite.SetPosition(bar_x, bar_y + 30, 0);
+}
+Plymouth.SetDisplayNormalFunction(message_callback);
+Plymouth.SetDisplayPasswordFunction(message_callback);
+
+fun quit_callback() {}
+Plymouth.SetQuitFunction(quit_callback);

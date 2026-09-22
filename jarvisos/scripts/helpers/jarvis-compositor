@@ -1,0 +1,9 @@
+#!/bin/bash
+# Start picom ONLY in cinematic mode (never in performance/auto-on-4GB).
+# Called by jarvis-session.
+mode="$(python3 -c "import sys; sys.path.insert(0,'/usr/lib/jarvisos'); from jarvis.config import get_config; print(get_config().get('appearance.performance_mode','auto'))" 2>/dev/null || echo auto)"
+if [ "$mode" = "cinematic" ] && command -v picom >/dev/null 2>&1; then
+  exec picom --backend xrender --vsync --fade-in-step 0.1 --fade-out-step 0.1 --shadow-exclude 'name *= "jarvis-panel"' --shadow-exclude 'name = "JARVIS"'
+fi
+# performance/auto: no compositor (fastest path for weak iGPUs)
+exit 0

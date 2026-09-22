@@ -1,0 +1,9 @@
+# JARVISOS 'full' profile extras: graphical installer + on-ISO heavy apps.
+# The 'minimal' profile skips this file entirely (apps install on demand).
+calamares
+calamares-settings-debian
+blender
+gimp
+vlc
+libreoffice-writer
+libreoffice-calc

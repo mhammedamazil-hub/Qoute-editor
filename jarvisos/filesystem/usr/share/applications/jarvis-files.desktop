@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=JARVIS Files
+Comment=File manager
+Exec=jarvis-files
+Icon=folder
+Terminal=false
+Categories=System;
+StartupNotify=true
