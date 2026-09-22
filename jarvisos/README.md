@@ -69,8 +69,9 @@ cd jarvisos
 
 Requires a Debian/Ubuntu build host with `live-build` and Debian-mirror
 network access (see [docs/iso-creation.md](docs/iso-creation.md)).
-No internet? A GitHub Actions workflow (`.github/workflows/jarvisos-iso.yml`)
-builds the ISO in CI and uploads it as an artifact.
+No Debian mirror? Copy `ci/jarvisos-iso.workflow.yml` to
+`.github/workflows/jarvisos-iso.yml` and CI builds the ISO for you
+(see [docs/iso-creation.md](docs/iso-creation.md#no-debian-mirror-use-ci)).
 
 ## Test without building an ISO
 

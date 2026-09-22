@@ -43,9 +43,17 @@ symlinked as `dist/JARVISOS.iso`, plus `.sha256` and a build log.
 
 ## No Debian mirror? Use CI
 
-Push to GitHub — `.github/workflows/jarvisos-iso.yml` builds both profiles
-on a runner with full network, validates them, and uploads the ISOs as
-artifacts (90-day retention). Download from the Actions tab.
+GitHub runners have full network, so CI can build the ISO for you:
+
+1. Copy [`ci/jarvisos-iso.workflow.yml`](../ci/jarvisos-iso.workflow.yml) to
+   `.github/workflows/jarvisos-iso.yml` (Actions → New workflow → set up a
+   workflow yourself → paste → commit; or `mkdir -p .github/workflows &&
+   cp jarvisos/ci/jarvisos-iso.workflow.yml .github/workflows/jarvisos-iso.yml`
+   and push).
+2. The workflow runs pytest + smoke test, builds both profiles with
+   live-build, validates them, and uploads the ISOs as artifacts
+   (90-day retention). Download from the Actions tab.
+3. It also runs an advisory QEMU boot check and uploads the serial log.
 
 ## Reproducibility notes
 
