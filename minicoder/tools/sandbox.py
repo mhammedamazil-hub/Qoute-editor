@@ -113,10 +113,22 @@ class Sandbox:
         return True, "ok"
 
     # ------------------------------------------------------- execution
-    def run_python(self, code: str, timeout: float | None = None) -> RunResult:
+    def run_python(self, code: str, timeout: float | None = None, *, guarded: bool = True) -> RunResult:
+        """Execute candidate code in a throwaway directory.
+
+        With ``guarded`` (the default) the program is prefixed with the PEP 578
+        audit-hook prelude from ``minicoder.tools.guard``, which refuses filesystem
+        access outside the run directory, process spawning, sockets and ctypes.
+        Measured before this existed: ``open('/etc/passwd')`` and ``os.system``
+        both succeeded here, so the sandbox was permissioned in name only.
+        """
         code_hash = hashlib.sha256(code.encode()).hexdigest()
         tmp = Path(tempfile.mkdtemp(prefix="minicoder_sbx_"))
         script = tmp / "main.py"
+        if guarded:
+            from minicoder.tools.guard import guarded_program
+
+            code = guarded_program(code, str(tmp))
         script.write_text(code, encoding="utf-8")
         try:
             if self.use_docker:
@@ -199,10 +211,11 @@ class Sandbox:
             return RunResult(False, -9, "", "docker run timed out", (time.time() - t0) * 1000, "docker", True, code_hash)
 
     # ------------------------------------------------- verification ------------------
-    def run_tests(self, solution: str, tests: str, timeout: float = 10.0) -> tuple[bool, RunResult]:
+    def run_tests(self, solution: str, tests: str, timeout: float = 10.0,
+                  *, guarded: bool = True) -> tuple[bool, RunResult]:
         """Deterministic verification gate: solution + assertions in one program."""
         program = textwrap.dedent(solution).strip() + "\n\n" + textwrap.dedent(tests).strip() + "\n"
-        res = self.run_python(program, timeout=timeout)
+        res = self.run_python(program, timeout=timeout, guarded=guarded)
         return res.ok, res
 
 
