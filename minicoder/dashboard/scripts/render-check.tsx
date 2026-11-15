@@ -65,8 +65,10 @@ check("app mounts", text().length > 50, `${text().length} chars`);
 check("title rendered", text().includes("Brain Dashboard"));
 check("live status reaches the DOM", text().includes("params") || text().includes("checkpoint"));
 
-// Walk every tab and assert it renders its own content.
-const tabs = ["Overview", "Copilot", "Knowledge", "Memory", "Vision", "Learning"];
+// Walk every tab and assert it renders its own content. "Training" and
+// "Acquisition" are separate screens: the first covers model training and eval,
+// the second covers the learning loop (experiments, replays, acceptance).
+const tabs = ["Overview", "Copilot", "Knowledge", "Memory", "Vision", "Training", "Acquisition"];
 for (const tab of tabs) {
   const btn = [...container.querySelectorAll("button")].find((b) => b.textContent?.trim() === tab);
   if (!btn) {

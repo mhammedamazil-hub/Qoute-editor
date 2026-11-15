@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-11-15T16:23:57Z",
+  "generated_at": "2026-11-15T16:52:27Z",
   "passed": 8,
   "total": 8,
   "all_passed": true,
-  "seconds": 47.59,
+  "seconds": 54.28,
   "checks": [
     {
       "n": 1,
       "name": "learn a genuinely unseen procedural task",
       "passed": true,
-      "detail": "1 attempt(s), progress 1.00, 24.0s, candidate 1",
+      "detail": "1 attempt(s), progress 1.00, 27.9s, candidate 1",
       "evidence": {
         "solved": true,
         "attempts": 1,
@@ -108,25 +108,25 @@
       "n": 7,
       "name": "roll back a harmful update",
       "passed": true,
-      "detail": "val_ce 5.6829 -> harmed 380.1992 -> restored 5.6829",
+      "detail": "val_ce 5.5893 -> harmed 379.99 -> restored 5.5893",
       "evidence": {
         "before": {
           "skill_accuracy": 0.875,
           "retention": 0.875,
           "answer_rate": 1.0,
-          "val_ce": 5.6829
+          "val_ce": 5.5893
         },
         "harmed": {
           "skill_accuracy": 0.0,
           "retention": 0.0,
           "answer_rate": 1.0,
-          "val_ce": 380.1992
+          "val_ce": 379.99
         },
         "recovered": {
           "skill_accuracy": 0.875,
           "retention": 0.875,
           "answer_rate": 1.0,
-          "val_ce": 5.6829
+          "val_ce": 5.5893
         }
       }
     },
@@ -155,11 +155,11 @@
       "replay_passed": true,
       "replay_runs": 3,
       "promoted": false,
-      "seconds": 23.98,
+      "seconds": 27.95,
       "tokens_used": 34,
       "resource": {
         "rss_mb": 48.6,
-        "cpu_seconds": 0.47
+        "cpu_seconds": 0.43
       }
     },
     "replay": {
@@ -343,9 +343,9 @@
       "first_attempt_rate": 0.882,
       "confirmed_in_sandbox": 15,
       "mean_attempts": 1.24,
-      "total_seconds": 2.76,
-      "mean_seconds": 0.16,
-      "peak_rss_mb": 583.8,
+      "total_seconds": 3.42,
+      "mean_seconds": 0.2,
+      "peak_rss_mb": 584.3,
       "search_tokens": 5831,
       "replay_attempted": 0,
       "replay_passed": 0,

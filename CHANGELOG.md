@@ -1,7 +1,101 @@
 # Changelog
 
-All measured numbers below come from `datasets/training_runs/eval_report.json` and the sleep/training
-reports in `memory/sleep_logs/` and `datasets/training_runs/`.
+All measured numbers below come from `datasets/training_runs/eval_report.json`, the sleep/training
+reports in `memory/sleep_logs/` and `datasets/training_runs/`, and — for Phase 2 — the reports in
+`datasets/learning/`.
+
+
+## Phase 2 — genuine skill acquisition
+
+Every number below is in `datasets/learning/` (`benchmark_latest.json`,
+`acceptance_latest.json`, `neural_study_latest.json`) or reproducible with the
+command named beside it.
+
+### Added
+- **Forensic audit** (`docs/AUDIT_PHASE2.md`) performed before any code: hardware
+  and network re-verified, baseline reproduced, and the three claimed skill
+  sources found to be re-execution or transcription. The retrieval benchmark was
+  circular and the sandbox was permissioned only in its documentation.
+- **Runtime sandbox confinement** (`minicoder/tools/guard.py`): a PEP 578 audit
+  hook refusing filesystem access outside the run directory, process spawning,
+  sockets and `ctypes`. Guarded by default; 25/25 seed tasks still verify.
+- **Schema v2** (additive): `experiments`, `hypotheses`, `attempts`,
+  `skill_candidates`, `skill_replays`, `resource_samples`, `skill_dependencies`.
+  A hypothesis, an attempt, a success and a skill are now different tables.
+- **Learning loop** (`minicoder/learning/`): tool discovery over the live
+  catalogue, a criterion DSL, a searching planner, an enumerative program
+  synthesiser, an acquire→replay→promote→reuse engine, end-to-end acceptance
+  runner, and reproducibility-checked reports.
+- **`SOURCE_LEARNING_LOOP`** as a first-class provenance value.
+- **Sealed benchmark**: 22 tasks, 10 categories, difficulty spread, sealing
+  enforced by `assert_sealed()` and a test-strength audit
+  (`audit_test_strength`) that rejects tasks a wrong program could satisfy.
+- **Safeguards**: immutable baselines with SHA-256 manifests, a directional
+  regression guard, an admit/rollback gate, and skill-version archiving.
+- **Eighth sleep stage**: learning consolidation with de-duplication,
+  contradiction recording, replay-calibrated confidence, temporal validity,
+  skill→tool dependencies and measured retention.
+- **CLI**: `learn`, `benchmark`, `acceptance`, `neural`, `safeguard`.
+- **API**: `/api/learning/overview`, `/api/learning/skills`,
+  `/api/learning/experiments`.
+- **Dashboard**: the *Acquisition* tab.
+- **33 new tests** (84 total).
+
+### Measured
+| Claim | Measurement |
+|---|---|
+| sealed benchmark | 20/22 final (90.9%), first-attempt 20/22, 66.96 s, peak RSS 65 MB |
+| replay in a fresh process | 4/4 |
+| generalisation to a variant | 3/3 |
+| acceptance criteria | 8/8 in 54 s |
+| deliberate regression | 0.875 → 0.0 accuracy, 5.68 → 356 NLL; caught, rolled back exactly |
+| live acquisition | skill #28 promoted after 3/3 replays in a fresh interpreter |
+| sleep consolidation | 1 procedure, 4 dependencies, 1/1 retained; re-run extracted 0, de-duplicated 1 |
+| neural study | curriculum cut val CE 5.21 → 4.56 and still scored 0.000 exact-match |
+
+### Fixed — silent correctness bugs (Phase 2)
+- **Sandbox was not confined.** `open('/etc/passwd').read()` succeeded and
+  `os.system()` spawned a shell through `run_python`; only a command-line
+  substring blocklist existed.
+- **The planner undid work it had not done.** A failed candidate called `undo`
+  unconditionally, popping the previous *accepted* step and silently discarding
+  the canvas resize.
+- **Requirements were paired with the wrong results.** `zip(reqs, results)` mixed
+  a priority-sorted list with a criteria-ordered one.
+- **No-op steps looped to the budget.** A step that ran successfully but changed
+  nothing was accepted; it repeated until the budget expired.
+- **`shape='shape'`.** Argument values were invented instead of read from the
+  tool's own description; discovery now extracts the real vocabulary.
+- **Partial progress was invisible.** `count(shape, >=, 2)` deadlocked because one
+  of two shapes counted as no progress.
+- **A hardcoded filename in file search** made a solvable task report failure.
+- **A temp-directory leak** exhausted the filesystem link count after a few
+  thousand candidates.
+- **`max()` against a zero start** discarded every negative translation, so the
+  derived repair offset was always 0.
+- **Single-shot repair oscillated** between overlapping and out-of-bounds; repair
+  now iterates.
+- **Translated every layer instead of the offenders**, pushing in-bounds layers
+  out of the canvas.
+- **`evaluate_lm` returned NaN** whenever the validation stream was shorter than
+  `batch_size × block`, because `_batches` never emitted a trailing partial batch.
+  A uniform model now scores 6.985 (≈ ln 1024), as it should.
+- **Two benchmark tasks were solvable by wrong programs** (`sum()` for a count,
+  `len()` for a last element). Caught by the new strength audit; both fixtures
+  strengthened rather than reported as passes.
+
+### Incident
+A new test called `restore()` without an explicit target, and `restore()`
+defaulted to `CONFIG.paths.checkpoints`. It wrote an 8-byte fixture over the real
+`lm.pt`. Caught by four pre-existing tests failing; restored from the automatic
+`pre_restore` backup and verified back to `0.875 / 0.875 / 5.5893`. `restore()`
+now defaults to the manifest's recorded origin, and both tests take the isolated
+`home` fixture so they cannot reach production weights.
+
+### Known limitations (unchanged or newly measured)
+- Sealed holdout generalisation is **0.0** under every training variant tried.
+- Program acquisition is depth-bounded: `run_length_encode` and `caesar` fail.
+- A flipped 4:3 canvas defeats geometric adaptation; reported, not hidden.
 
 ## 2026-11-15
 

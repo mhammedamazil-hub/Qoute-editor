@@ -51,8 +51,14 @@ def _batches(
     starts = list(range(0, n, block))
     if shuffle:
         random.Random(seed).shuffle(starts)
-    for i in range(0, len(starts) - batch_size + 1, batch_size):
+    # Emit the trailing partial batch. The old loop stopped at
+    # `len(starts) - batch_size + 1`, so a stream shorter than
+    # batch_size * block produced no batches at all and evaluation silently
+    # returned NaN — a measured defect, not a hypothetical one.
+    for i in range(0, len(starts), batch_size):
         chunk = starts[i : i + batch_size]
+        if not chunk:
+            break
         xs = torch.stack([arr[s : s + block] for s in chunk])
         ys = torch.stack([arr[s + 1 : s + block + 1] for s in chunk])
         yield xs, ys
@@ -65,6 +71,9 @@ def evaluate_lm(
     """Return (cross-entropy, perplexity) on a held-out token stream."""
     if len(tokens) < block + 2:
         return float("nan"), float("nan")
+    # Never ask for a batch larger than the stream can supply.
+    usable = (len(tokens) - block - 1) // block
+    batch_size = max(1, min(batch_size, usable))
     model.eval()
     losses, weights = 0.0, 0
     for xs, ys in _batches(tokens, batch_size, block, shuffle=False):

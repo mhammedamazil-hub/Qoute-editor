@@ -1,6 +1,6 @@
 # Sealed learning benchmark
 
-Generated 2026-11-15T16:13:46Z · 22 tasks · sealed: True
+Generated 2026-11-15T16:58:01Z · 22 tasks · sealed: True
 
 ## Headline
 
@@ -12,8 +12,8 @@ Generated 2026-11-15T16:13:46Z · 22 tasks · sealed: True
 | replay passed (fresh process) | 4/4 |
 | generalisation passed | 3/3 |
 | mean attempts | 1.18 |
-| mean seconds/task | 2.32 |
-| peak RSS | 65.5 MB |
+| mean seconds/task | 2.5 |
+| peak RSS | 66.0 MB |
 | search tokens | 5923 |
 
 ## By category
@@ -35,27 +35,27 @@ Generated 2026-11-15T16:13:46Z · 22 tasks · sealed: True
 
 | task | category | mode | first | final | attempts | s | tokens | replay | variant |
 |---|---|---|---|---|---|---|---|---|---|
-| sum_evens | python | acquisition | ✓ | ✓ | 1 | 0.15 | 36 | — | — |
-| double_all | python | acquisition | ✓ | ✓ | 1 | 0.08 | 84 | — | — |
-| range_span | math | acquisition | ✓ | ✓ | 1 | 0.06 | 24 | — | — |
-| count_positive | math | acquisition | ✓ | ✓ | 1 | 0.07 | 32 | — | — |
+| sum_evens | python | acquisition | ✓ | ✓ | 1 | 0.13 | 36 | — | — |
+| double_all | python | acquisition | ✓ | ✓ | 1 | 0.09 | 84 | — | — |
+| range_span | math | acquisition | ✓ | ✓ | 1 | 0.07 | 24 | — | — |
+| count_positive | math | acquisition | ✓ | ✓ | 1 | 0.1 | 32 | — | — |
 | abs_all | python | acquisition | ✓ | ✓ | 1 | 0.07 | 80 | — | — |
-| product | math | acquisition | ✓ | ✓ | 1 | 0.06 | 20 | — | — |
-| evens_sorted | data | acquisition | ✓ | ✓ | 1 | 0.11 | 673 | — | — |
-| unique_upper | data | acquisition | ✓ | ✓ | 1 | 0.11 | 573 | — | — |
-| median | math | acquisition | ✓ | ✓ | 1 | 0.08 | 44 | — | — |
-| word_lengths | data | acquisition | ✓ | ✓ | 1 | 0.08 | 112 | — | — |
-| run_length_encode | python | acquisition | ✗ | ✗ | 3 | 0.99 | 1907 | — | — |
-| caesar | python | acquisition | ✗ | ✗ | 3 | 0.84 | 1907 | — | — |
+| product | math | acquisition | ✓ | ✓ | 1 | 0.07 | 20 | — | — |
+| evens_sorted | data | acquisition | ✓ | ✓ | 1 | 0.14 | 673 | — | — |
+| unique_upper | data | acquisition | ✓ | ✓ | 1 | 0.1 | 573 | — | — |
+| median | math | acquisition | ✓ | ✓ | 1 | 0.07 | 44 | — | — |
+| word_lengths | data | acquisition | ✓ | ✓ | 1 | 0.07 | 112 | — | — |
+| run_length_encode | python | acquisition | ✗ | ✗ | 3 | 0.98 | 1907 | — | — |
+| caesar | python | acquisition | ✗ | ✗ | 3 | 0.98 | 1907 | — | — |
 | count_lines | file | acquisition | ✓ | ✓ | 1 | 0.02 | 4 | — | — |
 | sum_column | file | acquisition | ✓ | ✓ | 1 | 0.03 | 103 | — | — |
 | write_report | data | acquisition | ✓ | ✓ | 1 | 0.07 | 120 | — | — |
-| fix_off_by_one | debugging | acquisition | ✓ | ✓ | 1 | 0.06 | 52 | — | — |
+| fix_off_by_one | debugging | acquisition | ✓ | ✓ | 1 | 0.09 | 52 | — | — |
 | fix_mutation | debugging | acquisition | ✓ | ✓ | 1 | 0.06 | 60 | — | — |
-| visual_headline | visual | acquisition+adaptation | ✓ | ✓ | 1 | 12.32 | 17 | ✓ | ✓ |
-| tool_discovery_shape | tool_discovery | acquisition | ✓ | ✓ | 1 | 11.99 | 23 | ✓ | — |
-| multistep_poster | multistep | acquisition+adaptation | ✓ | ✓ | 1 | 12.05 | 38 | ✓ | ✓ |
-| api_typography | new_api | acquisition+adaptation | ✓ | ✓ | 1 | 11.77 | 14 | ✓ | ✓ |
+| visual_headline | visual | acquisition+adaptation | ✓ | ✓ | 1 | 12.61 | 17 | ✓ | ✓ |
+| tool_discovery_shape | tool_discovery | acquisition | ✓ | ✓ | 1 | 13.5 | 23 | ✓ | — |
+| multistep_poster | multistep | acquisition+adaptation | ✓ | ✓ | 1 | 13.85 | 38 | ✓ | ✓ |
+| api_typography | new_api | acquisition+adaptation | ✓ | ✓ | 1 | 11.92 | 14 | ✓ | ✓ |
 | visual_inspection | visual_inspection | retrieval | ✓ | ✓ | 1 | 0.0 | 0 | — | — |
 
 ## Failures (reported, not hidden)

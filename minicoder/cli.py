@@ -17,6 +17,7 @@
     minicoder benchmark [--json]   run the sealed learning benchmark
     minicoder acceptance           run the eight Phase 2 acceptance criteria
     minicoder safeguard <action>   baseline / evaluate / rollback a model update
+    minicoder neural [--quick]     controlled study of training changes
 """
 
 from __future__ import annotations
@@ -597,6 +598,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_acceptance)
 
+    s = sub.add_parser("neural", help="controlled study of training changes")
+    s.add_argument("--quick", action="store_true", help="4 epochs per variant")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_neural)
+
     s = sub.add_parser("safeguard", help="baseline / evaluate / rollback a model update")
     s.add_argument("action", choices=["baseline", "verify", "evaluate", "rollback"])
     s.add_argument("--name", default="baseline")
@@ -720,6 +726,27 @@ def cmd_safeguard(args: argparse.Namespace) -> int:
         return 0 if out.get("rolled_back") else 1
     print(f"unknown action {args.action}", file=sys.stderr)
     return 2
+
+def cmd_neural(args: argparse.Namespace) -> int:
+    """Controlled before/after study of training changes."""
+    from minicoder.learning.neural import run_study
+
+    print(f"{C.B}Neural learning study{C.R} — one variable at a time")
+    report = run_study(quick=args.quick)
+    print(f"\n{C.B}{'variant':16s} {'val_ce':>8s} {'sft_val':>8s} {'indist':>7s} "
+          f"{'holdout':>8s} {'retain':>7s}{C.R}")
+    for e in report["results"]:
+        print(f"{e['variant']:16s} {e.get('val_ce', 0):8.3f} "
+              f"{e.get('sft_val_loss', 0):8.3f} {e['indist_exact']:7.3f} "
+              f"{e['holdout_exact']:8.3f} {e['retention_exact']:7.3f}")
+    print(f"\n{C.B}What the numbers show{C.R}")
+    for line in report["conclusion"]:
+        print(f"  · {line}")
+    print(f"\nreport {report['report_path']}")
+    if args.json:
+        print(json.dumps(report, indent=2, default=str))
+    return 0
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()

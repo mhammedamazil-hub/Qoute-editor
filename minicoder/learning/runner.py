@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import platform
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -199,8 +200,28 @@ def run_visual_inspection(loop: Any) -> TaskResult:
 
 
 def run_benchmark(*, editor: bool = True, limit: int | None = None,
-                  out_dir: Path | None = None) -> dict[str, Any]:
-    """Run the sealed benchmark and return a report dict."""
+                  out_dir: Path | None = None, isolate: bool = True) -> dict[str, Any]:
+    """Run the sealed benchmark and return a report dict.
+
+    ``isolate`` redirects the whole run at a throwaway home. Without it the
+    editor tasks promote their learned procedures into *production* procedural
+    memory: measured, a single benchmark run added three `learned_*` skills to
+    the live brain and then tripped the seal on the next run. Evaluation data
+    must not contaminate what the system believes.
+    """
+    if isolate:
+        from minicoder import config as config_mod
+
+        prev_home = config_mod.activate_home(tempfile.mkdtemp(prefix="bench_home_"))
+        try:
+            return _run_benchmark_inner(editor=editor, limit=limit, out_dir=out_dir)
+        finally:
+            config_mod.activate_home(prev_home)
+    return _run_benchmark_inner(editor=editor, limit=limit, out_dir=out_dir)
+
+
+def _run_benchmark_inner(*, editor: bool, limit: int | None,
+                         out_dir: Path | None) -> dict[str, Any]:
     sealed = assert_sealed()
     if not sealed["sealed"]:
         raise RuntimeError(f"benchmark is not sealed: {sealed['problems']}")

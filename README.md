@@ -1,7 +1,8 @@
 # MiniCoder
 
 A small, honest cognitive system: it chats, writes code, looks at images, remembers what it
-learned, sleeps on it, and ships only the improvements that survive a validation gate.
+learned, **acquires procedures it did not have before**, sleeps on it, and ships only the
+improvements that survive a validation gate.
 
 Everything in this document is a **measured** number from this repository. Nothing is
 aspirational — if it is written here, `minicoder eval` produced it.
@@ -22,7 +23,8 @@ aspirational — if it is written here, `minicoder eval` produced it.
 | **Memory** | working, episodic, semantic (graph + vectors), procedural (skills), visual — one SQLite brain with `sqlite-vec` | `minicoder/memory/` |
 | **Cognition** | intent parsing, grounded answering, metacognitive calibration, the design agent | `minicoder/cognition/` |
 | **Tools** | 34 real editor tools behind a Node bridge, plus a permissioned sandbox | `minicoder/tools/` |
-| **Sleep** | replay → consolidation → cross-modal patterns → conflicts → forgetting → shard compilation | `minicoder/sleep/` |
+| **Learning** | experiments → hypotheses → attempts → verified skills, with a sealed benchmark | `minicoder/learning/` |
+| **Sleep** | 8 stages: replay → consolidation → cross-modal → conflicts → **learning consolidation** → forgetting → shard compilation → dispatch | `minicoder/sleep/` |
 | **Continual learning** | GitHub Actions trains a LoRA adapter, gates it, releases it | `.github/workflows/` |
 | **Interfaces** | FastAPI (21 endpoints + WebSocket telemetry) and a 6-tab React dashboard | `minicoder/api/`, `minicoder/dashboard/` |
 
@@ -52,6 +54,7 @@ The CLI:
 ```
 init    seed    chat    act     inspect  train   sleep
 eval    status  memory  skills  snapshots serve   doctor  shard
+learn   benchmark acceptance neural safeguard
 ```
 
 | Command | What it does |
@@ -65,6 +68,11 @@ eval    status  memory  skills  snapshots serve   doctor  shard
 | `minicoder shard train <file>` | LoRA train + validation gate |
 | `minicoder snapshots` | atomic DB snapshot |
 | `minicoder doctor` | python, torch, checkpoints, optional tools |
+| `minicoder learn --criteria ... --promote` | acquire a skill, replay it 3× in a fresh process, then admit it |
+| `minicoder benchmark` | the sealed 22-task learning benchmark |
+| `minicoder acceptance` | the eight Phase 2 acceptance criteria, end to end |
+| `minicoder neural [--quick]` | controlled study of training changes, one variable at a time |
+| `minicoder safeguard baseline/evaluate/rollback` | immutable baselines and regression-gated updates |
 
 ---
 
@@ -138,7 +146,7 @@ model, and hiding it would make every other number untrustworthy.
 
 ## 5. Sleep
 
-One cycle, seven stages (`minicoder sleep`):
+One cycle, eight stages (`minicoder sleep`):
 
 | # | Stage | Effect (a measured run) |
 |---|---|---|
@@ -146,13 +154,129 @@ One cycle, seven stages (`minicoder sleep`):
 | 2 | Consolidation | episodes → semantic knowledge (**unlearnable text is skipped**) |
 | 3 | Cross-modal patterns | recurring keywords across modalities → `pattern` nodes |
 | 4 | Organisation | conflicts detected and resolved by status strength |
-| 5 | Forgetting | decay-aware archive, recoverable from `memory/archived/` |
-| 6 | Skill compilation | verified skills → JSONL shard (**130 examples from 25 skills**) |
-| 7 | GitHub dispatch + wake | push the shard, or fold in a released adapter |
+| 5 | **Learning consolidation** | solved experiments → de-duplicated, calibrated procedure nodes + skill→tool dependencies, re-replayed to measure retention |
+| 6 | Forgetting | decay-aware archive, recoverable from `memory/archived/` |
+| 7 | Skill compilation | verified skills → JSONL shard (**130 examples from 25 skills**) |
+| 8 | GitHub dispatch + wake | push the shard, or fold in a released adapter |
+
+Stage 5 is the one that closes the loop between doing and knowing. It reads only *solved*
+experiments, refuses to overwrite a conflicting belief (the conflict is recorded instead),
+calibrates confidence from the measured replay rate, and re-runs each stored procedure so
+retention is a measurement rather than a claim. A measured run on the live brain:
+
+```
+extracted 1 · duplicates 0 · contradictions 0 · dependencies 4 · retention 1/1
+confidence for learned_live_lantern_poster: 1.0 (3 replays, 0 failures)
+second cycle:           extracted 0 · duplicates 1     ← de-duplication works
+```
 
 Consolidation only admits text that looks like a real claim. A garbage decoder output
 (`"b):      ="`, observed in an early cycle) is recorded as unlearnable and never enters long-term
 memory — the test `test_consolidation_skips_unlearnable_episodes` holds that line.
+
+---
+
+## 5b. Acquiring a skill it did not have
+
+Everything above this section makes the system *remember* better. This section is about making
+it *able* to do something new — and about proving it, because the audit
+(`docs/AUDIT_PHASE2.md`) found that none of the original three skill paths acquired anything:
+
+| Original path | What it actually did |
+|---|---|
+| `seed.py` | stored human-written solutions with human-written tests, plus fabricated "reasoning" |
+| `agent.py` | regex keyword → fixed tool sequence; measured to extract **nothing** from novel instructions |
+| `sleep._compile` | re-ran stored tests against stored solutions |
+
+The replacement is a loop, not a template library:
+
+```
+acquire ──► hypothesis ──► plan against the LIVE tool catalogue ──► execute
+   ▲                                                                  │
+   └──────────── classify the failure ◄── read the real outcome ◄──────┘
+
+solved ──► skill_candidate ──► replay 3× in a FRESH PROCESS ──► promote
+                                        │
+                                fail ───┴─── reject (never reaches memory)
+```
+
+A successful execution is **not** a skill. `SkillPromoter` is the only writer to procedural
+memory, and it refuses anything that has not passed independent replay.
+
+### The sealed benchmark
+
+22 tasks across 10 categories, difficulty deliberately spread. Sealing is enforced: every task
+name and assertion is checked against the training corpus before the suite will run.
+
+| category | tasks | solved | category | tasks | solved |
+|---|---|---|---|---|---|
+| python | 5 | 3 | debugging | 2 | 2 |
+| math | 4 | 4 | file | 2 | 2 |
+| data | 4 | 4 | multistep | 1 | 1 |
+| visual | 1 | 1 | tool discovery | 1 | 1 |
+| new API | 1 | 1 | visual inspection | 1 | 1 |
+
+Measured run (`minicoder benchmark`, 66.96 s, peak RSS 65 MB):
+
+| metric | value |
+|---|---|
+| final success | **20/22 (90.9%)** |
+| first-attempt success | 20/22 (90.9%) |
+| confirmed in sandbox | 20/22 |
+| replay in a fresh process | **4/4** |
+| generalisation to a variant | **3/3** |
+| reported failures | `run_length_encode`, `caesar` |
+
+Those two failures are real and are not hidden: both need sequential character-level state,
+which depth-3 enumeration over primitives provably cannot reach. They were retried with three
+escalating strategies and still failed.
+
+### The four states are kept apart
+
+The report separates **memorisation** (refused by the seal), **retrieval** (answered from stored
+knowledge), **adaptation** (a known procedure reused on new inputs) and **acquisition** (a
+procedure that did not exist before it was searched for). Reusing a skill reports which of
+`direct` / `repaired` / `reacquired` / `failed` actually happened.
+
+### The eight acceptance criteria
+
+`minicoder acceptance` — measured in an isolated home, 54 s:
+
+| # | criterion | evidence |
+|---|---|---|
+| 1 | learn a genuinely unseen procedural task | solved in 1 attempt, progress 1.00 |
+| 2 | replay it in a fresh session | 3/3, first run in a separate interpreter |
+| 3 | retain it after episodic archival | 6 episodes archived → replay 2/2 with no episodes available |
+| 4 | apply it to a different variation | variant solved via targeted repair; 4:3 stress case **fails** and says so |
+| 5 | reject unverified skills | promotion refused; skill absent from memory |
+| 6 | detect a deliberate regression | 3 metrics caught (accuracy, retention, val CE) |
+| 7 | roll back a harmful update | `val_ce` 5.59 → 380.0 → restored exactly |
+| 8 | reproducible benchmark reports | two runs agree task-for-task |
+
+Criterion 4 deserves the footnote: a 3:4 skill adapts to a scaled 3:4 canvas, but a flipped 4:3
+canvas fails, because two full-width text layers cannot stack in 768 px. That is reported as a
+failure rather than averaged away.
+
+### Does the transformer actually benefit?
+
+`minicoder neural` — six variants, one variable at a time, same architecture, seed and
+evaluation, holdout excluded from every variant:
+
+| variant | pretrain val CE | in-dist exact | holdout exact | retention |
+|---|---|---|---|---|
+| baseline | 5.207 | **0.250** | 0.000 | **0.375** |
+| more diversity | 5.233 | 0.083 | 0.000 | 0.125 |
+| curriculum (short first) | **4.562** | 0.000 | 0.000 | 0.000 |
+| 2× schedule | 4.906 | 0.250 | 0.000 | 0.250 |
+| vocab 512 | 4.787 | 0.000 | 0.000 | 0.000 |
+| lr 6e-3 | 5.376 | 0.167 | 0.000 | 0.250 |
+
+The honest reading: **lower validation loss did not produce a more capable model**. Curriculum
+cut pretraining CE by 12% and still scored 0.000 exact-match; several variants halved SFT loss
+while losing accuracy. Holdout stayed 0.0 for every variant, which is the same conclusion the
+ablation reached from a different direction.
+
+This is why the system does not grade itself on loss.
 
 ---
 
@@ -206,9 +330,13 @@ POST /api/editor/canvas  /api/editor/tool
 WS   /ws/telemetry
 ```
 
-**Dashboard** — six tabs (Chat, Graph, Memory, Overview, Training, Vision). The graph view is a
+**Dashboard** — seven tabs (Overview, Copilot, Knowledge, Memory, Vision, Training,
+**Acquisition**). The Acquisition tab shows skills acquired vs awaiting verification vs rejected,
+the failure taxonomy, retention sparklines per skill, benchmark results by category with the
+reported failures, the eight acceptance checks, and resource/checkpoint/baseline history — all
+from recorded rows, with "not run" shown where a report is missing rather than a zero. The graph view is a
 hand-rolled canvas force simulation, not a charting library. Verified by a headless render harness:
-`10/10` checks including a real chat round-trip.
+`11/11` checks including a real chat round-trip.
 
 The API reports the *answerer's* provenance. An earlier version labelled every non-acting reply
 `"memory"`, which claimed evidence that did not exist for refusals.
@@ -226,6 +354,8 @@ minicoder/
   model/             tokenizer, transformer + LoRA, training, embeddings, ViT, pipeline
   memory/            schema.sql, db.py, systems.py (5 memory systems)
   cognition/         metacognition, grounded answering, design agent
+  learning/          audit → discovery → criteria → planner → synth → engine → safeguard
+                     (experiments, hypotheses, attempts, skill_candidates, replay, benchmark)
   tools/             editor_bridge (Node), sandbox (permissioned), vision
   sleep/             compiler, trainer, engine, github
   eval/              suites.py
@@ -248,17 +378,35 @@ minicoder/
   a real classifier for those, not a general screen-understanding model.
 - **The `act` path depends on the Node bridge.** Without `node_modules` the agent reports
   `editor bridge unavailable` rather than pretending to have acted.
+- **Acquired programs are depth-bounded.** Enumeration over primitives reaches 20 of 22 sealed
+  tasks. Anything needing sequential character-level state fails, and is reported.
+- **Geometric adaptation has a ceiling.** A learned 3:4 layout transfers to another 3:4 canvas via
+  targeted repair; a flipped 4:3 canvas fails because the layers physically do not fit. The
+  system re-acquires rather than pretending the skill transferred.
+- **The planner's text heuristics are crude.** Inflection and shared-prefix matching stand in for
+  stemming. They work on the current probe set; a real stemmer is the correct fix.
+- **The neural study is reduced-scale.** 12 pretraining epochs and 20 SFT epochs, not the shipped
+  40/40. It is a controlled comparison between variants, not a claim about the shipped model.
 
 ---
 
 ## 10. Tests
 
 ```bash
-PYTHONPATH=. pytest minicoder/tests -q     # 51 passed
+PYTHONPATH=. pytest minicoder/tests -q     # 84 passed
 .venv/bin/ruff check minicoder/            # all checks passed
 npm run verify                             # editor typecheck + smoke + smoke:ai + smoke:ui + build
-cd minicoder/dashboard && npx vite-node scripts/render-check.tsx   # 10/10
+cd minicoder/dashboard && npx vite-node scripts/render-check.tsx   # 11/11
 ```
 
 `test_prime_directives.py` holds the safety invariants. `test_systems.py` covers the model, eval
-isolation, CLI and API. Both run in throwaway homes, so testing never touches the live brain.
+isolation, CLI and API. `test_learning_phase2.py` covers the acquisition loop and is mostly about
+*refusal*: sandbox escapes blocked, unverified candidates rejected, single-replay candidates
+rejected, regressions caught, tampering detected.
+
+All three run in throwaway homes, so testing never touches the live brain. That rule was learned
+the hard way: a test that called `restore()` without an explicit target hit the default checkpoint
+directory and wrote an 8-byte fixture over the real `lm.pt`. It was caught by four pre-existing
+tests failing, restored from the automatic `pre_restore` backup, and verified back to
+`0.875 / 0.875 / 5.6829`. `restore()` now defaults to the manifest's recorded origin and both
+tests take the isolated `home` fixture.

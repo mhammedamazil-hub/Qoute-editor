@@ -270,7 +270,9 @@ def test_synth_reports_failure_instead_of_inventing_success() -> None:
     assert result.failure
 
 
-def test_benchmark_is_sealed() -> None:
+def test_benchmark_is_sealed(home: Path) -> None:  # noqa: ARG001
+    # Isolated home: the seal also checks promoted skills, and reading the live
+    # brain would make this test depend on whatever the developer last ran.
     from minicoder.learning.benchmark import assert_sealed
 
     report = assert_sealed()
@@ -476,3 +478,38 @@ def test_restore_defaults_to_the_recorded_origin(tmp_path: Path, home: Path) -> 
     (source / "lm.pt").write_bytes(b"bad")
     registry.restore("origin_baseline")
     assert (source / "lm.pt").read_bytes() == b"good"
+
+
+@pytest.mark.slow
+def test_benchmark_does_not_contaminate_production_memory(tmp_path: Path) -> None:
+    """A benchmark run must leave the live brain's procedural memory untouched.
+
+    Measured before isolation existed: one run promoted three `learned_*` skills
+    into production memory and then tripped the seal on the next run.
+    """
+    from minicoder import config as config_mod
+    from minicoder.learning.runner import run_benchmark
+
+    live_home = config_mod.activate_home(tmp_path / "live")
+    try:
+        from minicoder.memory.db import BrainDB
+
+        db = BrainDB()
+        before_skills = db.query_one("SELECT COUNT(*) FROM skills")[0]
+        before_experiments = db.query_one("SELECT COUNT(*) FROM experiments")[0]
+        db.close()
+    finally:
+        config_mod.activate_home(live_home)
+
+    run_benchmark(editor=False, out_dir=tmp_path / "reports")
+
+    live_home = config_mod.activate_home(tmp_path / "live")
+    try:
+        from minicoder.memory.db import BrainDB
+
+        db = BrainDB()
+        assert db.query_one("SELECT COUNT(*) FROM skills")[0] == before_skills
+        assert db.query_one("SELECT COUNT(*) FROM experiments")[0] == before_experiments
+        db.close()
+    finally:
+        config_mod.activate_home(live_home)
