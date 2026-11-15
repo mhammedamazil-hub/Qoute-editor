@@ -18,7 +18,6 @@ Features
 
 from __future__ import annotations
 
-import json
 import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -55,7 +54,7 @@ def rope_cache(seq_len: int, head_dim: int, device: torch.device | None = None) 
 def apply_rope(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
     """Rotate consecutive (even, odd) feature pairs.
     x: (B, H, T, D); cos/sin: (T, D)."""
-    T, D = x.shape[-2], x.shape[-1]
+    T, _D = x.shape[-2], x.shape[-1]  # _D documents the layout; only T is used
     cos, sin = cos[:T].to(x.dtype), sin[:T].to(x.dtype)
     x1, x2 = x[..., 0::2], x[..., 1::2]                 # (B, H, T, D/2)
     rot = torch.stack((-x2, x1), dim=-1).flatten(-2)    # interleave back to D
@@ -230,7 +229,7 @@ class MiniTransformer(nn.Module):
         tmp.replace(path)
 
     @classmethod
-    def load(cls, path: Path) -> "MiniTransformer":
+    def load(cls, path: Path) -> MiniTransformer:
         blob = torch.load(Path(path), map_location="cpu", weights_only=False)
         cfg = ModelConfig(**blob["model_cfg"])
         model = cls(cfg, vocab_size=blob["vocab_size"])
@@ -274,7 +273,7 @@ class LoRALinear(nn.Module):
 def attach_lora(model: nn.Module, cfg: LoRAConfig) -> int:
     """Replace target Linear layers with LoRALinear. Returns adapter param count."""
     replaced = 0
-    for name, module in list(model.named_modules()):
+    for _name, module in list(model.named_modules()):
         for child_name, child in list(module.named_children()):
             if isinstance(child, nn.Linear) and any(child_name.endswith(t) for t in cfg.targets):
                 setattr(module, child_name, LoRALinear(child, cfg.rank, cfg.alpha, cfg.dropout))
@@ -311,7 +310,7 @@ def merge_lora(model: nn.Module) -> None:
 
 def detach_lora(model: nn.Module) -> None:
     """Remove adapters, restoring the frozen base model."""
-    for name, parent in list(model.named_modules())[:]:
+    for _name, parent in list(model.named_modules())[:]:
         for child_name, child in list(parent.named_children()):
             if isinstance(child, LoRALinear):
                 setattr(parent, child_name, child.base)

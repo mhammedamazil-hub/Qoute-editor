@@ -17,24 +17,25 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import shutil
 import tarfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from minicoder.config import CONFIG, FAILED, UNVERIFIED, VERIFIED
 from minicoder.memory.db import BrainDB, utcnow
 from minicoder.memory.systems import (
-    Episode,
     EpisodicMemory,
     ProceduralMemory,
     SemanticMemory,
     VisualMemory,
 )
-from minicoder.sleep.compiler import build_shard, shard_stats, validate_shard
+from minicoder.sleep.compiler import build_shard, shard_stats
 
 
 @dataclass
@@ -221,6 +222,12 @@ class SleepEngine:
             lesson = (ep["lessons"] or "").strip()
             if not lesson and ep["result"]:
                 lesson = self._summarise(ep)
+            if lesson and not self._is_learnable(lesson):
+                report.unresolved.append(
+                    f"episode {ep['id']} skipped: unlearnable text {lesson[:60]!r}"
+                )
+                done.append(ep["id"])
+                continue
             if lesson:
                 label = lesson[:90]
                 status = VERIFIED if ep["status"] == VERIFIED else UNVERIFIED
@@ -251,6 +258,30 @@ class SleepEngine:
             "nodes_added": max(0, nodes_after - nodes_before),
             "lessons": lessons,
         }
+
+    @staticmethod
+    def _is_learnable(text: str) -> bool:
+        """Only real prose or real code may become a long-term memory.
+
+        Measured defect: a garbage neural answer ("b):      =") was consolidated
+        into the semantic graph and then retrieved as a fact, because the only
+        filter was "non-empty". A claim needs to be made of words.
+        """
+        t = (text or "").strip()
+        if len(t) < 12:
+            return False
+        words = re.findall(r"[A-Za-z][A-Za-z'\-]{1,}", t)
+        if len(words) < 3:
+            return False
+        # Ratio of alphabetic runs to all non-space chunks: symbol soup fails.
+        chunks = t.split()
+        wordy = sum(1 for c in chunks if re.fullmatch(r"[A-Za-z][A-Za-z0-9'\-.,;:()]*", c))
+        if wordy / max(1, len(chunks)) < 0.6:
+            return False
+        # Garbage is often one short token followed by a long run of symbols.
+        if re.search(r"[=\]\)]{3,}|\b\w\):\s{3,}", t):
+            return False
+        return True
 
     @staticmethod
     def _summarise(ep: dict[str, Any]) -> str:
@@ -355,7 +386,7 @@ class SleepEngine:
         )
         archive_path = ""
         if old:
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
             dest = CONFIG.paths.archived / f"episodes_{stamp}.jsonl.tar.gz"
             tmp = CONFIG.paths.archived / f".episodes_{stamp}.jsonl"
             tmp.write_text("\n".join(json.dumps(dict(r)) for r in old), encoding="utf-8")

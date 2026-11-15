@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0a0b0f;
+  --color-panel: #11131a;
+  --color-edge: #1e222c;
+  --color-muted: #7d8698;
+  --color-bright: #e9edf5;
+  --color-accent: #d9a441;
+  --color-good: #3fb98a;
+  --color-bad: #e2604f;
+  --color-info: #5b9cf5;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: radial-gradient(1200px 600px at 20% -10%, #171b26 0%, var(--color-ink) 55%) fixed;
+  color: var(--color-bright);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: #232838;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel {
+  background: color-mix(in oklab, var(--color-panel) 88%, transparent);
+  border: 1px solid var(--color-edge);
+  border-radius: 14px;
+  backdrop-filter: blur(8px);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--color-edge);
+  background: #161a24;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.glow-good {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-good) 45%, transparent),
+    0 0 22px -6px color-mix(in oklab, var(--color-good) 60%, transparent);
+}
+
+.grid-fade {
+  background-image: linear-gradient(var(--color-edge) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-edge) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at 50% 40%, #000 30%, transparent 78%);
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.pulse {
+  animation: pulse-ring 2.2s ease-out infinite;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.slide-in {
+  animation: slide-in 0.22s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse,
+  .slide-in {
+    animation: none;
+  }
+}

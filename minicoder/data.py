@@ -17,11 +17,7 @@ from __future__ import annotations
 
 import json
 import random
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Callable
-
-from minicoder.config import CONFIG
+from typing import Any
 
 # --------------------------------------------------------------------------
 # 1. code tasks: instruction -> solution, each with a real unit test
@@ -237,6 +233,22 @@ PERSONAS = [
     },
 ]
 
+# Extra surface forms of the same curated questions. They exist so the intent
+# gate (which matches a prompt against the model's own training prompts) does not
+# depend on exact wording: "What size should I export at?" is the same question as
+# "What canvas size works for Instagram?" and must be trusted too.
+CHAT_PARAPHRASES: list[tuple[int, str]] = [
+    (1, "What size should I export at?"),
+    (1, "What resolution should I use for a portrait post?"),
+    (0, "How do I make a poster look expensive?"),
+    (2, "My title text is too tight, what do I change?"),
+    (3, "Which colour scheme feels luxurious?"),
+    (4, "How many typefaces should a poster use?"),
+    (7, "How do I keep type legible on top of an image?"),
+    (5, "How do I add depth to a flat light layer?"),
+    (6, "Should the quote be centred or left aligned?"),
+]
+
 CHAT_PAIRS: list[tuple[str, str]] = [
     ("How do I make my poster feel more premium?", "Increase negative space, use one accent colour, lower the background contrast, and keep typography to two sizes."),
     ("What canvas size works for Instagram?", "1080x1350 is the portrait feed size. Use 1080x1080 for square carousels."),
@@ -386,6 +398,10 @@ def build_chat_corpus(seed: int = 11) -> tuple[list[dict[str, Any]], list[str]]:
     examples = []
     raw = []
     for user, answer in CHAT_PAIRS:
+        examples.append({"prompt": user, "response": answer, "task": "chat", "verified_by": "curated"})
+        raw.append(f"User: {user}\nAssistant: {answer}\n")
+    for idx, user in CHAT_PARAPHRASES:
+        answer = CHAT_PAIRS[idx][1]
         examples.append({"prompt": user, "response": answer, "task": "chat", "verified_by": "curated"})
         raw.append(f"User: {user}\nAssistant: {answer}\n")
     for persona in PERSONAS:

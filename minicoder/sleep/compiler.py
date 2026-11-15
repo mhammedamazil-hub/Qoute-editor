@@ -21,7 +21,7 @@ import json
 import random
 import re
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -101,7 +101,7 @@ def _core_replay(replay_ratio: float) -> list[dict[str, Any]]:
     if replay_ratio <= 0:
         return []
     out = []
-    for i, r in enumerate(REPLAY_SEED_EXAMPLES):
+    for _i, r in enumerate(REPLAY_SEED_EXAMPLES):
         out.append({
             "kind": "replay", "skill": "replay_buffer", "source": "training_data",
             "verification_hash": "", "origin": "replay", "domain": "core",
@@ -196,7 +196,7 @@ def build_shard(
                 "skills": 0, "quarantined": quarantined}
 
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     path = out_dir / f"shard_{stamp}.jsonl"
 
     with tempfile.NamedTemporaryFile("w", dir=out_dir, delete=False, suffix=".tmp", encoding="utf-8") as fh:

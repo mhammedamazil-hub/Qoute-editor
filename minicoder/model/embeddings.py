@@ -8,7 +8,6 @@ produced the vector so nothing pretends to be more than it is.
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -29,9 +28,10 @@ def _load():
     if not ckpt.exists() or not tok_path.exists():
         _MODEL = False
         return _MODEL
+    import torch
+
     from minicoder.model.tokenizer import Tokenizer
     from minicoder.model.transformer import TextEmbedder
-    import torch
 
     blob = torch.load(ckpt, map_location="cpu", weights_only=False)
     _TOK = Tokenizer.load(tok_path)
@@ -80,11 +80,12 @@ def hash_embed(text: str, dim: int = _DIM) -> list[float]:
 def train_and_save(pairs, epochs: int = 8) -> dict[str, Any]:
     """Train the contrastive embedder on local pairs and persist it."""
     import torch
+
     from minicoder.model.tokenizer import Tokenizer
     from minicoder.model.train import train_embedder
     from minicoder.model.transformer import TextEmbedder
 
-    texts = [t for p in pairs for t in p]
+    _texts = [t for p in pairs for t in p]
     tok = Tokenizer.load(CONFIG.paths.checkpoints / "tokenizer.json")
     vocab = len(tok)
     model = TextEmbedder(vocab, _DIM, 128, 64)

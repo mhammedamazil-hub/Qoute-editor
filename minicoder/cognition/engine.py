@@ -14,17 +14,15 @@ Honest capability statement (no fabrication, prime directive #1):
 
 from __future__ import annotations
 
-import json
 import math
 import re
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import torch
 
-from minicoder.config import CONFIG
+from minicoder.config import CONFIG, VERIFIED
 from minicoder.model.tokenizer import Tokenizer
 from minicoder.model.transformer import MiniTransformer
 
@@ -148,12 +146,21 @@ class NeuralBrain:
         # so it is reported but not used as a veto.
         nll_bar = 1.8
         nll_ok = mean_nll < nll_bar
-        in_dist = nll_ok and ratio >= 0.25
+        # NLL alone is not sufficient: a small model can be *confidently wrong*
+        # (measured: "who won the 1998 curling championship" scored 1.75 nll, under
+        # the bar, while emitting gibberish). So the continuation must also be
+        # structurally plausible for one of the two things this model was trained
+        # to produce: source code, or a plain declarative answer.
+        coverage = intent_coverage(prompt)
+        in_scope = coverage >= INTENT_FLOOR
+        in_dist = nll_ok and ratio >= 0.25 and in_scope
         return {
             "in_distribution": bool(in_dist),
             "learned_token_ratio": round(ratio, 3),
             "mean_nll": round(mean_nll, 3) if mean_nll != float("inf") else -1,
             "nll_bar": nll_bar,
+            "intent_coverage": round(coverage, 3),
+            "intent_floor": INTENT_FLOOR,
             "uniform_baseline_nll": round(control, 3),
         }
 
@@ -204,6 +211,56 @@ class NeuralBrain:
         return Generation(text, len(new), time.time() - t0, ent, "neural", [], self.backend)
 
 
+_CODE_LINE = re.compile(r"^\s*(def |class |return |import |from |for |while |if |elif |else:|try:|except|with |@|#|\w+\s*=\s*)")
+
+
+def looks_like_code(text: str) -> bool:
+    lines = [l for l in (text or "").splitlines() if l.strip()]
+    if not lines:
+        return False
+    hits = sum(1 for l in lines if _CODE_LINE.match(l) or l.startswith(("    ", "\t")))
+    return hits / len(lines) >= 0.6
+
+
+def _intent_tokens(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9_]{3,}", (text or "").lower())}
+
+
+def intent_coverage(question: str) -> float:
+    """How much of the question is covered by the model's own training intents.
+
+    Measured separation (see docs/EVALS.md): every in-scope design/coding prompt
+    scores 1.00 while off-domain trivia scores <= 0.25. The neural tower is only
+    trusted above ``INTENT_FLOOR``; below it we refuse instead of hallucinating.
+    """
+    from minicoder.data import CHAT_PAIRS, CODE_TASKS
+
+    q = _intent_tokens(question)
+    if not q:
+        return 0.0
+    corpus = [_intent_tokens(qq) for qq, _ in CHAT_PAIRS]
+    corpus += [_intent_tokens(t.get("prompt", "")) for t in CODE_TASKS]
+    return max((len(q & c) / len(q) for c in corpus if c), default=0.0)
+
+
+INTENT_FLOOR = 0.5
+
+
+# Words that appear in questions but say nothing about *what* is being asked.
+# Both the skill gate and the memory gate subtract this set; without it, "who won
+# the 1998 world championship in curling" overlapped a lighting skill on "world"
+# and was answered from it.
+_QUESTION_FILLER = frozenset(
+    """what which how why who whom when where should can could would does did do is are am was were
+    the a an of in on at to for from by with about into over under and or but not
+    prefer prefers like likes want wants need needs know tell give show list read reads
+    use using make made get got have has had be been being there here this that these those
+    me my our your their its they them it we you i he she his her
+    best good more most much many any some all very just own same such both each every
+    feel feels look looks looks work works really""".split()
+)
+
+
 class GroundedAnswerer:
     """Retrieval-grounded response assembly with explicit evidence."""
 
@@ -217,16 +274,81 @@ class GroundedAnswerer:
     def _words(text: str) -> set[str]:
         return {w for w in re.findall(r"[a-z0-9_]{3,}", text.lower())}
 
-    def _lexical(self, question: str, memory: dict[str, Any]) -> float:
-        q = self._words(question)
-        hay = self._words(f"{memory.get('label', '')} {memory.get('content', '')} {memory.get('kind', '')}")
-        return len(q & hay) / max(1, len(q))
+    @classmethod
+    def _content(cls, text: str) -> set[str]:
+        """Content words only: what remains once question scaffolding is removed."""
+        return {w for w in re.findall(r"[a-z0-9_]{3,}", text.lower()) if w not in _QUESTION_FILLER}
 
-    def _relevant(self, question: str, memory: dict[str, Any], floor: float = 0.2) -> bool:
+    @classmethod
+    def _expanded(cls, text: str) -> set[str]:
+        """Content words plus their known synonyms.
+
+        The BM25 retriever expands synonyms, but the relevance gate did not, so
+        "how much margin should I leave" retrieved the right node ("generous
+        margins") and then rejected it because the node says "space", not
+        "margin". Gate and retriever must agree on what "the same word" means.
+        """
+        from minicoder.memory.systems import _SYNONYMS
+
+        base = cls._content(text)
+        return base | {syn for w in base for syn in _SYNONYMS.get(w, ())}
+
+    def _subject(self, question: str) -> str:
+        """The entity a question is *about* — its head noun, crudely.
+
+        "what does amara prefer" -> "amara"; "what palette reads as premium" ->
+        "palette". Good enough to group facts about one person or one object
+        without the over-matching of a plain token overlap.
+        """
+        toks = [w for w in self._words(question) if w not in _QUESTION_FILLER]
+        return toks[-1] if toks else ""
+
+    @staticmethod
+    def _claim(content: str) -> str:
+        """The part of a memory that is actually the claim.
+
+        Consolidated nodes are stored as "<lesson>\n\nContext: <the question>\n
+        Outcome: <the answer>". Scoring relevance against the whole blob let the
+        *question* text match the user's new question, so a garbage answer was
+        retrieved purely because it had been asked before.
+        """
+        head = (content or "").split("Context:")[0]
+        return head.strip() or (content or "").strip()
+
+    def _lexical(self, question: str, memory: dict[str, Any]) -> float:
+        """How much of the question this memory answers, in [0, 1].
+
+        A literal word match counts full weight; a match through a synonym or a
+        shared stem counts half. Without that discount the synonym table made
+        everything match everything (measured: "what size should I export at?"
+        scored 1.00 against the canvas-size fact because "size" expands to
+        "resolution" and "scale", both of which appear there).
+        """
+        from minicoder.memory.systems import _SYNONYMS
+
+        claim = f"{memory.get('label', '')} {self._claim(memory.get('content', ''))}"
+        q = self._content(question)
+        hay = self._content(claim)
+        if not q:
+            return 0.0
+        hay_stem = {h.rstrip("s") for h in hay}
+
+        total = 0.0
+        for w in q:
+            if w in hay or w in hay_stem:
+                total += 1.0
+                continue
+            syn = _SYNONYMS.get(w, ())
+            if any(s in hay or s in hay_stem for s in syn):
+                total += 0.5
+                continue
+            if len(w) >= 7 and any(len(h) >= 7 and w[:7] == h[:7] for h in hay):
+                total += 0.5
+        return total / len(q)
+
+    def _relevant(self, question: str, memory: dict[str, Any], floor: float = 0.34) -> bool:
         """A memory is used only when it genuinely overlaps the question."""
-        lex = self._lexical(question, memory)
-        dense = float(memory.get("score") or 0.0)
-        return lex >= floor or (lex >= 0.1 and dense >= 0.55)
+        return self._lexical(question, memory) >= floor
 
     @staticmethod
     def _flatten(skill: dict[str, Any]) -> str:
@@ -236,15 +358,17 @@ class GroundedAnswerer:
         evidence: list[dict[str, Any]] = []
         # 1. Verified skills first — executables beat prose.
         skills = self.procedural.verified(exported=None)
-        q = set(re.findall(r"[a-z0-9_]{3,}", question.lower()))
+        q = self._content(question)
         scored = []
         for s in skills:
-            hay = set(re.findall(r"[a-z0-9_]{3,}", self._flatten(s).lower()))
+            hay = self._content(self._flatten(s))
             overlap = len(q & hay) / max(1, len(q))
             if overlap > 0.2:
                 scored.append((overlap, s))
         scored.sort(key=lambda t: t[0], reverse=True)
-        if scored and scored[0][0] >= 0.5:
+        coding_intent = bool(re.search(r"\b(def |function|python|code|script|implement|write a .*\()", question.lower()))
+        bar = 0.4 if coding_intent else 0.6
+        if scored and scored[0][0] >= bar:
             overlap, skill = scored[0]
             self.procedural.record_use(skill["slug"])
             text = skill["solution"].strip() or skill["description"]
@@ -272,9 +396,40 @@ class GroundedAnswerer:
 
         if kn:
             top = kn[0]
-            body = top["content"]
+            # Entity aggregation: when several remembered facts answer the *same*
+            # question about the same thing, return them together. Measured
+            # failure of the first version: it matched on any shared word, so
+            # "what palette reads as premium" returned all nine palettes. A fact
+            # now has to be about the entity the question names (its subject), not
+            # merely mention a word from it.
+            subject = self._subject(question)
+            pool = self.semantic.search(question, limit=12)
+            same_entity = [
+                m for m in pool
+                if m.get("id") != top.get("id")
+                and subject
+                and subject in self._words(f"{m.get('label', '')} {self._claim(m.get('content', ''))}")
+            ]
+            if len(same_entity) >= 1:
+                # Order by how much of the question each fact covers, so the fact
+                # that answers the *asked* slot ("export") leads the fact that
+                # merely shares the subject ("canvas size").
+                ranked = sorted([top] + same_entity, key=lambda m: -self._lexical(question, m))
+                seen, lines = set(), []
+                for m in ranked[:4]:
+                    body_i = self._claim(m.get("content") or "").strip().split("\n")[0].rstrip(".")
+                    key = body_i.lower()
+                    if body_i and key not in seen:
+                        seen.add(key)
+                        lines.append(f"- {body_i}.")
+                if len(lines) >= 2:
+                    text = "Here is what memory holds:\n" + "\n".join(lines)
+                    if top["status"] != VERIFIED:
+                        text += "\n\n(Note: this memory is not yet verified.)"
+                    return Generation(text, len(text.split()), 0.0, 0.0, "memory", evidence,
+                                      self.brain.backend)
             extra = [m["label"] for m in kn[1:3]]
-            text = body + (f"\nRelated: {', '.join(extra)}." if extra else "")
+            text = top["content"] + (f"\nRelated: {', '.join(extra)}." if extra else "")
             if top["status"] != "VERIFIED":
                 text += "\n\n(Note: this memory is not yet verified.)"
             return Generation(text, len(text.split()), 0.0, 0.0, "memory", evidence, self.brain.backend)

@@ -20,10 +20,11 @@ import json
 import math
 import re
 import time
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import networkx as nx
 
@@ -49,8 +50,8 @@ def _days_since(ts: str) -> float:
     try:
         then = datetime.fromisoformat(ts)
         if then.tzinfo is None:
-            then = then.replace(tzinfo=timezone.utc)
-        return max(0.0, (datetime.now(timezone.utc) - then).total_seconds() / 86400.0)
+            then = then.replace(tzinfo=UTC)
+        return max(0.0, (datetime.now(UTC) - then).total_seconds() / 86400.0)
     except Exception:
         return 0.0
 
@@ -318,11 +319,17 @@ class EpisodicMemory:
             vec = embed_text(query)
             if vec is not None:
                 hits = self.db.vector_search(vec, owner="episodes", kinds=("text",), limit=limit)
+                # Dense-only recall is untrustworthy at this embedder size, so a
+                # hit must ALSO share a content token with the query.
+                qtok = set(_content_tokens(query))
                 out = []
                 for h in hits:
                     row = self.get(h["owner_id"])
-                    if row:
-                        row["score"] = h["similarity"]
+                    if not row:
+                        continue
+                    hay = set(_content_tokens(" ".join(str(row[k] or "") for k in ("situation", "objective", "result", "lessons"))))
+                    if qtok & hay:
+                        row["score"] = round(h["similarity"], 4)
                         out.append(row)
                 if out:
                     return out
@@ -331,7 +338,8 @@ class EpisodicMemory:
         return self.lexical_search(query, limit)
 
     def lexical_search(self, query: str, limit: int = 8) -> list[dict[str, Any]]:
-        toks = set(_norm(query).split())
+        """BM25 lexical recall. Returns [] when nothing matches — never unrelated rows."""
+        toks = set(_content_tokens(query))
         if not toks:
             return self.recent(limit)
         rows = [
@@ -525,9 +533,13 @@ class SemanticMemory:
         ranked = sorted(fused, key=lambda i: -fused[i])[:limit]
         out = []
         by_id = {r["id"]: r for r in rows}
+        # RRF scores live in ~1/61..2/61, which reads as "0.02" in the UI and
+        # looks like noise next to a 0-1 confidence. Normalise the winner to 1.0
+        # so scores are comparable *across* queries, not just within one.
+        top = max((fused[i] for i in ranked), default=0.0) or 1.0
         for nid in ranked:
             row = by_id[nid]
-            row["score"] = round(fused[nid], 5)
+            row["score"] = round(fused[nid] / top, 4)
             row["lexical"] = round(lex.get(nid, 0.0), 3)
             row["dense"] = round(dense_scores.get(nid, 0.0), 3)
             out.append(row)
@@ -580,6 +592,22 @@ class SemanticMemory:
         return path
 
 
+# Words that carry no retrieval signal. Without this, a probe like "flexbox
+# overflow" matches every episode containing "user", "the" or "session".
+_STOPWORDS = frozenset(
+    """a an the and or but if then than that this these those is are was were be been being
+    of in on at to for from by with without into over under up down out off again
+    i me my we our you your it its they them their he she his her who whom which what when where why how
+    do does did done have has had can could should would may might must will shall
+    not no nor so very just also too only own same such both few more most other some any each every
+    user users session turn asked shared says said""".split()
+)
+
+
+def _content_tokens(text: str) -> list[str]:
+    return [t for t in _norm(text).split() if t not in _STOPWORDS and len(t) > 1]
+
+
 _SYNONYMS: dict[str, set[str]] = {
     "margin": {"negative", "space", "edge", "padding", "gap", "whitespace", "spacing"},
     "spacing": {"margin", "negative", "space", "gap", "padding"},
@@ -608,14 +636,14 @@ def _expand(tokens: list[str]) -> list[str]:
 
 def _bm25(query: str, corpus: list[dict[str, Any]], row: dict[str, Any], k1: float = 1.4,
           b: float = 0.75) -> float:
-    """Okapi BM25 between the query and one node's label+content."""
-    q = _expand([t for t in _norm(query).split() if len(t) > 1])
+    """Okapi BM25 between the query and one node: its label plus content."""
+    q = _expand(_content_tokens(query))
     if not q:
         return 0.0
-    docs = [_norm(f"{r['label']} {r['content']}").split() for r in corpus]
+    docs = [_content_tokens(f"{r['label']} {r['content']}") for r in corpus]
     n = max(1, len(docs))
     avg_len = sum(len(d) for d in docs) / n or 1.0
-    tokens = _norm(f"{row['label']} {row['content']}").split()
+    tokens = _content_tokens(f"{row['label']} {row['content']}")
     length = len(tokens) or 1
     freq: dict[str, int] = {}
     for t in tokens:
@@ -766,6 +794,36 @@ class ProceduralMemory:
             "UPDATE skills SET used_count=used_count+1, last_used=? WHERE slug=?", (utcnow(), slug)
         )
 
+    def search(self, query: str, limit: int = 8, *, status: str | None = VERIFIED) -> list[dict[str, Any]]:
+        """BM25 over skill prose + solution.
+
+        Matching the raw query as one substring returned nothing for any
+        multi-word probe (measured: "flexbox overflow" missed every code skill),
+        so this tokenizes and ranks. Returns [] when nothing genuinely matches
+        rather than padding with unrelated skills.
+        """
+        sql = "SELECT * FROM skills"
+        params: tuple = ()
+        if status:
+            sql += " WHERE status=?"
+            params = (status,)
+        rows = [dict(r) for r in self.db.query(sql, params)]
+        if not rows:
+            return []
+        corpus = [
+            {"label": r.get("name", ""), "content": " ".join(
+                str(r.get(k) or "") for k in ("description", "solution", "domain", "reasoning"))}
+            for r in rows
+        ]
+        scored = []
+        for row, doc in zip(rows, corpus):
+            score = _bm25(query, corpus, doc)
+            if score > 0:
+                row["score"] = round(score, 4)
+                scored.append((score, row))
+        scored.sort(key=lambda t: t[0], reverse=True)
+        return [r for _, r in scored[:limit]]
+
     def stats(self) -> dict[str, Any]:
         rows = self.db.query("SELECT status, COUNT(*) n FROM skills GROUP BY status")
         by_status = {r["status"]: r["n"] for r in rows}
@@ -799,7 +857,7 @@ class VisualMemory:
         return dict(row) if row else None
 
     def search(self, query: str, limit: int = 6) -> list[dict[str, Any]]:
-        toks = set(_norm(query).split())
+        toks = set(_content_tokens(query))
         scored = []
         for row in self.db.query("SELECT * FROM visual_memories"):
             hay = _norm(f"{row['ocr_text']} {row['description']} {row['labels']}")

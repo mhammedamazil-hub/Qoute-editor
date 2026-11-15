@@ -10,8 +10,6 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from minicoder.config import CONFIG
-
 
 class BridgeUnavailable(RuntimeError):
     pass
@@ -26,7 +24,11 @@ class EditorBridge:
     """
 
     def __init__(self, home: Path | None = None, timeout: float = 120.0) -> None:
-        self.home = (home or CONFIG.paths.home).resolve()
+        # ``home`` here means the *installation* root that holds the editor
+        # source, not the data home (see config.install_root).
+        from minicoder.config import install_root
+
+        self.home = (home or install_root()).resolve()
         self.timeout = timeout
         self._proc: subprocess.Popen[str] | None = None
         self._lock = threading.Lock()
@@ -147,10 +149,14 @@ def verify_tool_outcome(
         ok &= snap_a != snap_b
         checks.append("state changed after redo")
     elif tool == "set_text_content":
-        want = tokenize_text(str(args.get("text", "")))
-        found = any(want and want <= tokenize_text(l.get("text", "") or "") for l in snap_a.get("layers", []))
+        # The editor's argument is ``content`` (see TOOL_DECLARATIONS). Reading
+        # ``text`` here made ``want`` always empty, and ``any(want and ...)`` then
+        # returned False for a correct edit — or True vacuously for an empty one.
+        want = tokenize_text(str(args.get("content") or args.get("text") or ""))
+        layers = snap_a.get("layers", [])
+        found = bool(want) and any(want <= tokenize_text(l.get("content") or l.get("text") or "") for l in layers)
         ok &= found
-        checks.append("requested text present in a text layer")
+        checks.append(f"requested text present in a text layer ({len(want)} tokens)")
     elif tool in {"set_typography", "update_elements", "style_elements", "set_layer_style"}:
         ok &= snap_a != snap_b or result.get("ok", False)
         checks.append("style mutation reported ok")

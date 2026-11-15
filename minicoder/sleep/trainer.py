@@ -12,7 +12,6 @@ after the gate passes (prime directive #3).
 from __future__ import annotations
 
 import json
-import math
 import random
 import re
 import shutil
@@ -22,9 +21,8 @@ from typing import Any
 
 import torch
 
-from minicoder.config import CONFIG, VERIFIED
+from minicoder.config import CONFIG
 from minicoder.memory.db import BrainDB, sha256_file, utcnow
-
 from minicoder.model.tokenizer import Tokenizer
 from minicoder.model.train import evaluate_lm, train_sft
 from minicoder.model.transformer import (
@@ -36,7 +34,6 @@ from minicoder.model.transformer import (
     merge_lora,
     save_adapter,
 )
-
 
 _CODE_TOKENS = re.compile(
     r"\b(def|return|import|for|while|if|else|elif|class|try|except|lambda|print|len|range|"

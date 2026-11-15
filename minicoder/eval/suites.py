@@ -16,18 +16,23 @@ from __future__ import annotations
 
 import json
 import random
-import re
 import time
-from dataclasses import dataclass, field, asdict
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import torch
 
 from minicoder.config import CONFIG, VERIFIED
 from minicoder.data import CODE_TASKS, PERSONAS, VISION_CLASSES, build_vision_dataset
 from minicoder.memory.db import BrainDB
-from minicoder.memory.systems import Episode, EpisodicMemory, ProceduralMemory, SemanticMemory, Skill, VisualMemory
+from minicoder.memory.systems import (
+    Episode,
+    EpisodicMemory,
+    ProceduralMemory,
+    SemanticMemory,
+)
 
 
 @dataclass
@@ -109,11 +114,46 @@ def eval_coding(tasks: list[dict[str, Any]] | None = None, *, use_sandbox: bool 
 # chat & memory
 # --------------------------------------------------------------------------
 
+_HOME_STACK: list = []
+
+
+def _isolated_home(tag: str):
+    """Redirect CONFIG at a temp dir so a seeding suite cannot touch the live brain."""
+    import tempfile
+    from pathlib import Path as _P
+
+    from minicoder import config as _config
+
+    home = _P(tempfile.mkdtemp(prefix=f"minicoder-eval-{tag}-"))
+    _HOME_STACK.append(_config.activate_home(home))
+    return home
+
+
+def _restore_home() -> None:
+    from minicoder import config as _config
+
+    if _HOME_STACK:
+        _config.activate_home(_HOME_STACK.pop())
+
+
 def eval_chat(*, fresh_db: bool = True, use_real_agent: bool = False) -> SuiteResult:
-    """Multi-session recall, preference retention, hallucination rate."""
+    """Multi-session recall, preference retention, hallucination rate.
+
+    Runs against a throwaway brain home: this suite *seeds* persona memories, and
+    earlier versions wrote them into the live database, polluting real recall
+    with dozens of duplicate "User X shared a preference" episodes.
+    """
     t0 = time.time()
     from minicoder.cognition.engine import GroundedAnswerer, NeuralBrain
 
+    home = _isolated_home("chat")
+    try:
+        return _eval_chat_body(t0, GroundedAnswerer, NeuralBrain, home)
+    finally:
+        _restore_home()
+
+
+def _eval_chat_body(t0, GroundedAnswerer, NeuralBrain, home) -> SuiteResult:
     db = BrainDB()
     episodic = EpisodicMemory(db)
     semantic = SemanticMemory(db)
@@ -145,10 +185,14 @@ def eval_chat(*, fresh_db: bool = True, use_real_agent: bool = False) -> SuiteRe
     # 1. Preference retention: ask about each persona.
     retained = 0
     details = []
-    for persona, pref, nid in seeded:
+    for persona, pref, _nid in seeded:
         q = f"What does {persona} prefer?"
         ans = answerer.answer(q)
-        hit = any(w in ans.text.lower() for w in set(pref.lower().split()) - {"and", "the", "with", "a", "for"})
+        # Score against THIS preference specifically. A generic keyword test would
+        # be satisfied by a different fact about the same person (measured: one
+        # preference literally contains the persona's name, inflating retention).
+        keys = set(pref.lower().split()) - {"and", "the", "with", "a", "for", "at", "in", "to", "every", "on"}
+        hit = len({k for k in keys if k in ans.text.lower()}) / max(1, len(keys)) >= 0.6
         retained += int(hit)
         details.append({"q": q, "source": ans.source, "hit": hit, "answer": ans.text[:120]})
 
@@ -187,8 +231,20 @@ def eval_chat(*, fresh_db: bool = True, use_real_agent: bool = False) -> SuiteRe
 
 
 def eval_multisession_recall() -> SuiteResult:
-    """Write episodes in session A, read them back from a brand-new DB handle in B."""
+    """Write episodes in session A, read them back from a brand-new DB handle in B.
+
+    Runs in a throwaway home: earlier versions wrote probe episodes straight into
+    the live brain, so repeated runs accumulated duplicate facts.
+    """
     t0 = time.time()
+    _isolated_home("multisession")
+    try:
+        return _eval_multisession_body(t0)
+    finally:
+        _restore_home()
+
+
+def _eval_multisession_body(t0) -> SuiteResult:
     db = BrainDB()
     em = EpisodicMemory(db)
     facts = [
@@ -230,7 +286,7 @@ def eval_memory_retrieval(db_path: Path | None = None) -> SuiteResult:
     import tempfile
 
     t0 = time.time()
-    from minicoder.config import MemoryConfig, Paths
+    from minicoder.config import Paths
 
     if db_path is None:
         tmpdir = Path(tempfile.mkdtemp(prefix="mc_eval_mem_"))
@@ -292,8 +348,9 @@ def eval_vision(limit: int | None = None) -> SuiteResult:
     _, test = build_vision_dataset()
     if limit:
         test = test[:limit]
-    from minicoder.model.vision import to_tensor
     import torch.nn.functional as F
+
+    from minicoder.model.vision import to_tensor
 
     x = to_tensor([img for img, _ in test], model.cfg.vision_image_size)
     y = torch.tensor([label for _, label in test])
@@ -310,6 +367,7 @@ def eval_vision(limit: int | None = None) -> SuiteResult:
     ocr_recall = None
     try:
         from PIL import Image, ImageDraw
+
         from minicoder.tools.vision import run_ocr
 
         img = Image.new("RGB", (520, 140), (250, 250, 252))
@@ -391,7 +449,7 @@ def eval_ablation(skip_heavy: bool = True) -> SuiteResult:
     same held-out set so the deltas are comparable.
     """
     t0 = time.time()
-    from minicoder.cognition.engine import NeuralBrain, GroundedAnswerer
+    from minicoder.cognition.engine import GroundedAnswerer, NeuralBrain
     from minicoder.sleep.trainer import _holdout_tasks, skill_accuracy
 
     brain = NeuralBrain()
@@ -427,9 +485,9 @@ def eval_ablation(skip_heavy: bool = True) -> SuiteResult:
                          "nodes_added": report.metrics.get("nodes_added", 0)}
 
     # +LoRA: promoted adapter, if one exists.
-    adapter = None
+    _adapter = None
     if history:
-        adapter = history[-1]
+        _adapter = history[-1]
         from minicoder.model.transformer import MiniTransformer
         m2 = MiniTransformer.load(CONFIG.paths.checkpoints / "lm.pt")
         states["4_lora"] = measure(m2)

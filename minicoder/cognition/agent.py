@@ -19,7 +19,7 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from minicoder.cognition.engine import GroundedAnswerer, NeuralBrain
 from minicoder.cognition.metacognition import Metacognition
@@ -33,7 +33,7 @@ from minicoder.memory.systems import (
     Skill,
     WorkingMemory,
 )
-from minicoder.tools.editor_bridge import EditorBridge, BridgeUnavailable, verify_tool_outcome
+from minicoder.tools.editor_bridge import BridgeUnavailable, EditorBridge, verify_tool_outcome
 
 
 @dataclass
@@ -55,6 +55,7 @@ class Trajectory:
     instruction: str
     steps: list[Step] = field(default_factory=list)
     verified: bool = False
+    source: str = ""
     summary: str = ""
     error: str = ""
     plan: list[str] = field(default_factory=list)
@@ -94,6 +95,28 @@ FONTS = {
 }
 
 
+_INTERROGATIVE = re.compile(
+    r"^\s*(what|which|how|why|who|when|where|should|can|could|is|are|do|does)\b", re.I
+)
+
+
+def _scrub_copy(candidate: str) -> str:
+    """Reject text that is a question rather than poster copy.
+
+    Poster copy is a statement. Anything that begins interrogatively or carries
+    an inline question mark is instructional text that leaked into the copy
+    field, which would otherwise print "Which palette reads as premium?" on a
+    poster (an observed defect in a learned skill).
+    """
+    t = (candidate or "").strip().strip('"“”').strip()
+    if not t:
+        return ""
+    t = re.split(r"(?<=[?!])\s", t)[0].strip()
+    if "?" in t or _INTERROGATIVE.match(t):
+        return ""
+    return t
+
+
 def parse_instruction(instruction: str) -> dict[str, Any]:
     """Extract canvas, palette, fonts, quote text and layout intent."""
     text = instruction.strip()
@@ -120,31 +143,40 @@ def parse_instruction(instruction: str) -> dict[str, Any]:
             intent["font"] = font
             break
 
-    # Explicit quotation marks win: they are unambiguous.
-    m = re.search(r'["“]([^"”]{3,160})["”]', text)
-    if m:
-        intent["quote"] = m.group(1).strip()
-    else:
-        # "a poster about patience that reads ..." -> the phrase after 'about'
-        # is a *topic*, not the quote, unless it is quoted or long enough to be one.
-        DOMAIN_WORDS = re.compile(
-            r"\b(poster|design|canvas|image|graphic|layout|composition|carousel|story|square|portrait|"
-            r"landscape|palette|theme|font|light|glow|text|type|quote|colour|color)\b", re.I)
+    # ---- the copy on the poster -------------------------------------------
+    # Priority: an explicit quotation, then a phrase introduced by
+    # about/saying/reads/says. A quoted *question* is still a question, and
+    # question text must never reach the canvas (measured defect: a learned
+    # skill printed "As premium? is not given..." as poster copy).
+    DOMAIN_WORDS = re.compile(
+        r"\b(poster|design|canvas|image|graphic|layout|composition|carousel|story|square|"
+        r"portrait|landscape|palette|theme|font|light|glow|text|type|quote|colour|color)\b",
+        re.I,
+    )
+    STATEMENT_MARKER = re.compile(r"\b(is|are|be|not|never|you|we|it|will|can|must|does)\b", re.I)
+
+    quoted = re.search(r'["“]([^"”]{3,160})["”]', text)
+    quote = _scrub_copy(quoted.group(1)) if quoted else ""
+
+    if not quote:
         for verb in ("about", "saying", "reads", "says"):
             m = re.search(rf'\b{verb}\s+["“\']?([^"”\'\n]{{3,160}})', text, re.I)
             if not m:
                 continue
-            candidate = re.split(r"(?:\.|,|\s+(?:at|with|and|in|on|using)\s+)", m.group(1))[0]
-            candidate = candidate.strip().strip('"“”').strip()
-            if len(candidate.split()) < 2 or DOMAIN_WORDS.search(candidate):
+            raw = re.split(r"(?:\.|,|\s+(?:at|with|and|in|on|using)\s+)", m.group(1))[0]
+            candidate = _scrub_copy(raw)
+            if not candidate or DOMAIN_WORDS.search(candidate):
                 continue
-            words = candidate.split()
-            topic_like = len(words) <= 3 and not re.search(r"\b(is|are|be|not|never|you|we|it)\b", candidate, re.I)
-            if topic_like:
+            # A short noun phrase is a topic the agent composes around; a full
+            # clause in the author's own voice is the quotation itself.
+            if len(candidate.split()) <= 3 and not STATEMENT_MARKER.search(candidate):
                 intent["topic"] = candidate
             else:
-                intent["quote"] = candidate
+                quote = candidate
             break
+
+    if quote:
+        intent["quote"] = quote
 
     intent["centered"] = bool(re.search(r"\b(centred|centered|centre|center)\b", low))
     intent["minimal"] = bool(re.search(r"\b(minimal|clean|negative space|breathing)\b", low))
@@ -273,6 +305,7 @@ class DesignAgent:
             traj.plan = ["answer from memory (no canvas mutation)"]
             traj.summary = gen.text
             traj.verified = gen.source in ("skill", "memory")
+            traj.source = gen.source
             traj.confidence = pre.calibrated_confidence
             traj.seconds = time.time() - t0
             self._record(traj, intent={}, answer=gen.to_json())
@@ -284,8 +317,9 @@ class DesignAgent:
             # Nothing actionable -> answer from memory instead of touching the canvas.
             gen = self.answerer.answer(instruction)
             traj.summary = gen.text
-            traj.verified = False
+            traj.verified = gen.source in ("skill", "memory")
             traj.error = ""
+            traj.source = gen.source
             traj.plan = ["answer (no canvas action implied)"]
             self._record(traj, intent=intent, answer=gen.to_json())
             return traj

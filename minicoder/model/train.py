@@ -12,9 +12,10 @@ import math
 import os
 import random
 import time
-from dataclasses import dataclass, asdict
+from collections.abc import Iterable, Sequence
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 import torch
 import torch.nn.functional as F
@@ -22,8 +23,7 @@ import torch.nn.functional as F
 # Use every available core: transformers are matmul-bound and exit early otherwise.
 torch.set_num_threads(max(1, (os.cpu_count() or 2)))
 
-from minicoder.config import CONFIG, TrainingConfig
-from minicoder.model.transformer import MiniTransformer
+from minicoder.model.transformer import MiniTransformer  # noqa: E402  (after thread setup)
 
 
 @dataclass
@@ -276,7 +276,7 @@ def train_embedder(
     embedder.train()
     last = 0.0
     best = float("inf")
-    for epoch in range(epochs):
+    for _epoch in range(epochs):
         za, zb = embedder(A), embedder(B)
         logits = za @ zb.T / 0.07
         labels = torch.arange(len(pairs))

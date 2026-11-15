@@ -35,6 +35,8 @@ memory/knowledge_graph/
 memory/working/
 memory/procedural/
 datasets/training_runs/
+minicoder/dashboard/node_modules/
+minicoder/dashboard/dist/
 .env
 .venv/
 __pycache__/

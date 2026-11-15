@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass, field, asdict
-from typing import Any, Sequence
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 _WORD = re.compile(r"[A-Za-z][A-Za-z0-9_]+")
 

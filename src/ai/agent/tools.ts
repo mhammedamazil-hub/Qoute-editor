@@ -292,10 +292,12 @@ export async function executeTool(name: string, args: Record<string, unknown>, c
 
     case 'set_canvas_size': {
       const preset = CANVAS_PRESETS.find((p) => p.id === str(args.preset));
+      // Both dimensions must honour their own argument. Falling back to
+      // `canvas.height` here made the summary report the OLD height while the
+      // artboard actually changed, so the tool lied about what it had done.
       const w = preset?.width ?? num(args.width, canvas.width, 100, 8000);
-      const h = preset?.height ?? canvas.height;
-      const height = preset?.height ?? num(args.height, canvas.height, 100, 8000);
-      ed.setCanvas({ width: w, height: preset?.height ?? height }, 'ai-canvas');
+      const h = preset?.height ?? num(args.height, canvas.height, 100, 8000);
+      ed.setCanvas({ width: w, height: h }, 'ai-canvas');
       return ok(`Canvas resized to ${w}×${h}.`, { width: w, height: h });
     }
 

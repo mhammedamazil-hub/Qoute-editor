@@ -15,6 +15,15 @@ from pathlib import Path
 # paths
 # --------------------------------------------------------------------------
 
+def install_root() -> Path:
+    """Where the shipped code lives (the editor source, node_modules, dashboard).
+
+    Distinct from ``Paths.home``, which is where *state* lives. Redirecting the
+    state home (tests, evals) must not make the editor bridge disappear.
+    """
+    return Path(__file__).resolve().parent.parent
+
+
 def repo_root() -> Path:
     """Repository root: the folder that contains this package."""
     env = os.environ.get("MINICODER_HOME")
@@ -23,46 +32,95 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-@dataclass(frozen=True)
+_ACTIVE_HOME: list[Path | None] = [None]
+
+
+@dataclass(frozen=True, eq=False)
 class Paths:
-    home: Path
-    memory: Path
-    brain_db: Path
-    working: Path
-    procedural: Path
-    visual_cache: Path
-    knowledge_graph: Path
-    archived: Path
-    sleep_logs: Path
-    checkpoints: Path
-    datasets: Path
-    sleep_skills: Path
-    training_runs: Path
-    dashboard: Path
+    """Filesystem layout for one MiniCoder home.
+
+    ``home`` is usually fixed, but tests and evaluation suites need to redirect
+    every subsystem at a throwaway directory. Modules bind ``CONFIG`` at import
+    time, so instead of mutating each of them the path *derivations* below check
+    the process-wide active home first. That keeps isolation honest: a suite
+    that seeds memories cannot touch the live brain.
+    """
+
+    _home: Path
+    _memory: Path
+    _brain_db: Path
+    @property
+    def home(self) -> Path:
+        """The active root.
+
+        This must follow ``_ACTIVE_HOME`` like every derived path: code that
+        computes ``relative_to(CONFIG.paths.home)`` for a stored file breaks when
+        the files moved to a temp home but ``home`` still names the repo.
+        """
+        return _ACTIVE_HOME[0] or self._home
+
+    @property
+    def _root(self) -> Path:
+        return self.home
+
+    @property
+    def memory(self) -> Path:
+        return self._root / "memory"
+
+    @property
+    def brain_db(self) -> Path:
+        return self.memory / "brain.db"
+
+    @property
+    def working(self) -> Path:
+        return self.memory / "working"
+
+    @property
+    def procedural(self) -> Path:
+        return self.memory / "procedural"
+
+    @property
+    def visual_cache(self) -> Path:
+        return self.memory / "visual_cache"
+
+    @property
+    def knowledge_graph(self) -> Path:
+        return self.memory / "knowledge_graph"
+
+    @property
+    def archived(self) -> Path:
+        return self.memory / "archived"
+
+    @property
+    def sleep_logs(self) -> Path:
+        return self.memory / "sleep_logs"
+
+    @property
+    def checkpoints(self) -> Path:
+        return self.memory / "checkpoints"
+
+    @property
+    def datasets(self) -> Path:
+        return self._root / "datasets"
+
+    @property
+    def sleep_skills(self) -> Path:
+        return self.datasets / "sleep_skills"
+
+    @property
+    def training_runs(self) -> Path:
+        return self.datasets / "training_runs"
+
+    @property
+    def dashboard(self) -> Path:
+        return self._root / "minicoder" / "dashboard"
 
     @classmethod
-    def build(cls, home: Path | None = None) -> "Paths":
+    def build(cls, home: Path | None = None) -> Paths:
         root = (home or repo_root()).resolve()
-        memory = root / "memory"
-        datasets = root / "datasets"
-        return cls(
-            home=root,
-            memory=memory,
-            brain_db=memory / "brain.db",
-            working=memory / "working",
-            procedural=memory / "procedural",
-            visual_cache=memory / "visual_cache",
-            knowledge_graph=memory / "knowledge_graph",
-            archived=memory / "archived",
-            sleep_logs=memory / "sleep_logs",
-            checkpoints=memory / "checkpoints",
-            datasets=datasets,
-            sleep_skills=datasets / "sleep_skills",
-            training_runs=datasets / "training_runs",
-            dashboard=root / "minicoder" / "dashboard",
-        )
+        return cls(_home=root, _memory=root / "memory", _brain_db=root / "memory" / "brain.db")
 
-    def ensure(self) -> "Paths":
+    def ensure(self) -> Paths:
         for p in (
             self.memory,
             self.working,
@@ -204,13 +262,37 @@ class Config:
     api: ApiConfig = field(default_factory=ApiConfig)
 
     @classmethod
-    def load(cls, home: Path | None = None) -> "Config":
+    def load(cls, home: Path | None = None) -> Config:
         cfg = cls(paths=Paths.build(home))
         cfg.paths.ensure()
         return cfg
 
 
 CONFIG = Config.load()
+
+
+def activate_home(home: Path | str | None) -> Path | None:
+    """Process-wide redirect used by tests/evals; returns the previous home."""
+    prev = _ACTIVE_HOME[0]
+    _ACTIVE_HOME[0] = Path(home).expanduser().resolve() if home is not None else None
+    if _ACTIVE_HOME[0] is not None:
+        for sub in ("memory", "datasets"):
+            (_ACTIVE_HOME[0] / sub).mkdir(parents=True, exist_ok=True)
+        Paths.build(_ACTIVE_HOME[0]).ensure()
+    return prev
+
+
+def reload(home: Path | str | None = None) -> Config:
+    """Point the global config at a different home (tests, evals, per-run sandboxes).
+
+    ``CONFIG`` is a frozen singleton read by every subsystem, so redirecting it
+    is the only supported way to keep experiment data out of the live brain.
+    """
+    global CONFIG
+    home_path = Path(home).expanduser().resolve() if home is not None else None
+    CONFIG = Config(paths=Paths.build(home_path))
+    CONFIG.paths.ensure()
+    return CONFIG
 
 # Provenance labels (prime directive #4). Every memory row must use one.
 SOURCE_USER_INSTRUCTION = "user_instruction"

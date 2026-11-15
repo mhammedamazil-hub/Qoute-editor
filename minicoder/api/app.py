@@ -12,11 +12,9 @@ import base64
 import io
 import json
 import time
-from dataclasses import asdict
-from pathlib import Path
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
@@ -122,7 +120,6 @@ class BrainService:
 
     # --------------------------------------------------------------- status
     def status(self) -> dict[str, Any]:
-        from minicoder.cognition.metacognition import Metacognition
 
         mc = self.agent.mc
         return {
@@ -218,7 +215,13 @@ def chat(req: ChatRequest) -> ChatResponse:
     if req.allow_actions:
         traj = svc.agent.execute(req.message)
         answer = traj.summary
-        source = "skill" if traj.verified and traj.steps else ("memory" if not traj.steps else "tool")
+        if traj.steps:
+            source = "skill" if traj.verified else "tool"
+        else:
+            # The agent may simply have answered instead of acting. Report the
+            # answerer's real provenance: labelling a refusal "memory" claimed
+            # evidence that did not exist.
+            source = traj.source or ("memory" if traj.verified else "refuse")
         grounding = [{"type": "plan", "steps": traj.plan}]
         steps = [s.to_json() for s in traj.steps]
         verified = traj.verified
@@ -312,7 +315,15 @@ async def inspect_image(file: UploadFile) -> dict[str, Any]:
         )
     )
     svc.emit("REMEMBER", "image_stored", {"class": report.ui_class})
-    return report.to_json()
+    payload = report.to_json()
+    payload["_id"] = report.memory_id
+    # Small inline preview so the inspector can render without a second round-trip.
+    buf = io.BytesIO()
+    thumb = img.copy()
+    thumb.thumbnail((720, 720))
+    thumb.save(buf, format="PNG")
+    payload["_preview"] = base64.b64encode(buf.getvalue()).decode()
+    return payload
 
 
 @app.get("/api/vision")
@@ -476,7 +487,7 @@ async def telemetry(ws: WebSocket) -> None:
             if msg == "status":
                 await ws.send_text(json.dumps({"state": svc.state, "event": "status",
                                                "data": svc.status()}, default=str))
-    except (WebSocketDisconnect, asyncio.TimeoutError):
+    except (TimeoutError, WebSocketDisconnect):
         pass
     finally:
         svc.subscribers.discard(ws)
@@ -487,6 +498,17 @@ async def telemetry(ws: WebSocket) -> None:
 # --------------------------------------------------------------------------
 
 DASHBOARD_DIR = CONFIG.paths.dashboard / "dist"
+
+
+@app.get("/assets/{path:path}")
+def dashboard_asset(path: str) -> FileResponse:
+    """Serve the built dashboard bundle (hashed asset filenames)."""
+    target = (DASHBOARD_DIR / "assets" / path).resolve()
+    if not str(target).startswith(str((DASHBOARD_DIR / "assets").resolve())):
+        raise HTTPException(status_code=403, detail="path traversal blocked")
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="asset not found")
+    return FileResponse(target)
 
 
 @app.get("/", response_class=HTMLResponse)

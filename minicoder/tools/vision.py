@@ -13,12 +13,12 @@ Capabilities (all offline, no network):
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from minicoder.config import CONFIG
 
@@ -67,6 +67,7 @@ class VisualReport:
     ui_graph: dict[str, Any] = field(default_factory=dict)
     ink_rows: int = 0
     ink_ratio: float = 0.0
+    memory_id: int | None = None
 
     def to_json(self) -> dict[str, Any]:
         d = asdict(self)
@@ -323,7 +324,7 @@ def inspect(
     report.ui_graph = build_ui_graph(report)
     report.description = describe(report)
     if save_to_memory:
-        _store(report, img)
+        report.memory_id = _store(report, img)
     return report
 
 
@@ -348,7 +349,7 @@ def reset_vision_cache() -> None:
     _VISION = None
 
 
-def _store(report: VisualReport, img: Image.Image) -> None:
+def _store(report: VisualReport, img: Image.Image) -> int:
     from minicoder.memory.db import BrainDB
 
     db = BrainDB()
@@ -378,12 +379,15 @@ def _store(report: VisualReport, img: Image.Image) -> None:
             "UPDATE visual_memories SET ocr_text=?, description=?, boxes=? WHERE id=?",
             (report.ocr_text, report.description, payload[7], existing["id"]),
         )
-        return
+        return int(existing["id"])
+
     from minicoder.memory.db import utcnow
 
-    db.execute(
+    # ``ts`` heads the column list, so it must head the parameter tuple too.
+    cur = db.execute(
         "INSERT INTO visual_memories(ts, image_path, thumb_path, sha256, width, height, ocr_text,"
         " description, boxes, labels, status, source) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-        (*payload, "UNVERIFIED", "visual_inspection"),
+        (utcnow(), *payload, "UNVERIFIED", "visual_inspection"),
     )
-    db.log_provenance("visual_memories", None, "inspect", detail={"sha": report.sha256[:12]})
+    db.log_provenance("visual_memories", int(cur.lastrowid), "inspect", detail={"sha": report.sha256[:12]})
+    return int(cur.lastrowid)

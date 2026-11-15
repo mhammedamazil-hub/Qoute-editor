@@ -55,7 +55,7 @@ class Tokenizer:
         )
 
     @classmethod
-    def load(cls, path: Path) -> "Tokenizer":
+    def load(cls, path: Path) -> Tokenizer:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         return cls(
             merges=[(int(a), int(b)) for a, b in data["merges"]],
@@ -64,7 +64,7 @@ class Tokenizer:
 
     # ------------------------------------------------------------- training
     @classmethod
-    def train(cls, texts: list[str], vocab_size: int = 4096, verbose: bool = False) -> "Tokenizer":
+    def train(cls, texts: list[str], vocab_size: int = 4096, verbose: bool = False) -> Tokenizer:
         """Learn BPE merges from ``texts``.
 
         Works over word/whitespace chunks so merges never cross word boundaries,

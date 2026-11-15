@@ -15,10 +15,11 @@ import os
 import shutil
 import sqlite3
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import sqlite_vec
 
@@ -29,7 +30,7 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 def utcnow() -> str:
     """ISO-8601 UTC timestamp with second precision (sortable as text)."""
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def sha256_file(path: Path) -> str:
@@ -125,7 +126,7 @@ class BrainDB:
     # ------------------------------------------------------------ backups
     def backup(self, tag: str = "manual") -> Path:
         """Atomic, consistent snapshot of the whole brain (VACUUM INTO)."""
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         dest = self.paths.checkpoints / f"brain_{tag}_{stamp}.db"
         tmp = dest.with_suffix(".tmp")
         if tmp.exists():
