@@ -214,6 +214,92 @@ def cmd_sleep(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_shard_train(args: argparse.Namespace) -> int:
+    """Train + gate one JSONL shard. This is the call the CI workflow makes."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    from minicoder.memory.db import BrainDB
+    from minicoder.sleep.trainer import load_shard, train_from_shard
+
+    path = _Path(args.shard)
+    if not path.exists():
+        say(f"{C.R}! shard not found: {path}{C.R}")
+        return 2
+    rows = load_shard(path)
+    head(f"Training on {path.name}")
+    kv("examples", len(rows))
+    out = train_from_shard(
+        path,
+        db=BrainDB(),
+        epochs=args.epochs,
+        lr=args.lr,
+        promote=not args.no_promote,
+    )
+    say("")
+    kv("trained", out.get("trained"))
+    kv("gate_passed", out.get("gate_passed"))
+    kv("promoted", out.get("promoted", False))
+    kv("reason", out.get("reason", "-"))
+    for k, v in (out.get("metrics") or {}).items():
+        kv(f"metric.{k}", v)
+    if args.report:
+        _Path(args.report).write_text(_json.dumps(out, indent=2, default=str), encoding="utf-8")
+        kv("report", args.report)
+    # A rejected candidate is a *successful* run: the gate did its job.
+    return 0 if out.get("trained") else 1
+
+
+def cmd_shard_verify(args: argparse.Namespace) -> int:
+    """Refuse to train on a shard that is not provably verified.
+
+    This is prime directive #1 enforced at the CI boundary: a shard must carry a
+    checksum sidecar and every example must name its provenance and, where it is
+    a skill, a verification hash.
+    """
+    import hashlib
+    import json as _json
+    from pathlib import Path as _Path
+
+    path = _Path(args.shard)
+    if not path.exists():
+        say(f"{C.R}! shard not found: {path}{C.R}")
+        return 2
+    problems: list[str] = []
+    sidecar = path.with_suffix(path.suffix + ".sha256")
+    if not sidecar.exists():
+        problems.append("missing checksum sidecar (.sha256)")
+    else:
+        want = sidecar.read_text(encoding="utf-8").split()[0].strip()
+        got = hashlib.sha256(path.read_bytes()).hexdigest()
+        if want != got:
+            problems.append(f"checksum mismatch: expected {want[:12]}… got {got[:12]}…")
+    rows = []
+    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(_json.loads(line))
+        except Exception as exc:
+            problems.append(f"line {i}: not JSON ({exc})")
+    for i, r in enumerate(rows, 1):
+        if not r.get("source"):
+            problems.append(f"row {i}: no provenance 'source'")
+        if r.get("skill") not in (None, "", "replay_buffer") and not r.get("verification_hash"):
+            problems.append(f"row {i}: skill example without verification_hash")
+    head(f"Verifying {path.name}")
+    kv("examples", len(rows))
+    if problems:
+        say("")
+        for p_ in problems[:20]:
+            say(f"  {C.R}! {p_}{C.R}")
+        say(f"\n{C.R}REJECTED{C.R}: {len(problems)} problem(s)")
+        return 1
+    ok("shard is verified and hash-pinned")
+    return 0
+
+
 def cmd_eval(args: argparse.Namespace) -> int:
     from minicoder.eval.suites import run_all
 
@@ -442,6 +528,19 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--push", action="store_true", help="commit+push the shard to GitHub")
     s.add_argument("--train", action="store_true", help="train + gate an adapter immediately")
     s.set_defaults(func=cmd_sleep)
+
+    shard = sub.add_parser("shard", help="verify / train a JSONL shard (CI entry point)")
+    shard_sub = shard.add_subparsers(dest="shard_cmd", required=True)
+    sv = shard_sub.add_parser("verify", help="check provenance + checksum before training")
+    sv.add_argument("shard")
+    sv.set_defaults(func=cmd_shard_verify)
+    st_ = shard_sub.add_parser("train", help="train a LoRA adapter and run the validation gate")
+    st_.add_argument("shard")
+    st_.add_argument("--epochs", type=int, default=None)
+    st_.add_argument("--lr", type=float, default=None)
+    st_.add_argument("--no-promote", action="store_true", help="gate but never promote")
+    st_.add_argument("--report", default="", help="write the result JSON here")
+    st_.set_defaults(func=cmd_shard_train)
 
     s = sub.add_parser("eval", help="run the benchmark suites")
     s.add_argument("--suites", default="", help="comma separated subset")

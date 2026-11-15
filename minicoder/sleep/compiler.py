@@ -210,6 +210,12 @@ def build_shard(
         raise ValueError(f"shard failed validation: {validation['errors'][:3]}")
     tmp.replace(path)
     digest = sha256_file(path)
+    # Write the checksum sidecar next to every shard, not only when it is pushed.
+    # A shard must be verifiable at the point it is created, so CI can refuse to
+    # train on anything that was altered after compilation.
+    path.with_suffix(path.suffix + ".sha256").write_text(
+        f"{digest}  {path.name}\n", encoding="utf-8"
+    )
 
     counts: dict[str, int] = {}
     for e in examples:

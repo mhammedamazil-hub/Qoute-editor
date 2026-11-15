@@ -1,0 +1,144 @@
+name: continual-learning
+
+# The GitHub half of the sleep/wake loop.
+#
+#   sleep (local)  ->  verified JSONL shard on `sleep-skills`
+#                  ->  THIS WORKFLOW: verify -> LoRA train -> validation gate -> Release
+#                  ->  wake (local): `minicoder sleep --pull` folds the adapter in
+#
+# Nothing reaches a Release unless the shard is hash-pinned and every example
+# carries provenance, and nothing is promoted unless the gate below accepts it.
+# A rejected candidate is a successful run — the gate did its job.
+
+on:
+  push:
+    branches: [sleep-skills]
+    paths:
+      - "datasets/sleep_skills/**"
+  workflow_dispatch:
+    inputs:
+      shard:
+        description: "Explicit shard path (defaults to the newest in datasets/sleep_skills)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: continual-learning
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: Verify, train, gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # CPU wheels only; the model is 1.3M parameters and trains in seconds.
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install fastapi uvicorn pydantic sqlite-vec networkx pillow numpy scipy \
+                      psutil GitPython PyGithub pytest httpx pyyaml ruff
+
+      - name: Select the shard
+        id: shard
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.shard }}" ]; then
+            SHARD="${{ github.event.inputs.shard }}"
+          else
+            SHARD=$(ls -1t datasets/sleep_skills/*.jsonl | head -n 1)
+          fi
+          echo "path=$SHARD" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$SHARD" .jsonl)" >> "$GITHUB_OUTPUT"
+          echo "Selected shard: $SHARD"
+
+      - name: Refuse unverified training data (prime directive #1)
+        run: python -m minicoder shard verify "${{ steps.shard.outputs.path }}"
+
+      - name: Restore checkpoints
+        # The base weights are large-ish binaries; they live as Release assets so
+        # the git history stays clean. Fall back to a fresh train if absent.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p memory/checkpoints
+          gh release download checkpoints --dir memory/checkpoints --clobber || true
+          if [ ! -f memory/checkpoints/lm.pt ] || [ ! -f memory/checkpoints/tokenizer.json ]; then
+            echo "::warning::no published checkpoints; building the base model from scratch"
+            python -m minicoder train --profile quick --stages tokenizer,lm
+          fi
+          ls -la memory/checkpoints
+
+      - name: Train and run the validation gate
+        id: gate
+        run: |
+          set -euo pipefail
+          python -m minicoder shard train "${{ steps.shard.outputs.path }}" \
+            --report gate_report.json
+          echo "--- gate report ---"
+          cat gate_report.json
+          python - <<'PY'
+          import json, os
+          report = json.load(open("gate_report.json"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              for key in ("trained", "gate_passed", "promoted"):
+                  fh.write(f"{key}={str(report.get(key, False)).lower()}\n")
+          PY
+
+      - name: Upload gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-report-${{ steps.shard.outputs.name }}
+          path: |
+            gate_report.json
+            memory/checkpoints/rejected/*.pt
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Publish the accepted adapter
+        if: steps.gate.outputs.promoted == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="adapter-${{ steps.shard.outputs.name }}"
+          git config user.name  "minicoder-sleep"
+          git config user.email "sleep@minicoder.local"
+          git tag -f "$TAG"
+          git push -f origin "$TAG"
+          gh release create "$TAG" \
+            --title "Adapter from ${{ steps.shard.outputs.name }}" \
+            --notes "$(cat gate_report.json | head -c 4000)" \
+            memory/checkpoints/lm.pt \
+            memory/checkpoints/tokenizer.json \
+            gate_report.json
+
+      - name: Record a rejected candidate
+        if: steps.gate.outputs.trained == 'true' && steps.gate.outputs.gate_passed != 'true'
+        run: |
+          echo "::notice::Gate rejected this shard; the base checkpoint is unchanged."
+          echo "The adapter is attached to the run artifact for inspection."
+
+      - name: Fail if the shard could not be trained at all
+        if: steps.gate.outputs.trained != 'true'
+        run: |
+          echo "::error::Training did not run — see the gate report artifact."
+          exit 1

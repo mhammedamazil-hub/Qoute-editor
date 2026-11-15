@@ -331,6 +331,11 @@ def train_from_shard(
         from minicoder.model.transformer import detach_lora
 
         merged = MiniTransformer.load(base_ckpt)
+        # ``load_adapter`` expects the *wrapped* architecture: adapter tensors live
+        # at ``...qkv.a.weight``, which only exists after attach_lora has put a
+        # LoRALinear in place of the plain Linear. Loading into a detached model
+        # raised "adapter does not match model" every time (observed in CI).
+        attach_lora(merged, LoRAConfig(rank=cfg.lora_rank, alpha=cfg.lora_alpha))
         load_adapter(merged, adapter_path)
         merge_lora(merged)
         detach_lora(merged)
