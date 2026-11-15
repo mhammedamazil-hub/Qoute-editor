@@ -339,7 +339,8 @@ class LearningLoop:
         )
 
     # ------------------------------------------------------------------ reuse
-    def reuse(self, slug: str, task: TaskSpec, *, variation: str = "variation") -> dict[str, Any]:
+    def reuse(self, slug: str, task: TaskSpec, *, variation: str = "variation",
+              allow_reacquire: bool = False) -> dict[str, Any]:
         """Apply a promoted skill's stored procedure to a new task statement.
 
         The procedure is reused verbatim; only the arguments named by the new
@@ -362,14 +363,69 @@ class LearningLoop:
 
         from minicoder.learning.planner import SearchPlanner
 
-        adapted = self._substitute(procedure, task, SearchPlanner(self.index()))
+        planner = SearchPlanner(self.index())
+        adapted = self._substitute(procedure, task, planner)
         t0 = time.time()
         result = self._run_procedure(adapted, task)
+        substitution_passed = result["passed"]
+
+        # A procedure found on one canvas rarely fits a different one. Measure
+        # that as "substitution", then let the planner repair only the failing
+        # requirements against the live state and measure "adaptation".
+        repaired = False
+        rounds = 0
+        if not substitution_passed:
+            from minicoder.learning.criteria import evaluate_editor_criteria
+
+            # Iterate: fixing one criterion can break another (moving a layer
+            # into bounds can make it overlap). A single pass is not enough —
+            # measured on the 1024x768 variant.
+            for _ in range(3):
+                if not result["failed"]:
+                    break
+                rounds += 1
+                planner.repair(task.criteria, self.bridge(), only=result["failed"])
+                _, raw = self.bridge().call("get_app_state", {})
+                state = EditorState.from_snapshot(raw.get("snapshot") or {})
+                final = evaluate_editor_criteria(task.criteria, state)
+                result = {
+                    "passed": all(r.passed for r in final),
+                    "criteria": [r.to_json() for r in final],
+                    "failed": [r.criterion for r in final if not r.passed],
+                    "progress": round(progress(final), 3),
+                    "log": result.get("log", []),
+                }
+            repaired = result["passed"]
+
         self.ledger.record_skill_replay(
             slug, passed=result["passed"], task_key=task.key, variation=variation,
-            detail=result, duration_ms=(time.time() - t0) * 1000,
+            detail={**result, "substitution_passed": substitution_passed,
+                    "repaired": repaired, "repair_rounds": rounds},
+            duration_ms=(time.time() - t0) * 1000,
         )
-        return {**result, "adapted": adapted, "variation": variation}
+        mode = ("direct" if substitution_passed
+                else "repaired" if repaired else "failed")
+
+        # If the stored procedure cannot be adapted, say so and — when allowed —
+        # solve the task by acquiring afresh. The distinction matters: reuse on a
+        # changed canvas is adaptation, re-solving from scratch is not, and the
+        # report must not conflate them.
+        if not result["passed"] and allow_reacquire:
+            fresh = self.acquire(task)
+            self.ledger.record_skill_replay(
+                slug, passed=fresh.solved, task_key=task.key,
+                variation=f"{variation}:reacquired",
+                detail={"reacquired": True, "attempts": fresh.attempts},
+            )
+            return {**result, "adapted": adapted, "variation": variation,
+                    "substitution_passed": substitution_passed, "repaired": repaired,
+                    "repair_rounds": rounds, "passed": fresh.solved,
+                    "mode": "reacquired" if fresh.solved else "failed",
+                    "reacquire": fresh.to_json()}
+
+        return {**result, "adapted": adapted, "variation": variation,
+                "substitution_passed": substitution_passed, "repaired": repaired,
+                "repair_rounds": rounds, "mode": mode}
 
     def _substitute(self, procedure: list[dict[str, Any]], task: TaskSpec,
                     planner: SearchPlanner) -> list[dict[str, Any]]:

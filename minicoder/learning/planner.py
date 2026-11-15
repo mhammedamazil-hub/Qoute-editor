@@ -64,8 +64,8 @@ _REQUIREMENT_QUERIES = {
     "layer_property": "set style typography layer property",
     "centred": "align centre horizontal position",
     "centered": "align centre horizontal position",
-    "within_canvas": "position move layer coordinates",
-    "no_overlap": "position move layer spacing",
+    "within_canvas": "translate move layer offset position coordinates",
+    "no_overlap": "translate move layer offset spacing position",
 }
 
 
@@ -134,6 +134,34 @@ def partial_credit(reqs: list[Requirement], state: EditorState) -> float:
             pool = state.of_type("text")
             got = max((float(l.get("size") or 0) for l in pool), default=0.0)
             scores.append(min(got / want, 0.95) if want > 0 else 0.0)
+        elif req.kind == "within_canvas":
+            inside = 0
+            for layer in state.layers:
+                lx, ly = float(layer.get("x") or 0), float(layer.get("y") or 0)
+                lw, lh = float(layer.get("w") or 0), float(layer.get("h") or 0)
+                if (lx >= -2 and ly >= -2
+                        and (not state.canvas_width or lx + lw <= state.canvas_width + 2)
+                        and (not state.canvas_height or ly + lh <= state.canvas_height + 2)):
+                    inside += 1
+            scores.append(min(inside / len(state.layers), 0.95) if state.layers else 0.0)
+        elif req.kind == "no_overlap":
+            texts = state.of_type("text")
+            total = len(texts) * (len(texts) - 1) // 2
+            if total <= 0:
+                scores.append(1.0)
+            else:
+                clashes = 0
+                for i in range(len(texts)):
+                    for j in range(i + 1, len(texts)):
+                        a, b = texts[i], texts[j]
+                        ax, ay = float(a.get("x") or 0), float(a.get("y") or 0)
+                        aw, ah = float(a.get("w") or 0), float(a.get("h") or 0)
+                        bx, by = float(b.get("x") or 0), float(b.get("y") or 0)
+                        bw, bh = float(b.get("w") or 0), float(b.get("h") or 0)
+                        if (ax < bx + bw and bx < ax + aw
+                                and ay < by + bh and by < ay + ah):
+                            clashes += 1
+                scores.append(min(1.0 - clashes / total, 0.95))
         elif req.kind == "text_present" and req.params:
             # An empty canvas gets no credit; a near-miss text gets some.
             scores.append(0.0)
@@ -227,6 +255,73 @@ class SearchPlanner:
                 tname = pick("textContains", "nameContains", "content")
                 if tname:
                     args[tname] = strings[0]
+        elif req.kind == "within_canvas":
+            # Derive the movement needed from the observed overflow, rather than
+            # hoping a default offset helps. Repair could not fix the aspect-ratio
+            # variant without this (measured: within_canvas stayed failed).
+            # A single shift must resolve the *dominant* overflow. Using max()
+            # against a zero start discarded negative (right/bottom) shifts
+            # entirely, so the derived offset was always 0 (measured bug).
+            def _shift(lo_edges, hi_edges, extent):
+                bottom = max(hi_edges) if hi_edges else None
+                if extent and bottom is not None and bottom > extent:
+                    return extent - bottom
+                top = min(lo_edges) if lo_edges else 0.0
+                return -top if top < 0 else 0.0
+
+            overflow_x = _shift(
+                [float(l.get("x") or 0) for l in state.layers],
+                [float(l.get("x") or 0) + float(l.get("w") or 0) for l in state.layers],
+                state.canvas_width,
+            )
+            overflow_y = _shift(
+                [float(l.get("y") or 0) for l in state.layers],
+                [float(l.get("y") or 0) + float(l.get("h") or 0) for l in state.layers],
+                state.canvas_height,
+            )
+            if "dx" in declared:
+                args["dx"] = float(overflow_x)
+            if "dy" in declared:
+                args["dy"] = float(overflow_y)
+            # Move only the layers that are actually outside. Translating every
+            # layer pushed in-bounds layers out and made the criterion worse
+            # (measured: the repair was rejected and the variant failed).
+            offenders = []
+            for layer in state.layers:
+                lx, ly = float(layer.get("x") or 0), float(layer.get("y") or 0)
+                lw, lh = float(layer.get("w") or 0), float(layer.get("h") or 0)
+                if (lx < -2 or ly < -2
+                        or (state.canvas_width and lx + lw > state.canvas_width + 2)
+                        or (state.canvas_height and ly + lh > state.canvas_height + 2)):
+                    if layer.get("id"):
+                        offenders.append(layer["id"])
+            if "ids" in declared and offenders:
+                args["ids"] = offenders
+            elif "all" in declared and not offenders:
+                args["all"] = True
+        elif req.kind == "no_overlap":
+            texts = state.of_type("text")
+            moved = False
+            for i in range(len(texts)):
+                for j in range(i + 1, len(texts)):
+                    a, b = texts[i], texts[j]
+                    ax, ay = float(a.get("x") or 0), float(a.get("y") or 0)
+                    aw, ah = float(a.get("w") or 0), float(a.get("h") or 0)
+                    bx, by = float(b.get("x") or 0), float(b.get("y") or 0)
+                    bw, bh = float(b.get("w") or 0), float(b.get("h") or 0)
+                    if ax < bx + bw and bx < ax + aw and ay < by + bh and by < ay + ah:
+                        gap = 24.0
+                        dy = (ay + ah + gap) - by      # push b below a
+                        if "dy" in declared:
+                            args["dy"] = dy
+                        if "dx" in declared:
+                            args["dx"] = 0.0
+                        if "ids" in declared and b.get("id"):
+                            args["ids"] = [b["id"]]
+                        moved = True
+                        break
+                if moved:
+                    break
         elif req.kind == "layer_property" and len(req.params) >= 3:
             prop, want = str(req.params[1]), req.params[2]
             name = pick(prop, "property", "value")
@@ -261,7 +356,19 @@ class SearchPlanner:
         return names[:limit]
 
     # --------------------------------------------------------------- planning
-    def plan(self, criteria: list[str], bridge: Any, *, budget_steps: int = 40) -> dict[str, Any]:
+    def repair(self, criteria: list[str], bridge: Any, *, only: list[str] | None = None,
+               budget_steps: int = 20) -> dict[str, Any]:
+        """Fix only the criteria that currently fail, without starting over.
+
+        This is what makes a reused procedure *adapt* rather than merely
+        substitute: a procedure found on a 720x960 canvas can be re-flown on a
+        1024x768 one, and the layers that no longer fit are corrected here.
+        """
+        return self.plan(criteria, bridge, budget_steps=budget_steps,
+                         reset=False, only=only)
+
+    def plan(self, criteria: list[str], bridge: Any, *, budget_steps: int = 40,
+             reset: bool = True, only: list[str] | None = None) -> dict[str, Any]:
         """Build a tool sequence by executing and measuring as we go.
 
         Each candidate step is executed for real, criterion progress is measured,
@@ -273,8 +380,12 @@ class SearchPlanner:
         """
         self.decisions = []
         reqs = parse_requirements(criteria)
+        if only is not None:
+            wanted = set(only)
+            reqs = [r for r in reqs if r.text in wanted]
         plan: list[dict[str, Any]] = []
-        bridge.call("new_project", {})
+        if reset:
+            bridge.call("new_project", {})
         state = self._state(bridge)
         results = evaluate_editor_criteria(criteria, state)
         best = partial_credit(reqs, state)
@@ -286,7 +397,7 @@ class SearchPlanner:
         # different size.
         canvas_req = next((r for r in reqs if r.kind == "canvas_size"
                            and len(r.params) >= 2), None)
-        if canvas_req is not None:
+        if canvas_req is not None and reset:
             args = {"width": int(canvas_req.params[0]), "height": int(canvas_req.params[1])}
             outcome = self._execute(bridge, "set_canvas_size", args)
             if outcome["ok"]:
