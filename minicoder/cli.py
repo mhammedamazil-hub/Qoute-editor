@@ -304,7 +304,8 @@ def cmd_eval(args: argparse.Namespace) -> int:
     from minicoder.eval.suites import run_all
 
     head("Running benchmark suites")
-    _payload = run_all(args.suites.split(",") if args.suites else None)
+    _payload = run_all(args.suites.split(",") if args.suites else None,
+                       skip_heavy=not args.heavy)
     path = CONFIG.paths.training_runs / "eval_report.json"
     kv("report", str(path))
     return 0
@@ -544,6 +545,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("eval", help="run the benchmark suites")
     s.add_argument("--suites", default="", help="comma separated subset")
+    s.add_argument("--heavy", action="store_true",
+                   help="include the expensive suites (the base/+memory/+sleep/+LoRA ablation)")
     s.set_defaults(func=cmd_eval)
 
     s = sub.add_parser("status", help="brain state and memory counts")
