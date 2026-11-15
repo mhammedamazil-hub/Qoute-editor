@@ -10,6 +10,7 @@ import { EditorShell } from '@/components/editor/EditorShell';
 import { ExportDialog } from '@/components/editor/ExportDialog';
 import { Settings } from '@/components/settings/Settings';
 import { AICopilot } from '@/components/ai/AICopilot';
+import { BrainPanel } from '@/components/brain/BrainPanel';
 import { CommandPalette } from '@/components/editor/CommandPalette';
 import { ShortcutsDialog } from '@/components/editor/ShortcutsDialog';
 import { TemplatesDialog, NewDesignDialog, ProjectsDialog } from '@/components/templates/TemplatesDialog';
@@ -98,6 +99,7 @@ function Modals() {
       <NewDesignDialog open={modal === 'newDesign'} onClose={close} />
       <ProjectsDialog open={modal === 'projects'} onClose={close} />
       <AICopilot open={aiOpen || modal === 'ai'} onClose={closeAI} />
+      <BrainPanel />
     </>
   );
 }

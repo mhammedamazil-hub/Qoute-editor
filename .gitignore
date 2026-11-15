@@ -22,3 +22,18 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+
+# minicoder python
+minicoder/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# minicoder runtime memory (never commit live brains)
+memory/
+
+# training run outputs
+minicoder/release/
+
+# python packaging artifacts
+*.egg-info/

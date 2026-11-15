@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "shards": [
+    {
+      "file": "shard_20261115_130103.jsonl",
+      "examples": 30,
+      "sha256": "0ad50d1651112134b37b16375f2c13b6cca21c27aff4a49bc401dcb112e65e4b",
+      "created_at": "2026-11-15T13:01:03.968671+00:00",
+      "skills": {
+        "skill_822b13e773ab": 6,
+        "skill_6c9ecf4177f9": 6,
+        "skill_b3cc2dc59743": 6,
+        "skill_60e77a2c37cc": 6,
+        "skill_5b803a78954b": 6
+      }
+    }
+  ],
+  "total_examples": 30
+}

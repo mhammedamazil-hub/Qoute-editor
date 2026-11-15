@@ -27,6 +27,20 @@ npm run smoke:ai   # streaming, tool calls, retries, model healing
 npm run smoke:ui   # renders the real UI in a DOM shim
 ```
 
+## MiniCoder — cognitive core (in this repo)
+
+This repo also carries **MiniCoder**, an offline-first cognitive intelligence
+core implementing the attached *Project MiniCoder* blueprint: persistent
+episodic/semantic/procedural memory (SQLite WAL + FTS5 + NetworkX), a 7-stage
+sleep engine that compiles **verified** skills into training shards, a
+from-scratch neural model, a FastAPI brain backend with WebSocket telemetry, a
+`minicoder` CLI, and a `sleep_skill_training` GitHub Actions pipeline that
+trains and releases adapters only when a measured holdout gate passes.
+
+- Docs, architecture, measured results: [`minicoder/README.md`](minicoder/README.md)
+- Live dashboard: open the app → **Brain** button in the top bar (or `Ctrl/⌘+K` → “Open the MiniCoder Brain”), backed by `minicoder serve`
+- Verified seed dataset: [`datasets/sleep_skills/`](datasets/sleep_skills/) (30 examples, all with real pytest verification provenance)
+
 ## Deploying (GitHub Pages)
 
 The publishable site is a **build artifact, not the repo files**. The repo-root `index.html` is the

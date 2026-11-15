@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  Brain,
   Check,
   ChevronLeft,
   Command as CommandIcon,
@@ -162,6 +163,9 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
 
       <button className="btn btn-ghost h-8 text-accent" title="Design with AI (Ctrl+J)" onClick={() => setAIOpen(true)}>
         <Wand2 size={15} /> <span className="hidden sm:inline">AI</span>
+      </button>
+      <button className="btn btn-ghost h-8 text-accent" title="MiniCoder Brain — memory, sleep, skills" aria-label="Open MiniCoder Brain" onClick={() => useUIStore.getState().setBrainOpen(true)}>
+        <Brain size={15} /> <span className="hidden sm:inline">Brain</span>
       </button>
       <button className="icon-btn" title="Preview (P)" aria-label="Preview" onClick={() => setPreviewMode(true)}>
         <Eye size={16} />
