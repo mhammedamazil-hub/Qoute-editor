@@ -22,3 +22,22 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+
+# ---- MiniCoder runtime state (never commit a brain or model weights) ----
+memory/*.db
+memory/*.db-wal
+memory/*.db-shm
+memory/checkpoints/
+memory/archived/
+memory/visual_cache/
+memory/sleep_logs/
+memory/knowledge_graph/
+memory/working/
+memory/procedural/
+datasets/training_runs/
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
