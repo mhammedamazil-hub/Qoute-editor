@@ -146,7 +146,16 @@ class BaselineRegistry:
         man = self.manifest(name)
         if not man:
             return {"restored": False, "reason": f"no baseline {name!r}"}
-        dest = Path(target) if target else CONFIG.paths.checkpoints
+        # Restore to where the baseline was taken from. Defaulting to the global
+        # checkpoint directory wrote the restore to the wrong place when the
+        # baseline came from elsewhere (measured: the test's source stayed
+        # wrecked while a different directory was repaired).
+        if target is not None:
+            dest = Path(target)
+        elif man.get("source"):
+            dest = Path(man["source"])
+        else:
+            dest = CONFIG.paths.checkpoints
         dest.mkdir(parents=True, exist_ok=True)
         # Preserve the state being replaced, so a rollback is itself reversible.
         backup = dest / "backups"

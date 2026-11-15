@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useTelemetry } from "./api";
 import { ChatView } from "./ChatView";
 import { GraphView } from "./GraphView";
+import { LearningView } from "./LearningView";
 import { MemoryView } from "./MemoryView";
 import { Overview } from "./Overview";
 import { TrainingView } from "./TrainingView";
@@ -15,7 +16,8 @@ const TABS = [
   { id: "graph", label: "Knowledge" },
   { id: "memory", label: "Memory" },
   { id: "vision", label: "Vision" },
-  { id: "training", label: "Learning" },
+  { id: "training", label: "Training" },
+  { id: "learning", label: "Acquisition" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -101,6 +103,11 @@ export default function App() {
         {tab === "training" && (
           <div className="h-full overflow-y-auto pr-1">
             <TrainingView status={status} />
+          </div>
+        )}
+        {tab === "learning" && (
+          <div className="h-full overflow-y-auto pr-1">
+            <LearningView />
           </div>
         )}
       </main>

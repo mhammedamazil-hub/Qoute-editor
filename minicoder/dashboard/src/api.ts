@@ -64,6 +64,33 @@ async function jpost<T>(url: string, body: unknown): Promise<T> {
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
+export type LearningOverviewResponse = {
+  counts: Record<string, number>;
+  experiments: Array<Record<string, any>>;
+  attempts: Array<Record<string, any>>;
+  candidates: Array<Record<string, any>>;
+  replays: Array<Record<string, any>>;
+  resources: Array<Record<string, any>>;
+  failure_classes: Record<string, number>;
+  retention: Array<{
+    slug: string;
+    runs: number;
+    passed: number;
+    rate: number;
+    points: Array<{ ts: string; passed: number }>;
+  }>;
+  benchmark: Record<string, any>;
+  acceptance: Record<string, any>;
+  checkpoints: string[];
+  baselines: string[];
+};
+
+export type LearningSkillsResponse = {
+  learned: Array<Record<string, any>>;
+  seeded: Array<Record<string, any>>;
+  dependencies: Array<Record<string, any>>;
+};
+
 export const api = {
   status: () => jget<Status>("/api/status"),
   health: () => jget<{ ok: boolean; db: string; state: string }>("/api/health"),
@@ -81,6 +108,11 @@ export const api = {
   callTool: (tool: string, args: Record<string, unknown>) =>
     jpost<{ ok: boolean; result: Record<string, unknown>; checks: string[] }>("/api/editor/tool", { tool, args }),
   snapshots: () => jpost<{ path: string; bytes: number }>("/api/export/snapshot", {}),
+  learningOverview: () => jget<LearningOverviewResponse>("/api/learning/overview"),
+  learningSkills: () => jget<LearningSkillsResponse>("/api/learning/skills"),
+  learningExperiments: () => jget<{ experiments: Record<string, unknown>[] }>(
+    "/api/learning/experiments",
+  ),
   inspectImage: async (file: File) => {
     const fd = new FormData();
     fd.append("file", file);

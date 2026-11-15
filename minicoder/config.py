@@ -301,6 +301,10 @@ SOURCE_VISUAL_INSPECTION = "visual_inspection"
 SOURCE_DOCUMENTATION = "documentation"
 SOURCE_TRAINING_DATA = "training_data"
 SOURCE_UNVERIFIED_HYPOTHESIS = "unverified_hypothesis"
+# Phase 2: knowledge produced by the learning loop (an experiment whose criteria
+# passed and whose procedure survived independent replay). Distinct from
+# verified_execution, which records a single run.
+SOURCE_LEARNING_LOOP = "learning_loop"
 
 VALID_SOURCES = frozenset(
     {
@@ -310,6 +314,7 @@ VALID_SOURCES = frozenset(
         SOURCE_DOCUMENTATION,
         SOURCE_TRAINING_DATA,
         SOURCE_UNVERIFIED_HYPOTHESIS,
+        SOURCE_LEARNING_LOOP,
     }
 )
 

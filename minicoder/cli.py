@@ -13,6 +13,10 @@
     minicoder skills               list procedural memory
     minicoder snapshots            backup / restore the brain
     minicoder doctor               environment + dependency audit
+    minicoder learn "<task>" ...   acquire, verify by replay, promote a new skill
+    minicoder benchmark [--json]   run the sealed learning benchmark
+    minicoder acceptance           run the eight Phase 2 acceptance criteria
+    minicoder safeguard <action>   baseline / evaluate / rollback a model update
 """
 
 from __future__ import annotations
@@ -571,10 +575,151 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--reload", action="store_true")
     s.set_defaults(func=cmd_serve)
 
+    s = sub.add_parser("learn", help="acquire a skill, verify it by replay, promote it")
+    s.add_argument("--criteria", action="append", default=[],
+                   help="machine-checkable criterion (repeatable), e.g. 'canvas_size(900,1200)'")
+    s.add_argument("--key", help="stable task key (default: timestamped)")
+    s.add_argument("--title")
+    s.add_argument("--goal")
+    s.add_argument("--from-file", help="JSON task spec with key/criteria")
+    s.add_argument("--attempts", type=int, default=4)
+    s.add_argument("--promote", action="store_true", help="promote if replay passes")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_learn)
+
+    s = sub.add_parser("benchmark", help="run the sealed learning benchmark")
+    s.add_argument("--no-editor", action="store_true",
+                   help="skip editor tasks (no bridge subprocess needed)")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_benchmark)
+
+    s = sub.add_parser("acceptance", help="run the eight Phase 2 acceptance criteria")
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_acceptance)
+
+    s = sub.add_parser("safeguard", help="baseline / evaluate / rollback a model update")
+    s.add_argument("action", choices=["baseline", "verify", "evaluate", "rollback"])
+    s.add_argument("--name", default="baseline")
+    s.set_defaults(func=cmd_safeguard)
+
     s = sub.add_parser("doctor", help="environment and dependency audit")
     s.set_defaults(func=cmd_doctor)
     return p
 
+
+
+# ----------------------------------------------------------------- phase 2
+def cmd_learn(args: argparse.Namespace) -> int:
+    """Acquire a skill for a task, verify it by replay, optionally promote it."""
+    from minicoder.learning.engine import LearningLoop, TaskSpec
+
+    if args.from_file:
+        spec = json.loads(Path(args.from_file).read_text(encoding="utf-8"))
+        task = TaskSpec(
+            key=spec["key"], title=spec.get("title", spec["key"]),
+            goal=spec.get("goal", ""), criteria=spec["criteria"],
+            domain=spec.get("domain", "editor"),
+        )
+    else:
+        if not args.criteria:
+            print("need --criteria (repeatable) or --from-file", file=sys.stderr)
+            return 2
+        key = args.key or "task_" + str(int(time.time()))
+        task = TaskSpec(key=key, title=args.title or key,
+                        goal=args.goal or key, criteria=args.criteria)
+
+    loop = LearningLoop()
+    try:
+        print(f"{C.B}Acquiring{C.R} {task.key}")
+        for c in task.criteria:
+            print(f"  · {c}")
+        rep = loop.acquire(task, max_attempts=args.attempts)
+        print()
+        print(f"  solved          {C.G if rep.solved else C.RED}{rep.solved}{C.R}")
+        print(f"  attempts        {rep.attempts}")
+        print(f"  first attempt   {rep.first_attempt_ok}")
+        print(f"  progress        {rep.final_progress:.2f}")
+        print(f"  seconds         {rep.seconds:.1f}")
+        print(f"  replay          {rep.replay_runs}/{rep.replay_runs if rep.replay_passed else 0}"
+              f" {'(fresh process)' if rep.replay_passed else ''}")
+        if rep.failure_classes:
+            print(f"  failures        {', '.join(rep.failure_classes)}")
+        if rep.candidate_id and args.promote and rep.solved:
+            out = loop.promote(rep.candidate_id, task)
+            if out.get("promoted"):
+                print(f"  {C.G}promoted{C.R}      {out['slug']} (skill {out['skill_id']})")
+            else:
+                print(f"  {C.Y}not promoted{C.R}  {out.get('reason')}")
+        elif rep.candidate_id:
+            print(f"  {C.DIM}candidate {rep.candidate_id} kept; pass --promote to admit it{C.R}")
+        if args.json:
+            print(json.dumps(rep.to_json(), indent=2))
+    finally:
+        loop.close()
+    return 0 if rep.solved else 1
+
+
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    from minicoder.learning.runner import render_markdown, run_benchmark
+
+    report = run_benchmark(editor=not args.no_editor)
+    if args.json:
+        print(json.dumps(report, indent=2, default=str))
+    else:
+        print(render_markdown(report))
+    s = report["summary"]
+    print(f"\n{C.B}{s['final_success']}/{s['n']}{C.R} solved · "
+          f"first-attempt {s['first_attempt_success']}/{s['n']} · "
+          f"replay {s['replay_passed']}/{s['replay_attempted']} · "
+          f"{s['total_seconds']}s · report {report['report_path']}")
+    return 0
+
+
+def cmd_acceptance(args: argparse.Namespace) -> int:
+    from minicoder.learning.acceptance import run
+
+    report = run()
+    if args.json:
+        print(json.dumps(report, indent=2, default=str))
+    return 0 if report["all_passed"] else 1
+
+
+def cmd_safeguard(args: argparse.Namespace) -> int:
+    from minicoder.learning.safeguard import BaselineRegistry, ImprovementGate, quick_metrics
+
+    registry = BaselineRegistry()
+    gate = ImprovementGate()
+    if args.action == "baseline":
+        snap = registry.snapshot(args.name)
+        if snap.get("created"):
+            metrics = quick_metrics()
+            gate.record_baseline_metrics(metrics, name=args.name)
+            print(f"{C.G}baseline{C.R} {args.name}: {', '.join(snap['files'])}")
+            print(f"  metrics {json.dumps(metrics)}")
+        else:
+            print(f"{C.Y}exists{C.R} {snap.get('reason')}")
+            print(f"  integrity {json.dumps(registry.verify_baseline(args.name))}")
+        return 0
+    if args.action == "verify":
+        print(json.dumps(registry.verify_baseline(args.name), indent=2))
+        return 0
+    if args.action == "evaluate":
+        metrics = quick_metrics()
+        man = registry.manifest(args.name) or {}
+        base = man.get("metrics")
+        if not base:
+            print(f"no baseline metrics recorded for {args.name}; run "
+                  f"`safeguard baseline --name {args.name}` first", file=sys.stderr)
+            return 2
+        out = gate.evaluate(metrics, base, label="cli")
+        print(json.dumps({"metrics": metrics, **out}, indent=2))
+        return 0 if out["admitted"] else 1
+    if args.action == "rollback":
+        out = gate.revert(label="cli")
+        print(json.dumps(out, indent=2, default=str))
+        return 0 if out.get("rolled_back") else 1
+    print(f"unknown action {args.action}", file=sys.stderr)
+    return 2
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()

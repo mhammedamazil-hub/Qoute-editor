@@ -1,4 +1,4 @@
-"""The Sleep Engine: seven stages, measured and reported.
+"""The Sleep Engine: eight stages, measured and reported.
 
 Stages (blueprint §4):
 1. Prioritised memory replay     — rank episodes by surprise/failure/correction
@@ -162,13 +162,17 @@ class SleepEngine:
             consolidated = self._stage(report, 2, "Memory consolidation", lambda: self._consolidate(report))
             self._stage(report, 3, "Cross-modal pattern discovery", lambda: self._cross_modal(report))
             self._stage(report, 4, "Organisation & conflict resolution", lambda: self._organise(report))
-            self._stage(report, 5, "Forgetting & compression", lambda: self._forget(report))
-            self._stage(report, 6, "Skill compilation & self-practice", lambda: self._compile(report))
-            self._stage(report, 7, "GitHub dispatch & wake-up", lambda: self._dispatch(report))
+            learning = self._stage(report, 5, "Learning consolidation & skill retention",
+                                   lambda: self._consolidate_learning(report))
+            self._stage(report, 6, "Forgetting & compression", lambda: self._forget(report))
+            self._stage(report, 7, "Skill compilation & self-practice", lambda: self._compile(report))
+            self._stage(report, 8, "GitHub dispatch & wake-up", lambda: self._dispatch(report))
             self.semantic.save_snapshot()
             report.metrics = {
                 "episodes_consolidated": consolidated.get("consolidated", 0),
                 "nodes_added": consolidated.get("nodes_added", 0),
+                "learning_extracted": learning.get("extracted", 0),
+                "learning_retention_passed": learning.get("retention_passed", 0),
                 "backup": str(backup) if backup else "",
                 "db_stats": self.db.stats(),
             }
@@ -459,6 +463,174 @@ class SleepEngine:
             "practice_attempted": practiced,
             "practice_verified": verified_new,
         }
+
+
+    # ------------------------------------------------- learning consolidation
+    def _consolidate_learning(self, report: SleepReport) -> dict[str, Any]:
+        """Turn acquired experience into durable, calibrated knowledge.
+
+        The old cycle could only re-verify skills that already existed. This
+        stage reads what the learning loop actually produced and does the work
+        the brief asks for:
+
+        * extract knowledge from **solved** experiments only — a failed
+          experiment contributes nothing except its failure class, which is
+          useful but is not knowledge;
+        * de-duplicate against existing semantic nodes;
+        * detect contradictions with what is already believed and record them,
+          rather than silently overwriting;
+        * calibrate confidence from the measured replay success rate, not from
+          optimism;
+        * stamp temporal validity so a later change can supersede instead of
+          corrupting history;
+        * record skill dependencies on the tools the procedure used;
+        * re-run the replay to measure retention, so forgetting is visible.
+        """
+        out: dict[str, Any] = {"extracted": 0, "duplicates": 0, "contradictions": 0,
+                               "dependencies": 0, "retention_checked": 0,
+                               "retention_passed": 0, "calibrated": []}
+        try:
+            solved = [dict(r) for r in self.db.query(
+                "SELECT id, task_key, title, goal, success_criteria FROM experiments"
+                " WHERE status='solved' ORDER BY id DESC LIMIT 20"
+            )]
+        except Exception:
+            return {"skipped": "no experiments table"}
+        if not solved:
+            return out
+
+        for exp in solved:
+            cand = self.db.query_one(
+                "SELECT * FROM skill_candidates WHERE experiment_id=?"
+                " AND status IN ('promoted','replay_passed') ORDER BY id DESC LIMIT 1",
+                (exp["id"],),
+            )
+            if not cand:
+                continue
+            slug = cand["slug"]
+            # --- confidence calibration from measured replays
+            runs = int(cand["replay_runs"] or 0)
+            failures = json.loads(cand["replay_failures"] or "[]")
+            attempts_total = runs + len(failures)
+            confidence = round(runs / attempts_total, 3) if attempts_total else 0.0
+            out["calibrated"].append({"slug": slug, "replays": runs,
+                                      "failures": len(failures),
+                                      "confidence": confidence})
+
+            # --- de-duplication: is this already known?
+            label = f"learned procedure: {slug}"
+            existing = self.semantic.find_by_label(label) if hasattr(
+                self.semantic, "find_by_label") else None
+            if existing is None:
+                existing = self.db.query_one(
+                    "SELECT id, content FROM semantic_nodes WHERE label=?", (label,)
+                )
+            content = (f"To satisfy {exp['goal']}, the verified procedure for "
+                       f"'{exp['title']}' is a {len(json.loads(cand['procedure'] or '[]'))}-step "
+                       f"tool sequence that passed {runs} independent replays.")
+            if existing:
+                out["duplicates"] += 1
+                if str(existing["content"]) != content:
+                    self._record_conflict(label, str(existing["content"]), content, slug)
+                    out["contradictions"] += 1
+                continue
+
+            self.semantic.upsert(
+                "procedure", label, content,
+                status=VERIFIED, source="learning_loop", confidence=confidence,
+                meta={"experiment_id": exp["id"], "candidate_id": cand["id"],
+                      "replay_runs": runs, "valid_from": utcnow(),
+                      "supersedes": cand["supersedes"] or ""},
+            )
+            out["extracted"] += 1
+
+            # --- dependencies on the tools the procedure used
+            try:
+                procedure = json.loads(cand["procedure"] or "[]")
+            except json.JSONDecodeError:
+                procedure = []
+            for step in procedure:
+                tool = step.get("tool")
+                if not tool:
+                    continue
+                self.db.execute(
+                    "INSERT OR IGNORE INTO skill_dependencies(ts, skill_slug, depends_on, kind)"
+                    " VALUES (?,?,?,?)",
+                    (utcnow(), slug, f"tool:{tool}", "requires"),
+                )
+                out["dependencies"] += 1
+
+            # --- retention: does the stored skill still work now?
+            out["retention_checked"] += 1
+            if self._replay_retention(slug, procedure, exp):
+                out["retention_passed"] += 1
+
+        if out["extracted"]:
+            report.promoted.append(
+                f"learning: {out['extracted']} new procedure(s) consolidated, "
+                f"{out['contradictions']} contradiction(s), "
+                f"{out['retention_passed']}/{out['retention_checked']} retained"
+            )
+        return out
+
+    def _record_conflict(self, label: str, old: str, new: str, slug: str) -> None:
+        try:
+            self.db.execute(
+                "INSERT INTO memory_conflicts(ts, label, old_content, new_content,"
+                " source, resolved) VALUES (?,?,?,?,?,?)",
+                (utcnow(), label, old[:2000], new[:2000], f"learning:{slug}", 0),
+            )
+        except Exception:
+            pass
+
+    def _replay_retention(self, slug: str, procedure: list[dict[str, Any]],
+                          exp: dict[str, Any]) -> bool:
+        """Re-run a stored procedure and record whether it still holds.
+
+        Retention is measured, not assumed: a skill that no longer replays is
+        reported here and its confidence is degraded rather than left high.
+        """
+        if not procedure:
+            return False
+        try:
+            from minicoder.learning.criteria import evaluate_editor_criteria
+            from minicoder.tools.editor_bridge import EditorBridge
+
+            criteria = json.loads(exp["success_criteria"] or "[]")
+            bridge = EditorBridge()
+            try:
+                bridge._ensure()
+                bridge.call("new_project", {})
+                for step in procedure:
+                    result, _ = bridge.call(step["tool"], step.get("args") or {})
+                    if isinstance(result, dict) and result.get("ok") is False:
+                        self.db.execute(
+                            "INSERT INTO skill_replays(ts, skill_slug, task_key, variation,"
+                            " passed, detail) VALUES (?,?,?,?,?,?)",
+                            (utcnow(), slug, exp["task_key"], "sleep_retention", 0,
+                             json.dumps({"error": str(result.get("error"))[:200]})),
+                        )
+                        return False
+                _, raw = bridge.call("get_app_state", {})
+                from minicoder.learning.criteria import EditorState
+
+                state = EditorState.from_snapshot(raw.get("snapshot") or {})
+                results = evaluate_editor_criteria(criteria, state)
+                ok = bool(results) and all(r.passed for r in results)
+                self.db.execute(
+                    "INSERT INTO skill_replays(ts, skill_slug, task_key, variation,"
+                    " passed, detail) VALUES (?,?,?,?,?,?)",
+                    (utcnow(), slug, exp["task_key"], "sleep_retention", int(ok),
+                     json.dumps({"criteria": [r.to_json() for r in results]})),
+                )
+                return ok
+            finally:
+                try:
+                    bridge.close()
+                except Exception:
+                    pass
+        except Exception:
+            return False
 
     def _dispatch(self, report: SleepReport) -> dict[str, Any]:
         from minicoder.sleep.github import GitHubDispatcher

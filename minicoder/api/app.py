@@ -12,6 +12,7 @@ import base64
 import io
 import json
 import time
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
@@ -464,6 +465,204 @@ def training_runs() -> dict[str, Any]:
         "pipeline": runs,
         "checkpoints": sorted(p.name for p in CONFIG.paths.checkpoints.glob("*") if p.is_file()),
     }
+
+
+# --------------------------------------------------------------- learning API
+@app.get("/api/learning/overview")
+def learning_overview() -> dict[str, Any]:
+    """Everything the learning dashboard shows, from recorded measurements."""
+    svc = service()
+    db = svc.db
+
+    def scalar(sql: str, params: tuple = ()) -> Any:
+        try:
+            row = db.query_one(sql, params)
+            return row[0] if row else 0
+        except Exception:
+            return 0
+
+    def rows(sql: str, params: tuple = (), limit: int = 50) -> list[dict[str, Any]]:
+        try:
+            return [dict(r) for r in db.query(sql + " LIMIT ?", (*params, limit))]
+        except Exception:
+            return []
+
+    experiments = rows(
+        "SELECT id, ts, task_key, title, domain, status, seconds, best_candidate_id"
+        " FROM experiments ORDER BY id DESC", (), 30
+    )
+    attempts = rows(
+        "SELECT n, ok, failure_class, duration_ms FROM attempts"
+        " WHERE experiment_id=(SELECT MAX(id) FROM experiments) ORDER BY n", (), 50
+    )
+    candidates = rows(
+        "SELECT c.id, c.slug, c.status, c.replay_passed, c.replay_runs,"
+        " c.replay_failures, e.task_key FROM skill_candidates c"
+        " LEFT JOIN experiments e ON e.id = c.experiment_id ORDER BY c.id DESC", (), 30
+    )
+    replays = rows(
+        "SELECT skill_slug, task_key, variation, passed, ts FROM skill_replays"
+        " ORDER BY id DESC", (), 40
+    )
+    resources = rows(
+        "SELECT ts, rss_mb, cpu_seconds, context FROM resource_samples"
+        " ORDER BY id DESC", (), 40
+    )
+
+    by_failure: dict[str, int] = {}
+    for a in attempts:
+        by_failure[a["failure_class"]] = by_failure.get(a["failure_class"], 0) + 1
+
+    retention = _retention_series(db)
+
+    return {
+        "counts": {
+            "experiments": scalar("SELECT COUNT(*) FROM experiments"),
+            "solved": scalar("SELECT COUNT(*) FROM experiments WHERE status='solved'"),
+            "exhausted": scalar("SELECT COUNT(*) FROM experiments WHERE status='exhausted'"),
+            "hypotheses": scalar("SELECT COUNT(*) FROM hypotheses"),
+            "attempts": scalar("SELECT COUNT(*) FROM attempts"),
+            "failed_attempts": scalar("SELECT COUNT(*) FROM attempts WHERE ok=0"),
+            "candidates": scalar("SELECT COUNT(*) FROM skill_candidates"),
+            "awaiting_verification": scalar(
+                "SELECT COUNT(*) FROM skill_candidates WHERE status='candidate'"),
+            "replay_passed": scalar(
+                "SELECT COUNT(*) FROM skill_candidates WHERE status='replay_passed'"),
+            "promoted": scalar(
+                "SELECT COUNT(*) FROM skill_candidates WHERE status='promoted'"),
+            "rejected": scalar(
+                "SELECT COUNT(*) FROM skill_candidates WHERE status='rejected'"),
+            "dependencies": scalar("SELECT COUNT(*) FROM skill_dependencies"),
+        },
+        "experiments": experiments,
+        "attempts": attempts,
+        "candidates": candidates,
+        "replays": replays,
+        "resources": resources,
+        "failure_classes": dict(sorted(by_failure.items())),
+        "retention": retention,
+        "benchmark": _benchmark_summary(),
+        "acceptance": _acceptance_summary(),
+        "checkpoints": sorted(
+            p.name for p in CONFIG.paths.checkpoints.glob("*") if p.is_file()),
+        "baselines": sorted(
+            p.name for p in (CONFIG.paths.home / "memory" / "baselines").glob("*")
+            if p.is_dir()) if (CONFIG.paths.home / "memory" / "baselines").exists() else [],
+    }
+
+
+def _has_table(db: Any, name: str) -> bool:
+    try:
+        return db.query_one(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+        ) is not None
+    except Exception:
+        return False
+
+
+def _retention_series(db: Any) -> list[dict[str, Any]]:
+    """Pass rate per skill over time — the forgetting curve."""
+    try:
+        rows = db.query(
+            "SELECT skill_slug, ts, passed FROM skill_replays ORDER BY id"
+        )
+    except Exception:
+        return []
+    series: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        slug = r["skill_slug"]
+        entry = series.setdefault(slug, {"slug": slug, "runs": 0, "passed": 0,
+                                         "points": []})
+        entry["runs"] += 1
+        entry["passed"] += int(r["passed"])
+        entry["points"].append({"ts": r["ts"], "passed": int(r["passed"])})
+    for entry in series.values():
+        entry["rate"] = round(entry["passed"] / entry["runs"], 3) if entry["runs"] else 0.0
+        entry["points"] = entry["points"][-20:]
+    return sorted(series.values(), key=lambda e: -e["runs"])
+
+
+def _benchmark_summary() -> dict[str, Any]:
+    path = CONFIG.paths.home.parent / "datasets" / "learning" / "benchmark_latest.json"
+    if not path.exists():
+        path = Path("datasets/learning/benchmark_latest.json")
+    if not path.exists():
+        return {"available": False, "reason": "run `minicoder benchmark` first"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"available": False, "reason": "unreadable report"}
+    return {
+        "available": True,
+        "generated_at": data.get("generated_at"),
+        "summary": data.get("summary", {}),
+        "by_category": data.get("by_category", {}),
+        "failed": data.get("failed", []),
+        "tasks": [
+            {k: t.get(k) for k in ("key", "category", "mode", "first_attempt_ok",
+                                   "final_ok", "attempts", "seconds", "tokens")}
+            for t in data.get("tasks", [])
+        ],
+    }
+
+
+def _acceptance_summary() -> dict[str, Any]:
+    path = Path("datasets/learning/acceptance_latest.json")
+    if not path.exists():
+        return {"available": False, "reason": "run `minicoder acceptance` first"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"available": False, "reason": "unreadable report"}
+    return {
+        "available": True,
+        "generated_at": data.get("generated_at"),
+        "passed": data.get("passed"),
+        "total": data.get("total"),
+        "all_passed": data.get("all_passed"),
+        "checks": [{"n": c.get("n"), "name": c.get("name"), "passed": c.get("passed"),
+                    "detail": c.get("detail")} for c in data.get("checks", [])],
+    }
+
+
+@app.get("/api/learning/experiments")
+def learning_experiments(limit: int = 50) -> dict[str, Any]:
+    svc = service()
+    rows = svc.db.query("SELECT * FROM experiments ORDER BY id DESC LIMIT ?", (limit,))
+    out = []
+    for r in rows:
+        exp = dict(r)
+        exp["success_criteria"] = json.loads(exp.get("success_criteria") or "[]")
+        exp["attempts"] = [dict(a) for a in svc.db.query(
+            "SELECT n, ok, failure_class, error, duration_ms, tokens_used FROM attempts"
+            " WHERE experiment_id=? ORDER BY n", (exp["id"],))]
+        out.append(exp)
+    return {"experiments": out}
+
+
+@app.get("/api/learning/skills")
+def learning_skills() -> dict[str, Any]:
+    """Procedural memory split by how far it has been verified."""
+    svc = service()
+    db = svc.db
+    learned = [dict(r) for r in db.query(
+        "SELECT c.id, c.slug, c.status, c.replay_passed, c.replay_runs,"
+        " c.replay_failures, c.procedure, e.task_key, e.title"
+        " FROM skill_candidates c LEFT JOIN experiments e ON e.id=c.experiment_id"
+        " ORDER BY c.id DESC")]
+    for item in learned:
+        try:
+            item["steps"] = len(json.loads(item.pop("procedure") or "[]"))
+        except Exception:
+            item["steps"] = 0
+        item["replay_failures"] = json.loads(item.get("replay_failures") or "[]")
+    seeded = [dict(r) for r in db.query(
+        "SELECT slug, name, domain, status, source, confidence FROM skills"
+        " ORDER BY updated_at DESC LIMIT 100")]
+    deps = [dict(r) for r in db.query(
+        "SELECT skill_slug, depends_on, kind FROM skill_dependencies ORDER BY id DESC"
+        " LIMIT 200")]
+    return {"learned": learned, "seeded": seeded, "dependencies": deps}
 
 
 @app.get("/api/export/snapshot")
