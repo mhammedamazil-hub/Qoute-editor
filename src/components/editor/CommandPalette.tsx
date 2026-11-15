@@ -18,6 +18,7 @@ import {
   Sun,
   Type,
   Undo2,
+  Brain,
   Wand2,
   ZoomIn,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ export function CommandPalette() {
   const open = useUIStore((s) => s.paletteOpen);
   const setPalette = useUIStore((s) => s.setPalette);
   const setAIOpen = useUIStore((s) => s.setAIOpen);
+  const setBrainOpen = useUIStore((s) => s.setBrainOpen);
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +60,7 @@ export function CommandPalette() {
     const list: Command[] = [
       { id: 'ai', title: 'Ask the Copilot', group: 'AI', icon: <Sparkles size={14} />, keywords: 'chat ai assistant', hint: '⌘J', run: () => { close(); setAIOpen(true); } },
       { id: 'ai-generate', title: 'Design a poster with AI', group: 'AI', icon: <Wand2 size={14} />, keywords: 'generate studio create', run: () => { close(); setAIOpen(true); } },
+      { id: 'brain', title: 'Open the MiniCoder Brain', group: 'AI', icon: <Brain size={14} />, keywords: 'brain memory sleep skills graph cognitive', run: () => { close(); setBrainOpen(true); } },
       { id: 'undo', title: 'Undo', group: 'Edit', icon: <Undo2 size={14} />, hint: '⌘Z', run: () => { ed().undo(); close(); } },
       { id: 'redo', title: 'Redo', group: 'Edit', icon: <Redo2 size={14} />, hint: '⇧⌘Z', run: () => { ed().redo(); close(); } },
       { id: 'duplicate', title: 'Duplicate selection', group: 'Edit', keywords: 'copy', hint: '⌘D', run: () => { if (ids().length) ed().duplicateElements(ids()); close(); } },
@@ -108,7 +111,7 @@ export function CommandPalette() {
       { id: 'settings', title: 'Settings', group: 'File', icon: <Settings size={14} />, run: () => { ed().setModal('settings'); close(); } },
     ];
     return list;
-  }, [setPalette, setAIOpen]);
+  }, [setPalette, setAIOpen, setBrainOpen]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

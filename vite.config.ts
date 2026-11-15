@@ -25,11 +25,20 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     allowedHosts: true,
+    proxy: {
+      // MiniCoder brain backend (minicoder serve) — same-origin from the browser's view.
+      "/api": { target: "http://127.0.0.1:8765", changeOrigin: true },
+      "/ws": { target: "ws://127.0.0.1:8765", ws: true },
+    },
   },
   preview: {
     host: "0.0.0.0",
     port: 4173,
     allowedHosts: true,
+    proxy: {
+      "/api": { target: "http://127.0.0.1:8765", changeOrigin: true },
+      "/ws": { target: "ws://127.0.0.1:8765", ws: true },
+    },
   },
   build: {
     target: "es2020",

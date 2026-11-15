@@ -23,12 +23,15 @@ interface UIState {
   paletteOpen: boolean;
   aiOpen: boolean;
   shortcutsOpen: boolean;
+  /** MiniCoder brain dashboard overlay. */
+  brainOpen: boolean;
   /** Mobile: which primary sheet is open in the editor. */
   pushToast: (t: Omit<Toast, 'id' | 'duration'> & { duration?: number }) => string;
   dismissToast: (id: string) => void;
   setPalette: (open: boolean) => void;
   setAIOpen: (open: boolean) => void;
   setShortcuts: (open: boolean) => void;
+  setBrainOpen: (open: boolean) => void;
 }
 
 let toastSeq = 0;
@@ -38,6 +41,7 @@ export const useUIStore = create<UIState>()((set, get) => ({
   paletteOpen: false,
   aiOpen: false,
   shortcutsOpen: false,
+  brainOpen: false,
 
   pushToast: (t) => {
     const id = `toast-${++toastSeq}`;
@@ -53,6 +57,7 @@ export const useUIStore = create<UIState>()((set, get) => ({
   setPalette: (paletteOpen) => set({ paletteOpen }),
   setAIOpen: (aiOpen) => set({ aiOpen }),
   setShortcuts: (shortcutsOpen) => set({ shortcutsOpen }),
+  setBrainOpen: (brainOpen) => set({ brainOpen }),
 }));
 
 export function toast(message: string, tone: ToastTone = 'info', detail?: string, action?: Toast['action']) {

@@ -1,0 +1,112 @@
+# MiniCoder — Skill-Driven Continual Learning Pipeline
+# ─────────────────────────────────────────────────────
+# Triggered when the sleep engine pushes verified skill shards to
+# datasets/sleep_skills/ (via the `sleep/skills-*` PR branch or a direct push
+# to main), or manually.
+#
+#   validate  → schema / licence / provenance / hash gate on every shard
+#   train     → from-scratch MiniCoder-Nano trained on shards + replay buffer
+#               (older shards act as the anti-forgetting replay mix)
+#   gate      → adapter is released ONLY if holdout perplexity beats the
+#               untrained baseline; otherwise the workflow fails loudly
+#   release   → versioned `sleep-adapter-<run>` GitHub Release with the
+#               adapter + eval_report.json (local brains pull on next WAKE)
+name: sleep_skill_training
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "datasets/sleep_skills/**"
+  pull_request:
+    paths:
+      - "datasets/sleep_skills/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # required to publish the adapter release
+
+concurrency:
+  group: sleep-skill-training
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: "1 · Validate shards (schema · licence · provenance · hashes)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install MiniCoder
+        run: pip install -e ./minicoder
+      - name: Validate every shard
+        run: python minicoder/training/validate_shard.py datasets/sleep_skills | tee validate_report.json
+      - name: Regression & dedup audit across all shards
+        run: python minicoder/training/regression_eval.py datasets/sleep_skills
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: validate_report.json
+          if-no-files-found: ignore
+
+  train:
+    name: "2 · Train adapter from scratch on verified skills"
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install MiniCoder (CPU-only, numpy — no GPU required)
+        run: pip install -e ./minicoder
+      - name: Train MiniCoder-Nano + holdout evaluation (the gate)
+        run: python minicoder/training/train_adapter.py --datasets datasets/sleep_skills --out minicoder/release --steps 600 | tee train_log.txt
+      - name: Upload adapter + report (always, for the audit trail)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sleep-adapter-run-${{ github.run_number }}
+          path: |
+            minicoder/release/minicoder-nano.npz
+            minicoder/release/eval_report.json
+            train_log.txt
+          if-no-files-found: warn
+      - name: Gate summary
+        if: always()
+        run: cat minicoder/release/eval_report.json || true
+
+  release:
+    name: "3 · Publish versioned adapter release (only if the gate passed)"
+    needs: train
+    # Never on PRs — only after code lands on main or a manual run.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download adapter produced by the train job
+        uses: actions/download-artifact@v4
+        with:
+          name: sleep-adapter-run-${{ github.run_number }}
+          path: release
+      - name: Show measured metrics (real numbers from this run)
+        run: cat release/eval_report.json
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="sleep-adapter-v1.${{ github.run_number }}.0"
+          gh release create "$TAG" \
+            release/minicoder-nano.npz \
+            release/eval_report.json \
+            --title "Sleep adapter $TAG" \
+            --notes "Automated skill-driven continual learning release.
+
+          Trained from scratch on the verified shards in datasets/sleep_skills/ at ${{ github.sha }}.
+          The gate (holdout perplexity must beat the untrained baseline) passed — see eval_report.json for the measured numbers.
+          Local brains pick this up on their next WAKE (minicoder checks GitHub Releases)."

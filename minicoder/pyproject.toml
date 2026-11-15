@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minicoder"
+version = "0.1.0"
+description = "MiniCoder — a compact, multimodal-ready, self-evolving cognitive intelligence core (offline-first, from scratch)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "pydantic>=2.6",
+  "networkx>=3.1",
+  "pyyaml>=6.0",
+  "numpy>=1.26",
+  "pillow>=10.0",
+  "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+vec = ["sqlite-vec>=0.1.6"]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+
+[project.scripts]
+minicoder = "minicoder.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["minicoder*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

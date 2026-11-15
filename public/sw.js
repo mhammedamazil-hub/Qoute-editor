@@ -31,6 +31,9 @@ self.addEventListener('fetch', (event) => {
   // Let Google Fonts and the Gemini API go straight to the network.
   if (url.origin !== self.location.origin) return;
 
+  // Brain API telemetry must never be served from cache.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/')) return;
+
   // Navigations: network first (fresh build), cached shell as offline fallback.
   if (request.mode === 'navigate') {
     event.respondWith(
