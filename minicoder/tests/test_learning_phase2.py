@@ -513,3 +513,22 @@ def test_benchmark_does_not_contaminate_production_memory(tmp_path: Path) -> Non
         db.close()
     finally:
         config_mod.activate_home(live_home)
+
+
+@pytest.mark.slow
+def test_benchmark_baseline_still_solves(tmp_path: Path) -> None:
+    """The committed regression baseline must still be reproducible.
+
+    This is the gate CI uses: any change that stops the system acquiring a task
+    it used to acquire fails here rather than being discovered later.
+    """
+    from minicoder.cli import BASELINE_BENCH
+    from minicoder.learning.runner import run_benchmark
+
+    if not BASELINE_BENCH.exists():
+        pytest.skip("no committed benchmark baseline")
+    base = json.loads(BASELINE_BENCH.read_text(encoding="utf-8"))
+    report = run_benchmark(editor=False, out_dir=tmp_path)
+    now = {t["key"] for t in report["tasks"] if t["final_ok"]}
+    missing = sorted(set(base["solved_keys"]) - now)
+    assert not missing, f"regressed against baseline: {missing}"

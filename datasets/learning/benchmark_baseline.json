@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-11-15T17:05:48Z",
+  "solved_keys": [
+    "abs_all",
+    "count_lines",
+    "count_positive",
+    "double_all",
+    "evens_sorted",
+    "fix_mutation",
+    "fix_off_by_one",
+    "median",
+    "product",
+    "range_span",
+    "sum_column",
+    "sum_evens",
+    "unique_upper",
+    "word_lengths",
+    "write_report"
+  ],
+  "summary": {
+    "n": 17,
+    "final_success": 15,
+    "final_rate": 0.882,
+    "first_attempt_success": 15,
+    "first_attempt_rate": 0.882,
+    "confirmed_in_sandbox": 15,
+    "mean_attempts": 1.24,
+    "total_seconds": 2.83,
+    "mean_seconds": 0.17,
+    "peak_rss_mb": 46.8,
+    "search_tokens": 5831,
+    "replay_attempted": 0,
+    "replay_passed": 0,
+    "generalisation_attempted": 0,
+    "generalisation_passed": 0
+  }
+}

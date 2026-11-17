@@ -102,6 +102,15 @@ jobs:
                   fh.write(f"{key}={str(report.get(key, False)).lower()}\n")
           PY
 
+      - name: Benchmark gate — the system must still acquire what it could acquire
+        if: always()
+        run: |
+          set -euo pipefail
+          # Loss-based gating alone cannot tell you whether the *capability* survived.
+          # This replays the committed sealed-benchmark baseline and fails if any
+          # task the system used to acquire no longer is.
+          python -m minicoder benchmark --no-editor --check | tee benchmark_gate.log
+
       - name: Upload gate report
         if: always()
         uses: actions/upload-artifact@v4

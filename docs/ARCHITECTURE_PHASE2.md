@@ -156,6 +156,19 @@ Demonstrated on a deliberately wrecked model: `skill_accuracy` 0.875 → 0.0,
 `retention` 0.875 → 0.0, `val_ce` 5.68 → 356.10, all three caught, rollback
 restored every value exactly and the baseline re-verified intact.
 
+**Evaluation isolation.** A benchmark run promotes the procedures it discovers, so
+running it against the live brain writes benchmark-derived skills into production
+procedural memory — measured: one run added three `learned_*` skills and tripped
+the seal on the next run. `run_benchmark()` now redirects the whole run at a
+throwaway home and restores it in a `finally`. Verified: a full 22-task run leaves
+the live brain at 1 experiment and 1 learned skill, and a test holds that line.
+
+**Two gates, not one.** The continual-learning job keeps its loss/retention gate
+and adds `minicoder benchmark --no-editor --check`, which replays the committed
+baseline in `datasets/learning/benchmark_baseline.json` and exits non-zero naming
+any task that no longer solves. Loss is not capability; the capability itself has
+to be re-measured.
+
 ## Observability
 
 `/api/learning/overview`, `/api/learning/skills`, `/api/learning/experiments`,

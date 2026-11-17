@@ -289,10 +289,18 @@ sleep (local)  ──► shard + .sha256 ──► push to `sleep-skills`
                          1. shard verify      checksum + provenance, or stop
                          2. LoRA train        rank 4, α 8, lr 5e-5, 6 epochs
                          3. validation gate   retention, skill NLL, LM CE
-                         4. Release           only if the gate accepts
+                         4. benchmark gate    still acquires what it acquired before
+                         5. Release           only if both gates accept
                                           │
 wake (local)   ◄── adapter ◄──────────────┘
 ```
+
+The validation gate reads loss and retention. That is necessary but not sufficient:
+a model can keep its loss and lose a capability. So a second gate replays the
+committed sealed-benchmark baseline (`minicoder benchmark --no-editor --check`)
+and fails the run if any task the system used to acquire no longer is. Verified
+both ways — with a baseline key that no longer solves, the job exits 1 and names
+the task; unmodified, it exits 0.
 
 A measured promotion (shard `shard_20261115T145458Z`, 130 examples):
 
@@ -361,7 +369,7 @@ minicoder/
   eval/              suites.py
   api/app.py         FastAPI
   dashboard/         React + Vite + TypeScript
-  tests/             51 tests
+  tests/             86 tests
 .github/workflows/   ci.yml, continual-learning.yml
 ```
 
@@ -393,7 +401,7 @@ minicoder/
 ## 10. Tests
 
 ```bash
-PYTHONPATH=. pytest minicoder/tests -q     # 84 passed
+PYTHONPATH=. pytest minicoder/tests -q     # 86 passed
 .venv/bin/ruff check minicoder/            # all checks passed
 npm run verify                             # editor typecheck + smoke + smoke:ai + smoke:ui + build
 cd minicoder/dashboard && npx vite-node scripts/render-check.tsx   # 11/11

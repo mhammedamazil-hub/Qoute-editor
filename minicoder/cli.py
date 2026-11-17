@@ -591,6 +591,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("benchmark", help="run the sealed learning benchmark")
     s.add_argument("--no-editor", action="store_true",
                    help="skip editor tasks (no bridge subprocess needed)")
+    s.add_argument("--check", action="store_true",
+                   help="fail if a previously solved task regressed (CI gate)")
+    s.add_argument("--write-baseline", action="store_true",
+                   help="record this run as the regression baseline")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_benchmark)
 
@@ -665,10 +669,44 @@ def cmd_learn(args: argparse.Namespace) -> int:
     return 0 if rep.solved else 1
 
 
+BASELINE_BENCH = Path("datasets/learning/benchmark_baseline.json")
+
+
 def cmd_benchmark(args: argparse.Namespace) -> int:
     from minicoder.learning.runner import render_markdown, run_benchmark
 
     report = run_benchmark(editor=not args.no_editor)
+    if getattr(args, "check", False):
+        # Regression gate for CI: a change must not reduce the number of sealed
+        # tasks the system can acquire. Compared against a committed baseline so
+        # the check is meaningful, not self-referential.
+        if not BASELINE_BENCH.exists():
+            print(f"{C.Y}no baseline at {BASELINE_BENCH}; run with --write-baseline{C.R}")
+            return 0
+        base = json.loads(BASELINE_BENCH.read_text(encoding="utf-8"))
+        base_ok = set(base.get("solved_keys", []))
+        now_ok = {t["key"] for t in report["tasks"] if t["final_ok"]}
+        regressed = sorted(base_ok - now_ok)
+        gained = sorted(now_ok - base_ok)
+        print(f"\n{C.B}benchmark gate{C.R} baseline {len(base_ok)} solved, "
+              f"now {len(now_ok)} solved")
+        if gained:
+            print(f"  {C.G}gained{C.R} {gained}")
+        if regressed:
+            print(f"  {C.RED}REGRESSED{C.R} {regressed}")
+            return 1
+        print(f"  {C.G}no regression{C.R}")
+        return 0
+    if getattr(args, "write_baseline", False):
+        payload = {
+            "generated_at": report["generated_at"],
+            "solved_keys": sorted(t["key"] for t in report["tasks"] if t["final_ok"]),
+            "summary": report["summary"],
+        }
+        BASELINE_BENCH.parent.mkdir(parents=True, exist_ok=True)
+        BASELINE_BENCH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"{C.G}baseline written{C.R} {BASELINE_BENCH} "
+              f"({len(payload['solved_keys'])} solved)")
     if args.json:
         print(json.dumps(report, indent=2, default=str))
     else:
