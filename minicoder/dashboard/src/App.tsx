@@ -4,6 +4,7 @@ import { useTelemetry } from "./api";
 import { ChatView } from "./ChatView";
 import { GraphView } from "./GraphView";
 import { LearningView } from "./LearningView";
+import { Research } from "./ResearchView";
 import { MemoryView } from "./MemoryView";
 import { Overview } from "./Overview";
 import { TrainingView } from "./TrainingView";
@@ -18,6 +19,7 @@ const TABS = [
   { id: "vision", label: "Vision" },
   { id: "training", label: "Training" },
   { id: "learning", label: "Acquisition" },
+  { id: "research", label: "Research" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -108,6 +110,11 @@ export default function App() {
         {tab === "learning" && (
           <div className="h-full overflow-y-auto pr-1">
             <LearningView />
+          </div>
+        )}
+        {tab === "research" && (
+          <div className="h-full overflow-y-auto pr-1">
+            <Research />
           </div>
         )}
       </main>

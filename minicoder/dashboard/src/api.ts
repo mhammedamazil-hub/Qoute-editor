@@ -64,6 +64,55 @@ async function jpost<T>(url: string, body: unknown): Promise<T> {
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
+
+export type ResearchArm = {
+  arm: string;
+  tasks: number;
+  hidden_pass: number;
+  rate: number;
+  ci_low: number | null;
+  ci_high: number | null;
+  established: boolean;
+  dev_pass: number;
+  test_fitted: number;
+  mean_candidates: number;
+};
+
+export type ResearchOverviewResponse = {
+  acquisition: {
+    available: boolean;
+    experiment_id?: string | null;
+    commit?: string | null;
+    generated_at?: string | null;
+    seeds?: number[];
+    tasks_per_seed?: number | null;
+    generator?: string | null;
+    production_unchanged?: boolean | null;
+    arms: ResearchArm[];
+  };
+  transfer: {
+    available: boolean;
+    summary: Record<string, { cases: number; passed: number; rate: number | null }>;
+    families: number;
+  };
+  retention: {
+    available: boolean;
+    retained: number;
+    families: number;
+    verified: number;
+    verified_retained: number;
+  };
+  meta: {
+    available: boolean;
+    cost_reduction: number | null;
+    arm_c: number | null;
+    arm_e: number | null;
+    first: number | null;
+    later: number | null;
+  };
+  security: { available: boolean; probes: number; escapes: number; modes: string[] };
+};
+
 export type LearningOverviewResponse = {
   counts: Record<string, number>;
   experiments: Array<Record<string, any>>;
@@ -109,6 +158,7 @@ export const api = {
     jpost<{ ok: boolean; result: Record<string, unknown>; checks: string[] }>("/api/editor/tool", { tool, args }),
   snapshots: () => jpost<{ path: string; bytes: number }>("/api/export/snapshot", {}),
   learningOverview: () => jget<LearningOverviewResponse>("/api/learning/overview"),
+  researchOverview: () => jget<ResearchOverviewResponse>("/api/research/overview"),
   learningSkills: () => jget<LearningSkillsResponse>("/api/learning/skills"),
   learningExperiments: () => jget<{ experiments: Record<string, unknown>[] }>(
     "/api/learning/experiments",

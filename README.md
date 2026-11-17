@@ -390,13 +390,16 @@ POST /api/editor/canvas  /api/editor/tool
 WS   /ws/telemetry
 ```
 
-**Dashboard** — seven tabs (Overview, Copilot, Knowledge, Memory, Vision, Training,
-**Acquisition**). The Acquisition tab shows skills acquired vs awaiting verification vs rejected,
+**Dashboard** — eight tabs (Overview, Copilot, Knowledge, Memory, Vision, Training,
+**Acquisition**, **Research**). The Research tab shows the Phase 3 arm comparison with confidence
+intervals, test-fitting counts, transfer by category, retention and the escape-probe result, all
+read from `datasets/research/*_latest.json`; when a report is missing the tab says so instead of
+drawing a zero. The Acquisition tab shows skills acquired vs awaiting verification vs rejected,
 the failure taxonomy, retention sparklines per skill, benchmark results by category with the
 reported failures, the eight acceptance checks, and resource/checkpoint/baseline history — all
 from recorded rows, with "not run" shown where a report is missing rather than a zero. The graph view is a
 hand-rolled canvas force simulation, not a charting library. Verified by a headless render harness:
-`11/11` checks including a real chat round-trip.
+`12/12` checks including a real chat round-trip.
 
 The API reports the *answerer's* provenance. An earlier version labelled every non-acting reply
 `"memory"`, which claimed evidence that did not exist for refusals.
@@ -456,7 +459,7 @@ minicoder/
 PYTHONPATH=. pytest minicoder/tests -q     # 105 passed
 .venv/bin/ruff check minicoder/            # all checks passed
 npm run verify                             # editor typecheck + smoke + smoke:ai + smoke:ui + build
-cd minicoder/dashboard && npx vite-node scripts/render-check.tsx   # 11/11
+cd minicoder/dashboard && npx vite-node scripts/render-check.tsx   # 12/12
 ```
 
 `test_prime_directives.py` holds the safety invariants. `test_systems.py` covers the model, eval

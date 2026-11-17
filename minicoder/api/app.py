@@ -468,6 +468,88 @@ def training_runs() -> dict[str, Any]:
 
 
 # --------------------------------------------------------------- learning API
+
+@app.get("/api/research/overview")
+def research_overview() -> dict:
+    """Phase 3 measurements, read from the recorded reports only.
+
+    Nothing here is computed for display: every figure comes from
+    datasets/research/*_latest.json, and a missing report is reported as missing rather
+    than shown as a zero that looks like a measurement.
+    """
+    base = Path("datasets/research")
+
+    def load(name: str):
+        path = base / f"{name}_latest.json"
+        if not path.exists():
+            return {"available": False}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return {"available": False, "error": "unreadable report"}
+        data["available"] = True
+        return data
+
+    acquisition = load("acquisition")
+    transfer = load("transfer")
+    retention = load("retention")
+    meta = load("meta")
+    security = load("security")
+
+    arms = []
+    if acquisition.get("available"):
+        for arm, data in acquisition.get("arms", {}).items():
+            ci = acquisition.get("rate_ci", {}).get(arm, {})
+            arms.append({
+                "arm": arm,
+                "tasks": data.get("tasks", 0),
+                "hidden_pass": data.get("hidden_pass", 0),
+                "rate": data.get("hidden_pass_rate", 0),
+                "ci_low": ci.get("lo"), "ci_high": ci.get("hi"),
+                "established": bool(ci.get("established")),
+                "dev_pass": data.get("dev_pass", 0),
+                "test_fitted": data.get("test_fitted", 0),
+                "mean_candidates": data.get("mean_candidates", 0),
+            })
+
+    escapes = 0
+    probes = 0
+    if security.get("available"):
+        for rows in security.get("probes", {}).values():
+            probes += len(rows)
+            escapes += sum(1 for r in rows if r.get("escaped"))
+
+    return {
+        "acquisition": {
+            "available": acquisition.get("available", False),
+            "experiment_id": acquisition.get("experiment_id"),
+            "commit": acquisition.get("git_commit"),
+            "generated_at": acquisition.get("generated_at"),
+            "seeds": acquisition.get("config", {}).get("seeds", []),
+            "tasks_per_seed": acquisition.get("config", {}).get("n_tasks"),
+            "generator": acquisition.get("generator_version"),
+            "production_unchanged": acquisition.get("production_memory", {}).get("unchanged"),
+            "arms": arms,
+        },
+        "transfer": {"available": transfer.get("available", False),
+                     "summary": transfer.get("summary", {}),
+                     "families": transfer.get("families", 0)},
+        "retention": {"available": retention.get("available", False),
+                      "retained": retention.get("retained", 0),
+                      "families": retention.get("families", 0),
+                      "verified": retention.get("verified_at_acquisition", 0),
+                      "verified_retained": retention.get("verified_retained", 0)},
+        "meta": {"available": meta.get("available", False),
+                 "cost_reduction": meta.get("cost_reduction_from_reuse"),
+                 "arm_c": meta.get("mean_candidates_arm_C"),
+                 "arm_e": meta.get("mean_candidates_arm_E"),
+                 "first": meta.get("first_occurrence_candidates"),
+                 "later": meta.get("later_occurrence_candidates")},
+        "security": {"available": security.get("available", False),
+                     "probes": probes, "escapes": escapes,
+                     "modes": [m.get("name") for m in security.get("modes", [])]},
+    }
+
 @app.get("/api/learning/overview")
 def learning_overview() -> dict[str, Any]:
     """Everything the learning dashboard shows, from recorded measurements."""
