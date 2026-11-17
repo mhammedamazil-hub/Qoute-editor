@@ -1,0 +1,196 @@
+{
+  "modes": [
+    {
+      "name": "namespace",
+      "os_boundary": true,
+      "note": "user+mount+pid+net namespace; /home masked with tmpfs"
+    },
+    {
+      "name": "guard",
+      "os_boundary": false,
+      "note": "subprocess + hardened audit hook; not an OS boundary"
+    }
+  ],
+  "probes": {
+    "namespace": [
+      {
+        "probe": "relative_read_etc",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "relative_read_repo",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "absolute_read_repo",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "read_production_db",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "spawn_process",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "socket",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "write_repo",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "fork",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "kill_harness",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "infinite_loop",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "timeout",
+        "timed_out": true
+      },
+      {
+        "probe": "memory_bomb",
+        "mode": "namespace",
+        "os_boundary": true,
+        "escaped": false,
+        "error": "MemoryError: ",
+        "timed_out": false
+      }
+    ],
+    "guard": [
+      {
+        "probe": "relative_read_etc",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "relative_read_repo",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "absolute_read_repo",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "read_production_db",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "spawn_process",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "socket",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "write_repo",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "fork",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "kill_harness",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "",
+        "timed_out": false
+      },
+      {
+        "probe": "infinite_loop",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "timeout",
+        "timed_out": true
+      },
+      {
+        "probe": "memory_bomb",
+        "mode": "guard",
+        "os_boundary": false,
+        "escaped": false,
+        "error": "MemoryError: ",
+        "timed_out": false
+      }
+    ]
+  }
+}

@@ -5,6 +5,50 @@ reports in `memory/sleep_logs/` and `datasets/training_runs/`, and — for Phase
 `datasets/learning/`.
 
 
+## Phase 3 — independent capability acquisition
+
+Research phase, additive. Nothing in `minicoder/learning/` was replaced; the Phase 2 benchmark,
+acceptance suite, safeguards and dashboard keep working unchanged.
+
+### Added
+
+* `minicoder/research/` — blind task generator (12 parametric families, private-salt hidden draws,
+  sha256 provenance), independent hidden-test evaluator with cheat detection, namespace isolation,
+  control arms A–F, transfer/retention/meta measurements and a seeded experiment runner.
+* `minicoder research generate|run|reproduce|security` CLI.
+* `PHASE3_RESEARCH_PLAN.md`, `PHASE3_THREAT_MODEL.md`, `PHASE3_ACCEPTANCE.md`,
+  `PHASE3_EXPERIMENT_PROTOCOL.md`, `docs/AUDIT_PHASE3.md`, `docs/PHASE3_RESULTS.md`.
+* 18 tests (`test_research_phase3.py`).
+
+### Measured
+
+3 seeds × 22 scorable tasks × 8 arms. Hidden-test pass rate: baseline **0.000**, memory-only
+0.500, discovery 0.606, no-consolidation 0.606, full 0.606, ablations 0.545 / 0.424 / 0.470.
+Transfer: edge 1.000, near-size 0.889, cross-domain 0.889, distribution shift 0.857. Retention:
+9/9 verified procedures replay in fresh processes. Reuse cuts candidates 35.4 % (180.4 → 116.5).
+
+### Fixed
+
+* **Fresh-process replay no longer depends on the working directory.** `PYTHONPATH` came from
+  `CONFIG.install_root()`, which does not exist, so it fell back to `"."`. Benchmark replay was
+  4/4 from the repo and **0/4** from `/tmp`; acceptance was 8/8 and **6/8**. Now derived from the
+  package location, verified from `/tmp`.
+* **The Phase 2 audit-hook bypass is closed.** `os.chdir` plus a relative path read the evaluator's
+  own source and `/etc/hostname`. The research guard resolves every path and refuses `chdir`;
+  the escape matrix reports 0/11 in both modes.
+* **Candidate code no longer runs in the harness process.** Phase 2 `exec()`ed thousands of
+  candidates in-process with no guard; research runs use namespace-isolated children.
+* **A test overwrote the experiment library** with an empty one, the same class of defect as the
+  Phase 2 checkpoint incident. Library paths now follow the output directory.
+
+### Honest negatives
+
+* Consolidation does not improve the success rate (C = D = E); it only reduces cost.
+* No meta-learning: later tasks of the same family cost more (204.9 vs 180.5 candidates).
+* 4 of 12 families are unreachable by the grammar, which caps acquisition at 0.606.
+* AC5 (repair chains), AC6 (meta-learning) and AC9 (fresh neural study) are **not demonstrated**
+  in this phase and are marked as such in `PHASE3_ACCEPTANCE.md`.
+
 ## Phase 2 — genuine skill acquisition
 
 Every number below is in `datasets/learning/` (`benchmark_latest.json`,

@@ -602,6 +602,16 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_acceptance)
 
+    s = sub.add_parser("research", help="Phase 3: blind tasks, arms, transfer, retention")
+    s.add_argument("action", choices=["generate", "run", "reproduce", "security"])
+    s.add_argument("--seed", type=int, default=11)
+    s.add_argument("--seeds", default="")
+    s.add_argument("--n", type=int, default=24)
+    s.add_argument("--budget", type=float, default=45.0)
+    s.add_argument("--warmup-seed", dest="warmup_seed", type=int, default=5)
+    s.add_argument("--report", default="")
+    s.add_argument("--out", default="")
+    s.set_defaults(func=cmd_research)
     s = sub.add_parser("neural", help="controlled study of training changes")
     s.add_argument("--quick", action="store_true", help="4 epochs per variant")
     s.add_argument("--json", action="store_true")
@@ -765,6 +775,103 @@ def cmd_safeguard(args: argparse.Namespace) -> int:
         return 0 if out.get("rolled_back") else 1
     print(f"unknown action {args.action}", file=sys.stderr)
     return 2
+
+
+def cmd_research(args: argparse.Namespace) -> int:
+    """Phase 3 experiments: blind generation, acquisition arms, transfer, retention."""
+    import json
+
+    action = args.action
+    out_dir = Path(args.out or "datasets/research")
+
+    if action == "generate":
+        from minicoder.research.tasks import generate
+
+        records = generate(args.seed, args.n)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        path = out_dir / f"tasks_s{args.seed}.json"
+        path.write_text(json.dumps([r.to_json() for r in records], indent=2), encoding="utf-8")
+        kinds: dict[str, int] = {}
+        for r in records:
+            kinds[r.kind] = kinds.get(r.kind, 0) + 1
+        print(f"{C.G}generated{C.R} {len(records)} tasks -> {path}")
+        print(f"  kinds {kinds} | families {len({r.family for r in records})}")
+        print(f"  first hash {records[0].generation_hash[:16]}")
+        return 0
+
+    if action == "security":
+        from minicoder.research.isolation import available_modes, probe_escapes
+
+        report = {"modes": [{"name": m.name, "os_boundary": m.os_boundary, "note": m.note}
+                            for m in available_modes()], "probes": {}}
+        failures = 0
+        for mode in [m.name for m in available_modes()]:
+            rows = probe_escapes(mode)
+            report["probes"][mode] = rows
+            bad = [r["probe"] for r in rows if r["escaped"]]
+            failures += len(bad)
+            print(f"  {mode:10s} probes={len(rows)} escapes={len(bad)} {bad}")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "security_latest.json").write_text(json.dumps(report, indent=2),
+                                                      encoding="utf-8")
+        print(f"{C.RED if failures else C.G}escape failures: {failures}{C.R}")
+        return 0 if failures == 0 else 1
+
+    if action == "run":
+        from minicoder.research.experiment import load_library, render_markdown, run_experiment
+        from minicoder.research.private import PrivateStore
+        from minicoder.research.transfer import meta_report, retention_report, transfer_report, write_reports
+
+        seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else [11]
+        report = run_experiment(seeds=seeds, n_tasks=args.n, budget=args.budget,
+                               warmup_seed=args.warmup_seed)
+        library = load_library()
+        store = PrivateStore.open(create=True)
+        transfer = transfer_report(library, store)
+        retention = retention_report(library, store)
+        meta = meta_report(report)
+        paths = write_reports(out_dir, report, transfer, retention, meta)
+        (out_dir / "acquisition_latest.md").write_text(render_markdown(report), encoding="utf-8")
+        print(f"\n{C.B}hidden-test pass rate by arm{C.R}")
+        for arm, rate in report["rates"].items():
+            print(f"  {arm:4s} {rate:.3f}")
+        print(f"  transfer {json.dumps(transfer['summary'])}")
+        print(f"  retention {retention['retained']}/{retention['families']} "
+              f"(verified {retention['verified_retained']}/{retention['verified_at_acquisition']})")
+        print(f"  production memory unchanged: {report['production_memory']['unchanged']}")
+        print(f"  {paths['acquisition']}")
+        return 0
+
+    if action == "reproduce":
+        from minicoder.research.experiment import load_library
+        from minicoder.research.private import PrivateStore
+        from minicoder.research.tasks import generate
+        from minicoder.research.transfer import retention_report
+
+        published = json.loads(Path(args.report).read_text(encoding="utf-8"))
+        seeds = published["config"]["seeds"]
+        n_tasks = published["config"]["n_tasks"]
+        mismatches = []
+        for seed in seeds:
+            records = generate(seed, n_tasks)
+            recorded = {t["key"]: t["hash"] for t in published["tasks_generated"][str(seed)]}
+            for rec in records:
+                if recorded.get(rec.key) != rec.generation_hash:
+                    mismatches.append(rec.key)
+        store = PrivateStore.open(create=True)
+        integrity = store.verify()
+        retention = retention_report(load_library(), store)
+        ok = not mismatches and integrity["ok"]
+        print(f"tasks reproduced: {sum(len(v) for v in published['tasks_generated'].values())} "
+              f"recorded, mismatches {len(mismatches)}")
+        print(f"evaluator integrity: {integrity['ok']}")
+        print(f"retention replay: {retention['retained']}/{retention['families']}")
+        print(f"{C.G if ok else C.RED}{'reproduced' if ok else 'NOT reproduced'}{C.R}")
+        return 0 if ok else 1
+
+    print(f"unknown research action {action!r}")
+    return 2
+
 
 def cmd_neural(args: argparse.Namespace) -> int:
     """Controlled before/after study of training changes."""

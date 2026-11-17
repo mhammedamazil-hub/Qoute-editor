@@ -33,7 +33,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from minicoder.config import CONFIG
 from minicoder.learning.criteria import (
     EditorState,
     evaluate_editor_criteria,
@@ -288,7 +287,14 @@ class LearningLoop:
                               task: TaskSpec) -> dict[str, Any]:
         payload = json.dumps({"procedure": procedure, "criteria": task.criteria})
         env = dict(os.environ)
-        env["PYTHONPATH"] = str(CONFIG.install_root() if hasattr(CONFIG, "install_root") else ".")
+        # The replay must import minicoder regardless of the caller's working
+        # directory. Phase 2 used CONFIG.install_root(), which does not exist, so
+        # the value silently fell back to "." — replay then only worked when the
+        # process happened to run from the install root (measured: benchmark went
+        # from 4/4 to 0/4 and acceptance from 8/8 to 6/8 under /tmp).
+        root = Path(__file__).resolve().parents[2]
+        prior = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = f"{root}{os.pathsep}{prior}" if prior else str(root)
         env["MINICODER_REPLAY"] = "1"
         try:
             proc = subprocess.run(

@@ -1,0 +1,96 @@
+{
+  "generated_at": "2026-11-17T17:34:03Z",
+  "cycles": 0,
+  "families": 12,
+  "retained": 9,
+  "retention_rate": 0.75,
+  "verified_at_acquisition": 9,
+  "verified_retained": 9,
+  "per_family": {
+    "abs_all": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    },
+    "adversarial_scale": {
+      "retained": false,
+      "verdict": "exception",
+      "cases": 0,
+      "record_present": true,
+      "verified_at_acquisition": false
+    },
+    "chunk": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    },
+    "count_by": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    },
+    "dedupe": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    },
+    "even_then_scale": {
+      "retained": false,
+      "verdict": "wrong_value",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": false
+    },
+    "rle": {
+      "retained": false,
+      "verdict": "wrong_value",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": false
+    },
+    "running_total": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    },
+    "scale": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    },
+    "scale_then_running": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    },
+    "sort_by": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    },
+    "sum_even": {
+      "retained": true,
+      "verdict": "pass",
+      "cases": 5,
+      "record_present": true,
+      "verified_at_acquisition": true
+    }
+  },
+  "note": "record_present is reported separately and never counted as retention."
+}

@@ -4,21 +4,23 @@ Each criterion is implemented as an automated check and a reproducible experimen
 column is filled from measured runs and is updated only by re-running, never by editing. Criteria
 are not weakened to obtain a pass; a criterion that cannot be met is reported as failed.
 
+Status recorded from the runs in `docs/PHASE3_RESULTS.md`.
+
 Status legend: **demonstrated** / **partially demonstrated** / **not demonstrated** /
 **inconclusive** / **failed**.
 
 | # | Criterion | Automated evidence | Status |
 |---|---|---|---|
-| AC1 | ≥ 5 independently generated capabilities absent at baseline, each passing hidden tests | `research/blind_acquisition.json`: per-capability `generation_hash`, `baseline_pass_rate`, `hidden_pass` | not demonstrated |
-| AC2 | every claimed acquisition has baseline + ablation controls that fail | same report, `arms` block per capability | not demonstrated |
-| AC3 | ≥ 3 materially different transfer variants per capability, ≥ 1 different distribution | `research/transfer.json`, categories reported separately | not demonstrated |
-| AC4 | replay after fresh process and ≥ 3 consolidation cycles | `research/retention.json` | not demonstrated |
-| AC5 | ≥ 3 experiments where initial strategy fails, modification succeeds, and the answer was never given | `research/failure_driven.json` | not demonstrated |
-| AC6 | measurable reduction in attempts or cost on held-out related tasks | `research/meta.json` with CI | not demonstrated |
-| AC7 | isolation, evaluator protection, production isolation, resource limits | `research/security.json` escape matrix | not demonstrated |
-| AC8 | separate process reproduces published results from documented seeds | `minicoder research reproduce <report>` exit 0 | not demonstrated |
-| AC9 | controlled neural results published, including negative findings | `datasets/learning/neural_study_*.json` + Phase 3 study | not demonstrated |
-| AC10 | all Phase 2 acceptance tests and functionality still operational | 87 tests + `minicoder acceptance` 8/8 + benchmark gate | not demonstrated |
+| AC1 | ≥ 5 independently generated capabilities absent at baseline, each passing hidden tests | `research/blind_acquisition.json`: per-capability `generation_hash`, `baseline_pass_rate`, `hidden_pass` | **partially demonstrated** — 9 families absent at baseline (arm A 0/66) and passing hidden tests; grammar-bounded, 4 of 12 families unreachable |
+| AC2 | every claimed acquisition has baseline + ablation controls that fail | same report, `arms` block per capability | **demonstrated** — arm A 0.000 vs full 0.606 on identical tasks/seeds/budgets; ablations F1 0.545, F2 0.424, F3 0.470 |
+| AC3 | ≥ 3 materially different transfer variants per capability, ≥ 1 different distribution | `research/transfer.json`, categories reported separately | **partially demonstrated** — edge 1.000, near 0.889, cross-domain 0.889, distribution 0.857 |
+| AC4 | replay after fresh process and ≥ 3 consolidation cycles | `research/retention.json` | **partially demonstrated** — 9/9 verified procedures replay in fresh processes; consolidation cycles not run |
+| AC5 | ≥ 3 experiments where initial strategy fails, modification succeeds, and the answer was never given | `research/failure_driven.json` | **not demonstrated** — only a depth ablation; no diagnose→modify→retest chain with failure classes |
+| AC6 | measurable reduction in attempts or cost on held-out related tasks | `research/meta.json` with CI | **not demonstrated** — reuse cuts candidates 35.4 %, but later same-family tasks cost more (204.9 vs 180.5) |
+| AC7 | isolation, evaluator protection, production isolation, resource limits | `research/security.json` escape matrix | **demonstrated with limits** — 0/11 escapes in both modes, /home masked, evaluator pinned, production memory unchanged; namespace is not a VM |
+| AC8 | separate process reproduces published results from documented seeds | `minicoder research reproduce <report>` exit 0 | **partially demonstrated** — 72/72 task hashes reproduce and retention replays in a separate process |
+| AC9 | controlled neural results published, including negative findings | `datasets/learning/neural_study_*.json` + Phase 3 study | **not demonstrated this phase** — no new neural run; Phase 2's negative result stands |
+| AC10 | all Phase 2 acceptance tests and functionality still operational | 87 tests + `minicoder acceptance` 8/8 + benchmark gate | **demonstrated** — 105 tests, acceptance 8/8, benchmark 20/22 with replay 4/4, from any working directory |
 
 ## Definitions that decide the verdict
 

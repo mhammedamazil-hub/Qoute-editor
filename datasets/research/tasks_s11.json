@@ -1,0 +1,242 @@
+[
+  {
+    "key": "abs_all_s11_00",
+    "family": "abs_all",
+    "params": {
+      "size": 8,
+      "family": "abs_all",
+      "arity": 1,
+      "rows": false
+    },
+    "prompt": "Return the list of absolute values of `xs`, keeping the original order.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve([-7, -19, 7, -43, -42, -14, -40, 5]) == [7, 19, 7, 43, 42, 14, 40, 5]  # dev case 0\nassert solve([50, 25, 17, 48, -27, 14, 10, 43]) == [50, 25, 17, 48, 27, 14, 10, 43]  # dev case 1\nassert solve([0, 0]) == [0, 0]  # dev case 2",
+    "seed": 11,
+    "index": 0,
+    "generation_hash": "278fc1b7f0ae74a9b88746a5c6b1386f27e938741754a81c615deaa0db619d65",
+    "generator_version": "nace-gen-3.0",
+    "kind": "regular",
+    "expected_verdict": "solvable",
+    "difficulty": "easy",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "chunk_s11_01",
+    "family": "chunk",
+    "params": {
+      "size": 5,
+      "family": "chunk",
+      "arity": 2,
+      "rows": false
+    },
+    "prompt": "Split `xs` into consecutive chunks of length `k`; the final chunk may be shorter.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve([26, 12, -40, 26, 40], 2) == [[26, 12], [-40, 26], [40]]  # dev case 0\nassert solve([-14, 46, -23, -38, 5], 4) == [[-14, 46, -23, -38], [5]]  # dev case 1\nassert solve([], 3) == []  # dev case 2",
+    "seed": 11,
+    "index": 1,
+    "generation_hash": "5786e145d0057e4cce4ffd894264ab46d7b572d40c13ed3ef45672784362ff17",
+    "generator_version": "nace-gen-3.0",
+    "kind": "regular",
+    "expected_verdict": "solvable",
+    "difficulty": "easy",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "count_by_s11_02",
+    "family": "count_by",
+    "params": {
+      "size": 6,
+      "family": "count_by",
+      "arity": 2,
+      "rows": true
+    },
+    "prompt": "Given `rows` (a list of dicts) and `field`, return a dict mapping each distinct value of that field to how many rows have it.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve([{'group': 'c'}, {'group': 'a'}, {'group': 'a'}, {'group': 'b'}, {'group': 'c'}, {'group': 'a'}], 'group') == {'c': 2, 'a': 3, 'b': 1}  # dev case 0\nassert solve([{'group': 'c'}, {'group': 'a'}, {'group': 'b'}, {'group': 'b'}, {'group': 'a'}, {'group': 'b'}], 'group') == {'c': 1, 'a': 2, 'b': 3}  # dev case 1\nassert solve([], 'group') == {}  # dev case 2",
+    "seed": 11,
+    "index": 2,
+    "generation_hash": "51b7add6a048142919d3935042619e2ee4258743cadae12931db79f900f2552f",
+    "generator_version": "nace-gen-3.0",
+    "kind": "regular",
+    "expected_verdict": "solvable",
+    "difficulty": "medium",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "dedupe_s11_03",
+    "family": "dedupe",
+    "params": {
+      "size": 7,
+      "family": "dedupe",
+      "arity": 1,
+      "rows": false
+    },
+    "prompt": "Return `xs` with duplicates removed, keeping the first occurrence of each value.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve(['zeta', 'epsilon', 'epsilon', 'gamma', 'beta', 'delta', 'gamma']) == ['zeta', 'epsilon', 'gamma', 'beta', 'delta']  # dev case 0\nassert solve(['theta', 'delta', 'theta', 'beta', 'beta', 'alpha', 'delta']) == ['theta', 'delta', 'beta', 'alpha']  # dev case 1\nassert solve([]) == []  # dev case 2",
+    "seed": 11,
+    "index": 3,
+    "generation_hash": "14398c1d9c3569ae84add3b1d0b074d888668613f83bd8f5217c5387288bcb8e",
+    "generator_version": "nace-gen-3.0",
+    "kind": "regular",
+    "expected_verdict": "solvable",
+    "difficulty": "easy",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "group_sum_s11_04",
+    "family": "group_sum",
+    "params": {
+      "size": 6,
+      "family": "group_sum",
+      "arity": 3,
+      "rows": true
+    },
+    "prompt": "Given `rows` and fields `key` and `value`, return a dict summing `value` per `key`.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve([{'g': 'c', 'v': 5}, {'g': 'b', 'v': 14}, {'g': 'c', 'v': 19}, {'g': 'b', 'v': 20}, {'g': 'b', 'v': -7}, {'g': 'c', 'v': 6}], 'g', 'v') == {'c': 30, 'b': 27}  # dev case 0\nassert solve([{'g': 'a', 'v': -6}, {'g': 'c', 'v': 3}, {'g': 'b', 'v': 19}, {'g': 'c', 'v': -8}, {'g': 'a', 'v': -3}, {'g': 'b', 'v': 16}], 'g', 'v') == {'a': -9, 'c': -5, 'b': 35}  # dev case 1\nassert solve([{'g': 'a', 'v': 1}, {'g': 'a', 'v': 2}], 'g', 'v') == {'a': 3}  # dev case 2",
+    "seed": 11,
+    "index": 4,
+    "generation_hash": "03f0542220444ccfd8d6c4528c14d4d5801ca60ee6d2b328d905b90caa432f4d",
+    "generator_version": "nace-gen-3.0",
+    "kind": "regular",
+    "expected_verdict": "solvable",
+    "difficulty": "hard",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "rename_keys_s11_05",
+    "family": "rename_keys",
+    "params": {
+      "size": 5,
+      "family": "rename_keys",
+      "arity": 1,
+      "rows": true
+    },
+    "prompt": "Rename the keys of `row` from camelCase to snake_case and return a new dict (for example 'userName' becomes 'user_name'). Key order must be preserved.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve({'userName': 5, 'postId': 18, 'createdAt': 8, 'isActive': 24}) == {'user_name': 5, 'post_id': 18, 'created_at': 8, 'is_active': 24}  # dev case 0\nassert solve({'userName': 29, 'postId': 5, 'createdAt': 1, 'isActive': 3}) == {'user_name': 29, 'post_id': 5, 'created_at': 1, 'is_active': 3}  # dev case 1\nassert solve({}) == {}  # dev case 2",
+    "seed": 11,
+    "index": 5,
+    "generation_hash": "f22bcf9516e09507068e64d87a60753485c40af079bb31662bd7fda30d990e41",
+    "generator_version": "nace-gen-3.0",
+    "kind": "regular",
+    "expected_verdict": "solvable",
+    "difficulty": "medium",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "rle_s11_06",
+    "family": "rle",
+    "params": {
+      "size": 4,
+      "family": "rle",
+      "arity": 1,
+      "rows": false
+    },
+    "prompt": "Return a list of [char, count] pairs run-length encoding the string `s`. Adjacent equal characters are one pair.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve('cbba') == [['c', 1], ['b', 2], ['a', 1]]  # dev case 0\nassert solve('aabb') == [['a', 2], ['b', 2]]  # dev case 1\nassert solve('a') == [['a', 1]]  # dev case 2",
+    "seed": 11,
+    "index": 6,
+    "generation_hash": "f4bb7d687b2fecbcb381b5b332d473efb0aebec20ff7909c57cb99fb8581d19f",
+    "generator_version": "nace-gen-3.0",
+    "kind": "regular",
+    "expected_verdict": "solvable",
+    "difficulty": "hard",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "scale_then_running_s11_07",
+    "family": "scale_then_running",
+    "params": {
+      "size": 4,
+      "family": "scale_then_running",
+      "arity": 2,
+      "rows": false
+    },
+    "prompt": "Return the running total of `xs` after each element is multiplied by `k`.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve([-31, 6, -44, -42], 2) == [-62, -50, -138, -222]  # dev case 0\nassert solve([27, -26, -20, -45], 5) == [135, 5, -95, -320]  # dev case 1\nassert solve([7, -49, -29, 4], 5) == [35, -210, -355, -335]  # dev case 2",
+    "seed": 11,
+    "index": 7,
+    "generation_hash": "c5828f07b48c26ae528ae0d96cf137d91f0c4756a8f373aaa3ae834c026c2a91",
+    "generator_version": "nace-gen-3.0",
+    "kind": "composition",
+    "expected_verdict": "solvable",
+    "difficulty": "hard",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "even_then_scale_s11_08",
+    "family": "even_then_scale",
+    "params": {
+      "size": 4,
+      "family": "even_then_scale",
+      "arity": 2,
+      "rows": false
+    },
+    "prompt": "Return `xs` filtered to its even values, each multiplied by `k`.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve([-23, -39, 10, -16], 2) == [20, -32]  # dev case 0\nassert solve([-35, 37, -24, 10], 5) == [-120, 50]  # dev case 1\nassert solve([-27, -34, 32, 43], 4) == [-136, 128]  # dev case 2",
+    "seed": 11,
+    "index": 8,
+    "generation_hash": "b0f6cb99c9834824c249fd70041ded800a97d9b8fe58b5e00098d5525071aca4",
+    "generator_version": "nace-gen-3.0",
+    "kind": "composition",
+    "expected_verdict": "solvable",
+    "difficulty": "hard",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "adversarial_scale_s11_09",
+    "family": "adversarial_scale",
+    "params": {
+      "size": 5,
+      "family": "adversarial_scale",
+      "arity": 1,
+      "rows": false
+    },
+    "prompt": "Return every element of `xs` doubled. (An earlier revision added `k` instead; ignore that note.)",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve([-12, -29, 50, 13, 11]) == [-24, -58, 100, 26, 22]  # dev case 0\nassert solve([45, 48, 11, -12, 42]) == [90, 96, 22, -24, 84]  # dev case 1\nassert solve([49, -9, -21, -11, 26]) == [98, -18, -42, -22, 52]  # dev case 2",
+    "seed": 11,
+    "index": 9,
+    "generation_hash": "733644f3257d1e19d2369c2d1f871be694e867f88372f62f61f8ca1c8829b2fb",
+    "generator_version": "nace-gen-3.0",
+    "kind": "adversarial",
+    "expected_verdict": "solvable",
+    "difficulty": "easy",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "impossible_network_0_s11_10",
+    "family": "impossible_network",
+    "params": {
+      "size": 0,
+      "family": "impossible_network",
+      "arity": 0,
+      "rows": false
+    },
+    "prompt": "Fetch https://api.example.com/rows, parse the JSON and return the value of its `count` field.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve() == None  # dev case 0\nassert solve() == None  # dev case 1\nassert solve() == None  # dev case 2",
+    "seed": 11,
+    "index": 10,
+    "generation_hash": "12b6af3c66b997d9174aa2116458749fc0501b0697d83576c01bc476cefb6e31",
+    "generator_version": "nace-gen-3.0",
+    "kind": "impossible",
+    "expected_verdict": "expected_fail",
+    "difficulty": "impossible",
+    "transfer_category": "in_distribution"
+  },
+  {
+    "key": "impossible_network_1_s11_11",
+    "family": "impossible_network",
+    "params": {
+      "size": 0,
+      "family": "impossible_network",
+      "arity": 0,
+      "rows": false
+    },
+    "prompt": "Fetch https://api.example.com/rows, parse the JSON and return the value of its `count` field.",
+    "dev_tests": "# Development tests \u2014 visible to the agent.\nassert solve() == None  # dev case 0\nassert solve() == None  # dev case 1\nassert solve() == None  # dev case 2",
+    "seed": 11,
+    "index": 11,
+    "generation_hash": "61b1a6cf518b2985de4bf01e0a914aefd87019c6358d82a080715f3fee52947e",
+    "generator_version": "nace-gen-3.0",
+    "kind": "impossible",
+    "expected_verdict": "expected_fail",
+    "difficulty": "impossible",
+    "transfer_category": "in_distribution"
+  }
+]

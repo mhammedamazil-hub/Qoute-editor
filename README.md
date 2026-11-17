@@ -73,6 +73,7 @@ learn   benchmark acceptance neural safeguard
 | `minicoder acceptance` | the eight Phase 2 acceptance criteria, end to end |
 | `minicoder neural [--quick]` | controlled study of training changes, one variable at a time |
 | `minicoder safeguard baseline/evaluate/rollback` | immutable baselines and regression-gated updates |
+| `minicoder research run/security/reproduce` | Phase 3 blind tasks, control arms, transfer, retention |
 
 ---
 
@@ -292,6 +293,45 @@ This is why the system does not grade itself on loss.
 
 ---
 
+## 5c. Phase 3 — does it actually acquire anything?
+
+Phase 2 could show a loop running. Phase 3 asks whether the loop acquires a capability the system
+did not have, with a counterfactual for every claim. Full numbers: `docs/PHASE3_RESULTS.md`.
+
+The instrument that made this answerable is a **hidden-test evaluator**: the agent sees a prompt
+and three dev examples, the evaluator generates different inputs from a private salt and computes
+expected outputs itself. Candidate code never receives expected values — only a verdict class.
+So "the answer was never given" is structural, not a promise.
+
+| arm | what it is | hidden pass (66 tasks) |
+|---|---|---|
+| A | model alone | **0.000** |
+| B | memory only (disjoint warm-up seed) | 0.500 |
+| C | discover, no retention | 0.606 |
+| D | acquire, no consolidation | 0.606 |
+| E | full | 0.606 |
+| F1/F2/F3 | no composition / no binary ops / no row ops | 0.545 / 0.424 / 0.470 |
+
+What that supports, and what it does not:
+
+* **Absence is real.** The model solved none of 66 tasks on its own, so acquisition claims have a
+  live baseline.
+* **A quarter of the win is test-fitting.** 46 programs passed the visible dev tests; 40 passed
+  hidden inputs. Six were overfitting to examples the agent could see.
+* **Consolidation buys cost, not success.** C = D = E; reuse cuts search from 180 to 117 candidates
+  (−35 %). Storing the answer is not the same as getting better at finding it.
+* **Transfer is good, not clean.** Edge cases 1.00, larger inputs 0.89, tuples 0.89, shifted value
+  distribution 0.86.
+
+Isolation: candidates run in `unshare -Urnm` with a tmpfs over `/home`, so the repo, production
+memory and private fixtures are *absent*, not merely denied. The escape matrix (11 probes × 2
+modes) reports **0 escapes**; the Phase 2 audit hook leaked on `chdir` + relative path and no
+longer does. Production memory is asserted unchanged before and after every run.
+
+Honest limits: the grammar bounds what can be acquired (4 of 12 families are unreachable), no
+diagnose→modify→retest repair chain was implemented, consolidation cycles were not exercised, and
+3 seeds give ±0.11 CIs. `PHASE3_ACCEPTANCE.md` marks AC5, AC6 and AC9 as **not demonstrated**.
+
 ## 6. Continual learning loop
 
 ```
@@ -381,7 +421,7 @@ minicoder/
   eval/              suites.py
   api/app.py         FastAPI
   dashboard/         React + Vite + TypeScript
-  tests/             87 tests
+  tests/             105 tests
 .github/workflows/   ci.yml, continual-learning.yml
 ```
 
@@ -413,7 +453,7 @@ minicoder/
 ## 10. Tests
 
 ```bash
-PYTHONPATH=. pytest minicoder/tests -q     # 87 passed
+PYTHONPATH=. pytest minicoder/tests -q     # 105 passed
 .venv/bin/ruff check minicoder/            # all checks passed
 npm run verify                             # editor typecheck + smoke + smoke:ai + smoke:ui + build
 cd minicoder/dashboard && npx vite-node scripts/render-check.tsx   # 11/11

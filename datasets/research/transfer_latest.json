@@ -1,0 +1,341 @@
+{
+  "generated_at": "2026-11-17T17:34:03Z",
+  "families": 12,
+  "summary": {
+    "near_size": {
+      "cases": 36,
+      "passed": 32,
+      "rate": 0.889
+    },
+    "distribution": {
+      "cases": 28,
+      "passed": 24,
+      "rate": 0.857
+    },
+    "edge_cases": {
+      "cases": 36,
+      "passed": 36,
+      "rate": 1.0
+    },
+    "cross_domain": {
+      "cases": 36,
+      "passed": 32,
+      "rate": 0.889
+    }
+  },
+  "per_family": {
+    "abs_all": {
+      "near_size": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "distribution": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      }
+    },
+    "adversarial_scale": {
+      "near_size": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "distribution": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "edge_cases": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "cross_domain": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      }
+    },
+    "chunk": {
+      "near_size": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "distribution": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      }
+    },
+    "count_by": {
+      "near_size": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "distribution": {
+        "cases": 0,
+        "passed": 0,
+        "rate": 0.0,
+        "verdict": "no_reference"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      }
+    },
+    "dedupe": {
+      "near_size": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "distribution": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      }
+    },
+    "even_then_scale": {
+      "near_size": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "distribution": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "edge_cases": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "cross_domain": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      }
+    },
+    "rle": {
+      "near_size": {
+        "cases": 4,
+        "passed": 0,
+        "rate": 0.0,
+        "verdict": "wrong_value"
+      },
+      "distribution": {
+        "cases": 4,
+        "passed": 0,
+        "rate": 0.0,
+        "verdict": "wrong_value"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 0,
+        "rate": 0.0,
+        "verdict": "wrong_value"
+      }
+    },
+    "running_total": {
+      "near_size": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "distribution": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      }
+    },
+    "scale": {
+      "near_size": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "distribution": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      }
+    },
+    "scale_then_running": {
+      "near_size": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "distribution": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "edge_cases": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      },
+      "cross_domain": {
+        "cases": 0,
+        "passed": 0,
+        "rate": null,
+        "verdict": "no_variant"
+      }
+    },
+    "sort_by": {
+      "near_size": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "distribution": {
+        "cases": 0,
+        "passed": 0,
+        "rate": 0.0,
+        "verdict": "no_reference"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      }
+    },
+    "sum_even": {
+      "near_size": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "distribution": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "edge_cases": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      },
+      "cross_domain": {
+        "cases": 4,
+        "passed": 4,
+        "rate": 1.0,
+        "verdict": "pass"
+      }
+    }
+  },
+  "note": "Programs are re-scored unchanged. 'distribution' shifts integer values by 1000 and rotates lower-case letters; 'cross_domain' converts lists to tuples; neither appears in the acquisition draws."
+}
