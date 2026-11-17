@@ -1,0 +1,12 @@
+{
+  "name": "acceptance_1794935653",
+  "created_at": "2026-11-17T17:14:13+00:00",
+  "files": {
+    "lm.pt": "b6115790b4e1152e334f06ab4efb9e2b84ffeac61e91f87319c8d54e9ebfd595",
+    "tokenizer.json": "9d49969a1c41c785db469b06ad657d8ef786e6e686c5fc452bce3572b5a4b4ca",
+    "embedder.pt": "1a68501f9b231a5026894aa40a3b74da458872a1782b1c9f1c2d598bfe2c51e1",
+    "vision.pt": "62e8afec8d8bd61e1826276d357e3833adbb71ff18e0e675798b5637b7448ef5"
+  },
+  "source": "/home/user/Qoute-editor/memory/checkpoints",
+  "immutable": true
+}
