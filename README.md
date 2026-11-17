@@ -240,11 +240,11 @@ procedure that did not exist before it was searched for). Reusing a skill report
 
 ### The eight acceptance criteria
 
-`minicoder acceptance` — measured in an isolated home, 54 s:
+`minicoder acceptance` — measured in an isolated home, 47.6 s:
 
 | # | criterion | evidence |
 |---|---|---|
-| 1 | learn a genuinely unseen procedural task | solved in 1 attempt, progress 1.00 |
+| 1 | learn a genuinely unseen procedural task | model alone fails the control task (110 chars of incoherent text); synthesis solves it in 36 tested candidates; editor procedure acquired in 1 attempt |
 | 2 | replay it in a fresh session | 3/3, first run in a separate interpreter |
 | 3 | retain it after episodic archival | 6 episodes archived → replay 2/2 with no episodes available |
 | 4 | apply it to a different variation | variant solved via targeted repair; 4:3 stress case **fails** and says so |
@@ -256,6 +256,18 @@ procedure that did not exist before it was searched for). Reusing a skill report
 Criterion 4 deserves the footnote: a 3:4 skill adapts to a scaled 3:4 canvas, but a flipped 4:3
 canvas fails, because two full-width text layers cannot stack in 768 px. That is reported as a
 failure rather than averaged away.
+
+Criterion 1 carries a **counterfactual**, because a success on its own proves nothing. The same
+sealed task is put to the system twice: the model alone returns 110 characters of incoherent text
+and fails its tests, while the acquisition loop synthesises a program, runs it in the sandbox and
+confirms it (36 candidates tested). That contrast is what makes "it learned something it did not
+have" a measurement instead of a claim.
+
+**The weaker half, stated plainly.** The editor arm's own control — the same planner with
+backtracking and repair disabled, one greedy pass — also solves the poster task (5 steps, zero
+backtracks). So the editor result is best read as an acquired *and retained procedure*: the search
+was always capable of it. The capability the system genuinely did not have is the synthesis arm.
+Saying that is more useful than the 8/8 headline.
 
 ### Does the transformer actually benefit?
 
@@ -369,7 +381,7 @@ minicoder/
   eval/              suites.py
   api/app.py         FastAPI
   dashboard/         React + Vite + TypeScript
-  tests/             86 tests
+  tests/             87 tests
 .github/workflows/   ci.yml, continual-learning.yml
 ```
 
@@ -401,7 +413,7 @@ minicoder/
 ## 10. Tests
 
 ```bash
-PYTHONPATH=. pytest minicoder/tests -q     # 86 passed
+PYTHONPATH=. pytest minicoder/tests -q     # 87 passed
 .venv/bin/ruff check minicoder/            # all checks passed
 npm run verify                             # editor typecheck + smoke + smoke:ai + smoke:ui + build
 cd minicoder/dashboard && npx vite-node scripts/render-check.tsx   # 11/11

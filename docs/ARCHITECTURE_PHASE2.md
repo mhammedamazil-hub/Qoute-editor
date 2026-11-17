@@ -176,6 +176,22 @@ and the dashboard's **Acquisition** tab. Every figure is a recorded row or a
 report file; when a report is missing the UI says "not run" rather than showing a
 zero that looks like a measurement.
 
+## The counterfactual behind criterion 1
+
+A success with no control is an assertion. Acceptance check 1 therefore measures both
+arms on the same sealed task:
+
+| arm | result |
+|---|---|
+| model alone (`best_of`, k=3) | 110 chars of incoherent text, tests fail |
+| acquisition loop (`synth_with_retries`) | 36 candidates tested, sandbox-confirmed, passes |
+
+The editor arm has a control too, and it is unflattering: the same planner with
+`max_backtracks=0` and a single attempt solves the poster task in 5 steps. That means the
+editor loop captures and retains a *procedure*; it does not demonstrate a capability the
+planner lacked. Both numbers are printed by `minicoder acceptance` and asserted by test, so
+the claim cannot quietly drift into something stronger than the evidence.
+
 ## What is still weak
 
 Stated plainly, because the alternative is a system that only looks intelligent:

@@ -532,3 +532,22 @@ def test_benchmark_baseline_still_solves(tmp_path: Path) -> None:
     now = {t["key"] for t in report["tasks"] if t["final_ok"]}
     missing = sorted(set(base["solved_keys"]) - now)
     assert not missing, f"regressed against baseline: {missing}"
+
+
+@pytest.mark.slow
+def test_model_alone_cannot_solve_the_control_task() -> None:
+    """Criterion 1 needs a counterfactual: the model must fail where the loop succeeds.
+
+    If this ever starts passing, the acceptance control task has stopped being a
+    capability contrast and must be replaced rather than reported as a win.
+    """
+    from minicoder.learning.acceptance import AcceptanceRun
+
+    run = AcceptanceRun()
+    control = run._model_only_control()
+    if not control.get("available"):
+        pytest.skip("no checkpoint")
+    assert control["solved"] is False, control
+
+    synthesis = run._synthesis_arm()
+    assert synthesis["solved"] is True, synthesis

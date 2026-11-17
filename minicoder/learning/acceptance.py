@@ -97,6 +97,14 @@ STRESS_TASK = TaskSpec(
 )
 
 
+# The control task for criterion 1. Same sealed benchmark, two arms:
+#   * the model alone is asked for the code (it cannot write it — measured)
+#   * the acquisition loop synthesises, tests and confirms it
+# Only a task the model cannot do itself makes "learned something it did not have"
+# a measurable statement rather than a success with no counterfactual.
+CONTROL_TASK_KEY = "sum_evens"
+
+
 class AcceptanceRun:
     def __init__(self) -> None:
         self.loop = LearningLoop()
@@ -113,17 +121,92 @@ class AcceptanceRun:
         return check
 
     # ------------------------------------------------------------------ checks
+    def _one_shot_control(self) -> dict[str, Any]:
+        """Same task, same tool index, no learning: one greedy pass, no undo, no repair.
+
+        Without this the claim "it learned a task it could not do" rests on a
+        success with no counterfactual. This is the counterfactual: the loop's
+        search, backtracking and repair disabled, one attempt only.
+        """
+        from minicoder.learning.planner import SearchPlanner
+
+        # The loop owns this bridge; leave it open for the acquisition that follows.
+        bridge = self.loop.bridge()
+        control = SearchPlanner(self.loop.index(), max_backtracks=0)
+        out = control.plan(ACQUIRE_TASK.criteria, bridge, reset=True)
+        return {
+            "solved": all(r.passed for r in out["results"]),
+            "progress": round(float(out["progress"]), 3),
+            "steps": out["steps"],
+            "backtracks": out["backtracks"],
+            "failed": [r.text for r in out["results"] if not r.passed],
+        }
+
+    def _model_only_control(self) -> dict[str, Any]:
+        """What the system can do with no acquisition: ask the model, run its code."""
+        from minicoder.cognition.engine import NeuralBrain
+        from minicoder.learning.benchmark import ALL_TASKS
+        from minicoder.tools.sandbox import Sandbox
+
+        task = next(t for t in ALL_TASKS if t.key == CONTROL_TASK_KEY)
+        brain = NeuralBrain()
+        if not brain.model:
+            return {"available": False, "solved": False, "note": "no checkpoint"}
+        gen = brain.best_of(task.prompt, k=3, max_new_tokens=96)
+        code = (gen.text or "").strip()
+        ok = False
+        if code:
+            ok, _ = Sandbox(use_docker=False).run_tests(code, task.tests)
+        return {"available": True, "solved": bool(ok), "task": task.key,
+                "output": code[:160], "chars": len(code)}
+
+    def _synthesis_arm(self) -> dict[str, Any]:
+        """The acquisition arm: synthesise a program for the same sealed task."""
+        from minicoder.learning.benchmark import ALL_TASKS
+        from minicoder.learning.synth import synth_with_retries
+
+        task = next(t for t in ALL_TASKS if t.key == CONTROL_TASK_KEY)
+        run = synth_with_retries(task, deadline=40)
+        result = run["result"]
+        return {"task": task.key, "solved": bool(result.solved),
+                "attempts": run["attempts"],
+                "candidates_tested": result.candidates_tested,
+                "confirmed_in_sandbox": bool(result.confirmed_in_sandbox)}
+
     def check_1_learn_unseen(self) -> None:
+        control = self._one_shot_control()
+        model_control = self._model_only_control()
+        synthesis = self._synthesis_arm()
         rep = self.loop.acquire(ACQUIRE_TASK)
         self.state["acquire"] = rep.to_json()
+        self.state["control"] = control
+        # Honest gate. Two things must hold:
+        #  * the model alone cannot produce a working solution for CONTROL_TASK_KEY,
+        #    while synthesis does — that is the capability contrast;
+        #  * the editor procedure is acquired by the loop.
+        # The editor one-shot control is reported too. When it also solves the task
+        # (it did, measured), that arm demonstrates a retained procedure rather than
+        # a capability the system lacked, and the report says so instead of hiding it.
+        passed = (
+            rep.solved
+            and model_control.get("available", False)
+            and not model_control["solved"]
+            and synthesis["solved"]
+        )
         self.add(
-            1, "learn a genuinely unseen procedural task", rep.solved,
+            1, "learn a genuinely unseen procedural task", passed,
             f"{rep.attempts} attempt(s), progress {rep.final_progress:.2f}, "
-            f"{rep.seconds:.1f}s, candidate {rep.candidate_id}",
+            f"{rep.seconds:.1f}s, candidate {rep.candidate_id}; "
+            f"model-only control solved={model_control['solved']} "
+            f"(synthesis solved={synthesis['solved']}); editor greedy control "
+            f"solved={control['solved']} (procedure retained, not new capability)",
             solved=rep.solved, attempts=rep.attempts,
             first_attempt_ok=rep.first_attempt_ok,
             final_progress=rep.final_progress,
             failure_classes=rep.failure_classes,
+            control=control,
+            model_only_control=model_control,
+            synthesis=synthesis,
         )
 
     def check_2_replay_fresh_session(self) -> None:
