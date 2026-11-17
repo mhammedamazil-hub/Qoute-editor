@@ -333,7 +333,8 @@ class ExperimentLedger:
             "attempts_failed": one("SELECT COUNT(*) FROM attempts WHERE ok=0"),
             "hypotheses": one("SELECT COUNT(*) FROM hypotheses"),
             "candidates": one("SELECT COUNT(*) FROM skill_candidates"),
-            "replay_passed": one("SELECT COUNT(*) FROM skill_candidates WHERE status='replay_passed'"),
+            "replay_passed": one(
+                "SELECT COUNT(*) FROM skill_candidates WHERE replay_passed=1"),
             "promoted": one("SELECT COUNT(*) FROM skill_candidates WHERE status='promoted'"),
             "rejected": one("SELECT COUNT(*) FROM skill_candidates WHERE status='rejected'"),
         }

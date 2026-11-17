@@ -526,8 +526,10 @@ def learning_overview() -> dict[str, Any]:
             "candidates": scalar("SELECT COUNT(*) FROM skill_candidates"),
             "awaiting_verification": scalar(
                 "SELECT COUNT(*) FROM skill_candidates WHERE status='candidate'"),
-            "replay_passed": scalar(
-                "SELECT COUNT(*) FROM skill_candidates WHERE status='replay_passed'"),
+            # The flag, not the status: a promoted candidate has already left the
+        # 'replay_passed' status, so counting status showed 0 next to promoted=1.
+        "replay_passed": scalar(
+                "SELECT COUNT(*) FROM skill_candidates WHERE replay_passed=1"),
             "promoted": scalar(
                 "SELECT COUNT(*) FROM skill_candidates WHERE status='promoted'"),
             "rejected": scalar(
