@@ -675,7 +675,8 @@ BASELINE_BENCH = Path("datasets/learning/benchmark_baseline.json")
 def cmd_benchmark(args: argparse.Namespace) -> int:
     from minicoder.learning.runner import render_markdown, run_benchmark
 
-    report = run_benchmark(editor=not args.no_editor)
+    gate_run = getattr(args, "check", False) or getattr(args, "write_baseline", False)
+    report = run_benchmark(editor=not args.no_editor, write_latest=not gate_run)
     if getattr(args, "check", False):
         # Regression gate for CI: a change must not reduce the number of sealed
         # tasks the system can acquire. Compared against a committed baseline so

@@ -200,7 +200,8 @@ def run_visual_inspection(loop: Any) -> TaskResult:
 
 
 def run_benchmark(*, editor: bool = True, limit: int | None = None,
-                  out_dir: Path | None = None, isolate: bool = True) -> dict[str, Any]:
+                  out_dir: Path | None = None, isolate: bool = True,
+                  write_latest: bool = True) -> dict[str, Any]:
     """Run the sealed benchmark and return a report dict.
 
     ``isolate`` redirects the whole run at a throwaway home. Without it the
@@ -214,14 +215,16 @@ def run_benchmark(*, editor: bool = True, limit: int | None = None,
 
         prev_home = config_mod.activate_home(tempfile.mkdtemp(prefix="bench_home_"))
         try:
-            return _run_benchmark_inner(editor=editor, limit=limit, out_dir=out_dir)
+            return _run_benchmark_inner(editor=editor, limit=limit, out_dir=out_dir,
+                                        write_latest=write_latest)
         finally:
             config_mod.activate_home(prev_home)
-    return _run_benchmark_inner(editor=editor, limit=limit, out_dir=out_dir)
+    return _run_benchmark_inner(editor=editor, limit=limit, out_dir=out_dir,
+                                write_latest=write_latest)
 
 
 def _run_benchmark_inner(*, editor: bool, limit: int | None,
-                         out_dir: Path | None) -> dict[str, Any]:
+                         out_dir: Path | None, write_latest: bool = True) -> dict[str, Any]:
     sealed = assert_sealed()
     if not sealed["sealed"]:
         raise RuntimeError(f"benchmark is not sealed: {sealed['problems']}")
@@ -260,8 +263,12 @@ def _run_benchmark_inner(*, editor: bool, limit: int | None,
     latest = out / "benchmark_latest.json"
     payload = json.dumps(report, indent=2, default=str)
     json_path.write_text(payload, encoding="utf-8")
-    latest.write_text(payload, encoding="utf-8")
-    (out / "benchmark_latest.md").write_text(render_markdown(report), encoding="utf-8")
+    if write_latest:
+        # Fast CI gate runs (--check / --no-editor) must not overwrite the headline
+        # report: measured, a 17-task gate run replaced the 22-task result and made
+        # the documented 20/22 look unreproducible.
+        latest.write_text(payload, encoding="utf-8")
+        (out / "benchmark_latest.md").write_text(render_markdown(report), encoding="utf-8")
     report["report_path"] = str(json_path)
     return report
 

@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-11-15T16:52:27Z",
+  "generated_at": "2026-11-17T13:45:22Z",
   "passed": 8,
   "total": 8,
   "all_passed": true,
-  "seconds": 54.28,
+  "seconds": 46.63,
   "checks": [
     {
       "n": 1,
       "name": "learn a genuinely unseen procedural task",
       "passed": true,
-      "detail": "1 attempt(s), progress 1.00, 27.9s, candidate 1",
+      "detail": "1 attempt(s), progress 1.00, 22.5s, candidate 6",
       "evidence": {
         "solved": true,
         "attempts": 1,
@@ -33,9 +33,9 @@
       "n": 3,
       "name": "retain the skill after episodic archival",
       "passed": true,
-      "detail": "6 episodes seeded; archived 6 -> 0 live; replay 2/2 with no episodes available",
+      "detail": "6 episodes seeded; archived 69 -> 0 live; replay 2/2 with no episodes available",
       "evidence": {
-        "episodes_archived": 6,
+        "episodes_archived": 69,
         "episodes_live_after": 0,
         "replay_runs": 2
       }
@@ -144,22 +144,22 @@
   ],
   "state": {
     "acquire": {
-      "experiment_id": 1,
+      "experiment_id": 6,
       "task_key": "acceptance_beacon",
       "solved": true,
       "attempts": 1,
       "first_attempt_ok": true,
       "final_progress": 1.0,
       "failure_classes": [],
-      "candidate_id": 1,
+      "candidate_id": 6,
       "replay_passed": true,
       "replay_runs": 3,
       "promoted": false,
-      "seconds": 27.95,
+      "seconds": 22.5,
       "tokens_used": 34,
       "resource": {
         "rss_mb": 48.6,
-        "cpu_seconds": 0.43
+        "cpu_seconds": 0.44
       }
     },
     "replay": {
@@ -171,7 +171,7 @@
     },
     "promote": {
       "promoted": true,
-      "skill_id": 1,
+      "skill_id": 32,
       "slug": "learned_acceptance_beacon"
     },
     "reuse": {
@@ -343,9 +343,9 @@
       "first_attempt_rate": 0.882,
       "confirmed_in_sandbox": 15,
       "mean_attempts": 1.24,
-      "total_seconds": 3.42,
-      "mean_seconds": 0.2,
-      "peak_rss_mb": 584.3,
+      "total_seconds": 3.01,
+      "mean_seconds": 0.18,
+      "peak_rss_mb": 581.9,
       "search_tokens": 5831,
       "replay_attempted": 0,
       "replay_passed": 0,
