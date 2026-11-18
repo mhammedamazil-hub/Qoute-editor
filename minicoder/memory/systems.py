@@ -437,12 +437,25 @@ class SemanticMemory:
 
     def _insert(self, kind, label, content, status, source, confidence, meta, refines: int | None = None) -> int:
         now = utcnow()
-        cur = self.db.execute(
+        # Upsert: the graph in memory can miss a row that exists in the database (a
+        # second process, or a node written before this graph loaded), and then a plain
+        # INSERT raised IntegrityError mid-consolidation and aborted the whole stage.
+        # Measured in sleep cycle 4: "UNIQUE constraint failed: semantic_nodes.kind,
+        # semantic_nodes.label".
+        self.db.execute(
             "INSERT INTO semantic_nodes(kind, label, content, status, source, confidence, created_at,"
-            " updated_at, last_access, meta) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            " updated_at, last_access, meta) VALUES (?,?,?,?,?,?,?,?,?,?)"
+            " ON CONFLICT(kind, label) DO UPDATE SET"
+            " content=excluded.content,"
+            " status=excluded.status,"
+            " source=excluded.source,"
+            " confidence=MAX(semantic_nodes.confidence, excluded.confidence),"
+            " updated_at=excluded.updated_at,"
+            " last_access=excluded.last_access",
             (kind, label, content, status, source, confidence, now, now, now, json.dumps(meta or {})),
         )
-        nid = int(cur.lastrowid)
+        row = self.db.query_one("SELECT id FROM semantic_nodes WHERE kind=? AND label=?", (kind, label))
+        nid = int(row[0])
         self.graph.add_node(nid, label=label, kind=kind, content=content, status=status,
                             confidence=confidence, access=0, ts=now, source=source)
         if refines:

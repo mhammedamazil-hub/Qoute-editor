@@ -1,0 +1,384 @@
+{
+  "generated_at": "2026-11-18T02:34:48Z",
+  "passed": 8,
+  "total": 8,
+  "all_passed": true,
+  "seconds": 37.71,
+  "checks": [
+    {
+      "n": 1,
+      "name": "learn a genuinely unseen procedural task",
+      "passed": true,
+      "detail": "1 attempt(s), progress 1.00, 9.5s, candidate 12; model-only control solved=False (synthesis solved=True); editor greedy control solved=True (procedure retained, not new capability)",
+      "evidence": {
+        "solved": true,
+        "attempts": 1,
+        "first_attempt_ok": true,
+        "final_progress": 1.0,
+        "failure_classes": [],
+        "control": {
+          "solved": true,
+          "progress": 1.0,
+          "steps": 5,
+          "backtracks": 0,
+          "failed": []
+        },
+        "model_only_control": {
+          "available": true,
+          "solved": false,
+          "task": "sum_evens",
+          "output": "Ttot gra line gall he be s un layeep pa dedier gold u pieC--adundiar gacse, su beentster so mes uangral Amara.",
+          "chars": 110
+        },
+        "synthesis": {
+          "task": "sum_evens",
+          "solved": true,
+          "attempts": 1,
+          "candidates_tested": 36,
+          "confirmed_in_sandbox": true
+        }
+      }
+    },
+    {
+      "n": 2,
+      "name": "replay the skill in a fresh session",
+      "passed": true,
+      "detail": "3/3 runs, first run in a separate interpreter",
+      "evidence": {
+        "runs": 3,
+        "requested": 3,
+        "failures": []
+      }
+    },
+    {
+      "n": 3,
+      "name": "retain the skill after episodic archival",
+      "passed": true,
+      "detail": "6 episodes seeded; archived 107 -> 0 live; replay 2/2 with no episodes available",
+      "evidence": {
+        "episodes_archived": 107,
+        "episodes_live_after": 0,
+        "replay_runs": 2
+      }
+    },
+    {
+      "n": 4,
+      "name": "apply the skill to a different variation",
+      "passed": true,
+      "detail": "variant solved=True via repaired (substitution=False, repaired=True); aspect-flipped stress=failed",
+      "evidence": {
+        "variation": "acceptance_beacon_variant",
+        "mode": "repaired",
+        "substitution_passed": false,
+        "repaired": true,
+        "repair_rounds": 1,
+        "failed": [],
+        "stress": {
+          "passed": false,
+          "mode": "failed",
+          "substitution_passed": false,
+          "repaired": false,
+          "failed": [
+            "no_overlap()"
+          ]
+        }
+      }
+    },
+    {
+      "n": 5,
+      "name": "reject an unverified skill",
+      "passed": true,
+      "detail": "promotion refused (independent replay did not pass); skill absent from memory =True",
+      "evidence": {
+        "promotion_refused": true,
+        "skill_in_memory": false
+      }
+    },
+    {
+      "n": 6,
+      "name": "detect a deliberate regression",
+      "passed": true,
+      "detail": "3 regression(s) caught: skill_accuracy, retention, val_ce",
+      "evidence": {
+        "regressions": [
+          {
+            "metric": "skill_accuracy",
+            "baseline": 0.875,
+            "candidate": 0.0,
+            "delta": -0.875,
+            "tolerance": 0.05
+          },
+          {
+            "metric": "retention",
+            "baseline": 0.875,
+            "candidate": 0.0,
+            "delta": -0.875,
+            "tolerance": 0.05
+          },
+          {
+            "metric": "val_ce",
+            "baseline": 5.68,
+            "candidate": 356.1,
+            "delta": -350.42,
+            "tolerance": 0.08
+          }
+        ]
+      }
+    },
+    {
+      "n": 7,
+      "name": "roll back a harmful update",
+      "passed": true,
+      "detail": "val_ce 5.5893 -> harmed 379.99 -> restored 5.5893",
+      "evidence": {
+        "before": {
+          "skill_accuracy": 0.875,
+          "retention": 0.875,
+          "answer_rate": 1.0,
+          "val_ce": 5.5893
+        },
+        "harmed": {
+          "skill_accuracy": 0.0,
+          "retention": 0.0,
+          "answer_rate": 1.0,
+          "val_ce": 379.99
+        },
+        "recovered": {
+          "skill_accuracy": 0.875,
+          "retention": 0.875,
+          "answer_rate": 1.0,
+          "val_ce": 5.5893
+        }
+      }
+    },
+    {
+      "n": 8,
+      "name": "produce a reproducible benchmark report",
+      "passed": true,
+      "detail": "two runs agree on 15/17; sealed=True",
+      "evidence": {
+        "run_a": 15,
+        "run_b": 15,
+        "sealed": true
+      }
+    }
+  ],
+  "state": {
+    "acquire": {
+      "experiment_id": 13,
+      "task_key": "acceptance_beacon",
+      "solved": true,
+      "attempts": 1,
+      "first_attempt_ok": true,
+      "final_progress": 1.0,
+      "failure_classes": [],
+      "candidate_id": 12,
+      "replay_passed": true,
+      "replay_runs": 3,
+      "promoted": false,
+      "seconds": 9.49,
+      "tokens_used": 34,
+      "resource": {
+        "rss_mb": 570.1,
+        "cpu_seconds": 2.19
+      }
+    },
+    "control": {
+      "solved": true,
+      "progress": 1.0,
+      "steps": 5,
+      "backtracks": 0,
+      "failed": []
+    },
+    "replay": {
+      "passed": true,
+      "runs": 3,
+      "requested": 3,
+      "failures": [],
+      "fresh_process": true
+    },
+    "promote": {
+      "promoted": true,
+      "skill_id": 32,
+      "slug": "learned_acceptance_beacon"
+    },
+    "reuse": {
+      "passed": true,
+      "criteria": [
+        {
+          "criterion": "canvas_size(900, 1200)",
+          "passed": true,
+          "detail": "canvas is 900x1200, wanted 900x1200"
+        },
+        {
+          "criterion": "background_contains(\"#101014\")",
+          "passed": true,
+          "detail": "background=\"{'kind': 'solid', 'color': '#101014'}\""
+        },
+        {
+          "criterion": "text_present(\"Beacon Relaunch\")",
+          "passed": true,
+          "detail": "1 text layer(s) containing 'Beacon Relaunch'"
+        },
+        {
+          "criterion": "text_present(\"Gates 20:30\")",
+          "passed": true,
+          "detail": "1 text layer(s) containing 'Gates 20:30'"
+        },
+        {
+          "criterion": "count(shape, >=, 1)",
+          "passed": true,
+          "detail": "1 shape layers, wanted >= 1"
+        },
+        {
+          "criterion": "centred(text, \"Beacon Relaunch\")",
+          "passed": true,
+          "detail": "centre x=450.0, canvas centre=450.0, off by 0.0"
+        },
+        {
+          "criterion": "within_canvas()",
+          "passed": true,
+          "detail": "all layers inside canvas"
+        },
+        {
+          "criterion": "no_overlap()",
+          "passed": true,
+          "detail": "no text overlaps"
+        }
+      ],
+      "failed": [],
+      "progress": 1.0,
+      "log": [
+        {
+          "tool": "set_canvas_size",
+          "ok": true,
+          "error": ""
+        },
+        {
+          "tool": "set_background",
+          "ok": true,
+          "error": ""
+        },
+        {
+          "tool": "add_text",
+          "ok": true,
+          "error": ""
+        },
+        {
+          "tool": "add_text",
+          "ok": true,
+          "error": ""
+        },
+        {
+          "tool": "add_shape",
+          "ok": true,
+          "error": ""
+        }
+      ],
+      "adapted": [
+        {
+          "tool": "set_canvas_size",
+          "args": {
+            "width": 900,
+            "height": 1200
+          }
+        },
+        {
+          "tool": "set_background",
+          "args": {
+            "color": "#101014"
+          }
+        },
+        {
+          "tool": "add_text",
+          "args": {
+            "content": "Beacon Relaunch",
+            "role": "quote"
+          }
+        },
+        {
+          "tool": "add_text",
+          "args": {
+            "content": "Gates 20:30",
+            "role": "quote",
+            "x": 94,
+            "y": 624
+          }
+        },
+        {
+          "tool": "add_shape",
+          "args": {
+            "shape": "rect",
+            "x": 40,
+            "y": 40,
+            "width": 120,
+            "height": 120
+          }
+        }
+      ],
+      "variation": "changed",
+      "substitution_passed": false,
+      "repaired": true,
+      "repair_rounds": 1,
+      "mode": "repaired"
+    },
+    "stress": {
+      "passed": false,
+      "mode": "failed",
+      "substitution_passed": false,
+      "repaired": false,
+      "failed": [
+        "no_overlap()"
+      ]
+    },
+    "reject_too_few": {
+      "promoted": false,
+      "reason": "needs >= 3 replay runs, had 1"
+    },
+    "regression_verdict": {
+      "passed": false,
+      "regressions": [
+        {
+          "metric": "skill_accuracy",
+          "baseline": 0.875,
+          "candidate": 0.0,
+          "delta": -0.875,
+          "tolerance": 0.05
+        },
+        {
+          "metric": "retention",
+          "baseline": 0.875,
+          "candidate": 0.0,
+          "delta": -0.875,
+          "tolerance": 0.05
+        },
+        {
+          "metric": "val_ce",
+          "baseline": 5.68,
+          "candidate": 356.1,
+          "delta": -350.42,
+          "tolerance": 0.08
+        }
+      ],
+      "improvements": [],
+      "detail": "3 metric(s) regressed"
+    },
+    "bench_program": {
+      "n": 17,
+      "final_success": 15,
+      "final_rate": 0.882,
+      "first_attempt_success": 15,
+      "first_attempt_rate": 0.882,
+      "confirmed_in_sandbox": 15,
+      "mean_attempts": 1.24,
+      "total_seconds": 2.28,
+      "mean_seconds": 0.13,
+      "peak_rss_mb": 586.9,
+      "search_tokens": 5831,
+      "replay_attempted": 0,
+      "replay_passed": 0,
+      "generalisation_attempted": 0,
+      "generalisation_passed": 0
+    }
+  }
+}

@@ -182,7 +182,13 @@ def build_shard(
     seen: set[str] = set()
     unique: list[dict[str, Any]] = []
     dropped = 0
+    blank = 0
     for e in examples:
+        # A lesson with an empty side is unlearnable and fails shard validation. Measured
+        # in sleep cycle 4: "line 1: empty prompt/response" aborted skill compilation.
+        if not str(e.get("prompt", "")).strip() or not str(e.get("response", "")).strip():
+            blank += 1
+            continue
         key = hashlib.sha256((e["prompt"] + "\x00" + e["response"]).encode()).hexdigest()
         if key in seen:
             dropped += 1
@@ -190,7 +196,8 @@ def build_shard(
         seen.add(key)
         unique.append(e)
     examples = unique
-    validation_notes: dict[str, Any] = {"deduplicated": dropped}
+    examples = unique
+    validation_notes: dict[str, Any] = {"deduplicated": dropped, "blank_dropped": blank}
     if not examples:
         return {"created": False, "reason": "all examples were duplicates", "examples": 0,
                 "skills": 0, "quarantined": quarantined}

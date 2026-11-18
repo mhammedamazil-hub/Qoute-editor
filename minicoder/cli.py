@@ -24,7 +24,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -600,6 +602,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("acceptance", help="run the eight Phase 2 acceptance criteria")
     s.add_argument("--json", action="store_true")
+    s.add_argument("--live", action="store_true",
+                   help="run against the live brain (promotes skills; not for evaluation)")
     s.set_defaults(func=cmd_acceptance)
 
     s = sub.add_parser("research", help="Phase 3: blind tasks, arms, transfer, retention")
@@ -733,7 +737,26 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
 def cmd_acceptance(args: argparse.Namespace) -> int:
     from minicoder.learning.acceptance import run
 
-    report = run()
+    # The acceptance suite acquires and promotes skills to prove they *can* be promoted.
+    # Run against the live brain it does exactly that: measured, `minicoder acceptance`
+    # left `learned_acceptance_beacon` in production procedural memory. Evaluation must
+    # never promote, so the suite runs in a throwaway home unless asked otherwise.
+    if getattr(args, "live", False):
+        report = run()
+    else:
+        from minicoder import config as config_mod
+
+        home = Path(tempfile.mkdtemp(prefix="acceptance_home_"))
+        for sub in ("memory", "datasets"):
+            src = config_mod.CONFIG.paths.home / sub
+            if src.exists():
+                shutil.copytree(src, home / sub, dirs_exist_ok=True)
+        prev = config_mod.activate_home(home)
+        try:
+            report = run()
+        finally:
+            config_mod.activate_home(prev)
+            shutil.rmtree(home, ignore_errors=True)
     if args.json:
         print(json.dumps(report, indent=2, default=str))
     return 0 if report["all_passed"] else 1

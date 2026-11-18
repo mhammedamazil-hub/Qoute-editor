@@ -5,6 +5,31 @@ reports in `memory/sleep_logs/` and `datasets/training_runs/`, and — for Phase
 `datasets/learning/`.
 
 
+## Fixes found by testing the live system
+
+### Fixed
+
+* **Sleep stage 2 aborted mid-consolidation.** `IntegrityError: UNIQUE constraint failed:
+  semantic_nodes.kind, semantic_nodes.label` — the in-memory graph can miss a row that exists in
+  the database, and the plain INSERT then aborted the stage, leaving every later stage running on
+  partial memory. `_insert` is now an upsert. Cycle 5 consolidates 61 episodes and adds its node.
+* **Sleep stage 7 aborted skill compilation.** `ValueError: shard failed validation: ['line 1:
+  empty prompt/response']` — lessons with an empty side were written to the shard and then
+  rejected. They are now dropped before writing. Cycle 5 produced 11 examples from 3 skills.
+* **`minicoder acceptance` promoted into the live brain.** The suite acquires and promotes skills
+  to prove promotion works; run against production memory it left `learned_acceptance_beacon`
+  there. It now runs in a throwaway home unless `--live` is passed. Verified: skills 30→30,
+  experiments 8→8, candidates 7→7 across a full 8/8 run.
+
+### Known weaknesses (not fixed, measured)
+
+* A design question can be answered with a tool sequence: "How many fonts should I use in one
+  poster?" returns a raw JSON trajectory instead of the stored rule, reproducibly.
+* Instruction-shaped requests are sometimes *executed* rather than answered, and incompletely:
+  "build a 1080x1350 poster with headline 'Quiet'" resized the canvas and reported only that.
+* The system cannot describe itself: "summarise your last sleep cycle" is refused even though the
+  report is on disk.
+
 ## Phase 3 — independent capability acquisition
 
 Research phase, additive. Nothing in `minicoder/learning/` was replaced; the Phase 2 benchmark,

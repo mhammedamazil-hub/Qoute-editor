@@ -180,3 +180,47 @@ def test_reports_carry_provenance(tmp_path: Path) -> None:
         assert field in report
     assert len(report["git_commit"]) >= 7
     assert "Hidden-test pass rate" in render_markdown(report)
+
+
+# --------------------------------------------------------------------------- sleep fixes
+def test_semantic_remember_is_idempotent(home: Path) -> None:
+    """Consolidation must not abort when a node label already exists.
+
+    Measured in sleep cycle 4: stage 2 died with "UNIQUE constraint failed:
+    semantic_nodes.kind, semantic_nodes.label" and every later stage ran on partial memory.
+    """
+    from minicoder.config import SOURCE_USER_INSTRUCTION as SRC
+    from minicoder.memory.systems import SemanticMemory
+
+    mem = SemanticMemory()
+    first = mem.upsert("fact", "duplicate probe", "value one", source=SRC)
+    # The second write must not raise even though (kind, label) is unique. It may take
+    # any of the upsert paths (update, contradiction revision); what must not happen is
+    # the IntegrityError that killed the consolidation stage.
+    second = mem.upsert("fact", "duplicate probe", "value two", source=SRC)
+    assert isinstance(first, int) and isinstance(second, int)
+    count = mem.db.query_one(
+        "SELECT COUNT(*) FROM semantic_nodes WHERE kind='fact' AND label='duplicate probe'")[0]
+    assert count == 1
+    # And the plain insert path used by consolidation is itself idempotent now.
+    same = mem.upsert("fact", "duplicate probe", "value one", source=SRC)
+    assert mem.db.query_one(
+        "SELECT COUNT(*) FROM semantic_nodes WHERE kind='fact' AND label='duplicate probe'")[0] == 1
+    assert same == first
+
+
+def test_shard_builder_skips_blank_examples(tmp_path: Path, home: Path) -> None:
+    """A lesson with an empty side must be dropped, not written and then rejected.
+
+    Measured in sleep cycle 4: stage 7 died with "line 1: empty prompt/response".
+    """
+    from minicoder.sleep.compiler import build_shard
+
+    out = build_shard(out_dir=tmp_path)
+    if not out.get("created"):
+        pytest.skip(f"no shard produced in this environment: {out.get('reason')}")
+    for line in Path(out["path"]).read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        obj = json.loads(line)
+        assert obj["prompt"].strip() and obj["response"].strip()
