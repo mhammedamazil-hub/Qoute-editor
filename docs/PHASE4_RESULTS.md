@@ -13,6 +13,7 @@ Machine-readable copies:
 | generalization, last run | `datasets/research/generalization_latest.{json,md}` |
 | five sleep cycles | `datasets/research/retention5_latest.json` |
 | blind benchmark (re-run) | `datasets/research/acquisition_latest.json` |
+| Phase 4 commits | `bafdc90` (engine + tests), `7228fbe` (dashboard + docs) |
 | transfer / retention / meta | `datasets/research/{transfer,retention,meta}_latest.json` |
 | sleep cycle reports | `memory/sleep_logs/latest.md`, `sleep_cycles.report` |
 
