@@ -35,6 +35,13 @@ from minicoder.learning.criteria import (
 )
 from minicoder.learning.discovery import ToolIndex
 
+# Phase 5: the planner is in-process operator code (CLI acquisition or a granted
+# sleep cycle).  It presents an internal context instead of bypassing the guard.
+from minicoder.security import internal_context as _internal_context
+
+_PLANNER_AUTH = _internal_context("learning.planner")
+
+
 # Priority order for satisfying requirements: establish the canvas, then the
 # background, then content, then arrangement. This is a *search heuristic*, not
 # a solution — the tools and arguments are still discovered per requirement.
@@ -385,7 +392,7 @@ class SearchPlanner:
             reqs = [r for r in reqs if r.text in wanted]
         plan: list[dict[str, Any]] = []
         if reset:
-            bridge.call("new_project", {})
+            bridge.call("new_project", {}, auth=_PLANNER_AUTH)
         state = self._state(bridge)
         results = evaluate_editor_criteria(criteria, state)
         best = partial_credit(reqs, state)
@@ -441,7 +448,7 @@ class SearchPlanner:
                     if changed:
                         # Only revert work that actually happened; otherwise undo
                         # would eat the previous accepted step.
-                        bridge.call("undo", {})
+                        bridge.call("undo", {}, auth=_PLANNER_AUTH)
                         backtracks += 1
                         state = self._state(bridge)
                         if self._signature(state) != signature_before:
@@ -489,13 +496,13 @@ class SearchPlanner:
     # --------------------------------------------------------------- helpers
     @staticmethod
     def _state(bridge: Any) -> EditorState:
-        _, raw = bridge.call("get_app_state", {})
+        _, raw = bridge.call("get_app_state", {}, auth=_PLANNER_AUTH)
         return EditorState.from_snapshot(raw.get("snapshot") or {})
 
     @staticmethod
     def _execute(bridge: Any, tool: str, args: dict[str, Any]) -> dict[str, Any]:
         try:
-            result, _ = bridge.call(tool, args)
+            result, _ = bridge.call(tool, args, auth=_PLANNER_AUTH)
             if isinstance(result, dict) and result.get("ok") is False:
                 return {"ok": False, "error": str(result.get("error") or result.get("summary") or "")}
             return {"ok": True}

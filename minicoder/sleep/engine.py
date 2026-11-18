@@ -156,6 +156,7 @@ class SleepEngine:
         on_stage: Callable[[str, dict[str, Any]], None] | None = None,
         push_to_github: bool = False,
         train_after_compile: bool = False,
+        auth=None,
     ) -> None:
         self.db = db or BrainDB()
         self.episodic = EpisodicMemory(self.db)
@@ -165,6 +166,9 @@ class SleepEngine:
         self.on_stage = on_stage
         self.push_to_github = push_to_github
         self.train_after_compile = train_after_compile
+        # Phase 5: authority for the editor calls this cycle makes.  The API sets
+        # it to the consumed sleep.run grant; a CLI run uses an internal context.
+        self.auth = auth
         self.busy = False
 
     # ---------------------------------------------------------- helpers
@@ -360,9 +364,12 @@ class SleepEngine:
         ok = False
         detail: dict[str, Any] = {"mode": "steps"}
         try:
+            # In-process operator code: the sleep cycle is started by an
+            # operator action that already validated a sleep.run grant.
+            from minicoder.security import internal_context
             from minicoder.tools.editor_bridge import EditorBridge
 
-            bridge = EditorBridge()
+            bridge = EditorBridge(auth=self.auth or internal_context("sleep.retention"))
             try:
                 bridge._ensure()
                 bridge.call("new_project", {})
@@ -790,7 +797,11 @@ class SleepEngine:
             from minicoder.tools.editor_bridge import EditorBridge
 
             criteria = json.loads(exp["success_criteria"] or "[]")
-            bridge = EditorBridge()
+            # In-process operator code: the sleep cycle is started by an
+            # operator action that already validated a sleep.run grant.
+            from minicoder.security import internal_context
+
+            bridge = EditorBridge(auth=self.auth or internal_context("sleep.retention"))
             try:
                 bridge._ensure()
                 bridge.call("new_project", {})

@@ -406,11 +406,21 @@ def test_audit_log_records_refusal_and_grant(home: Path) -> None:
     agent.execute("delete every layer on the canvas")
     rows = db.query("SELECT * FROM audit_log")
     assert rows and rows[-1]["allowed"] == 0 and rows[-1]["authorized"] == 0
+    # Phase 5: the Phase 4 ``authorize=True`` boolean no longer grants anything.
+    # A refusal must be recorded as a refusal, not as an approval.
     agent.execute("delete every layer on the canvas", authorize=True)
     rows = db.query("SELECT * FROM audit_log")
-    assert rows[-1]["allowed"] == 1 and rows[-1]["authorized"] == 1
+    assert rows[-1]["allowed"] == 0 and rows[-1]["authorized"] == 0
     detail = json.loads(rows[-1]["detail"])
     assert detail["executed"] is False, "this request has no delete tool: nothing ran"
+
+    # Real authority is an explicit internal context (the operator's own process)
+    # or a consumed grant; only then does the audit record an approval.
+    from minicoder.security import internal_context
+
+    agent.execute("delete every layer on the canvas", auth=internal_context("test.audit"))
+    rows = db.query("SELECT * FROM audit_log")
+    assert rows[-1]["allowed"] == 1 and rows[-1]["authorized"] == 1
 
 
 def test_private_store_is_outside_the_repository() -> None:

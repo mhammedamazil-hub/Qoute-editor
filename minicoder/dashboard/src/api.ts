@@ -47,22 +47,89 @@ export type ChatReply = {
 export type GraphNode = { id: number; label: string; kind: string; status: string; confidence: number; content: string };
 export type GraphEdge = { src: number; dst: number; relation: string; weight: number };
 
-async function jget<T>(url: string): Promise<T> {
-  const r = await fetch(url, { headers: { accept: "application/json" } });
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return (await r.json()) as T;
+/**
+ * Authorization (Phase 5).
+ *
+ * Consequences need an *operator token* plus a single-use *grant*.  Neither is
+ * a cookie: the token is a capability the operator pastes once per browser
+ * session (sessionStorage), and a grant is minted per action and consumed by the
+ * server.  Nothing here can authorize anything on its own — the server rejects
+ * every mutation that does not present both.
+ */
+const TOKEN_KEY = "nace.operator.token";
+
+export function getToken(): string {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
 }
 
-async function jpost<T>(url: string, body: unknown): Promise<T> {
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+export function setToken(token: string): void {
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage disabled: the dashboard stays read-only */
+  }
+}
+
+export type GrantNeeded = { action: string; resource: string; scope: string };
+
+export class ApiError extends Error {
+  status: number;
+  code: string;
+  requiresGrant: GrantNeeded | null;
+
+  constructor(status: number, body: string) {
+    let code = "";
+    let detail = "";
+    let requiresGrant: GrantNeeded | null = null;
+    try {
+      const parsed = JSON.parse(body);
+      code = String(parsed.error || "");
+      detail = String(parsed.detail || "");
+      if (parsed.requires_grant) requiresGrant = parsed.requires_grant as GrantNeeded;
+    } catch {
+      detail = body;
+    }
+    super(detail || code || `HTTP ${status}`);
+    this.status = status;
+    this.code = code;
+    this.requiresGrant = requiresGrant;
+  }
+}
+
+function authHeaders(base: Record<string, string> = {}): Record<string, string> {
+  const token = getToken();
+  return token ? { ...base, authorization: `Bearer ${token}` } : base;
+}
+
+async function jget<T>(url: string): Promise<T> {
+  const r = await fetch(url, { headers: authHeaders({ accept: "application/json" }) });
   const text = await r.text();
-  if (!r.ok) throw new Error(text || `${r.status}`);
+  if (!r.ok) throw new ApiError(r.status, text);
+  return JSON.parse(text) as T;
+}
+
+async function jpost<T>(url: string, body: unknown, grants: string[] = []): Promise<T> {
+  const headers: Record<string, string> = authHeaders({ "content-type": "application/json" });
+  if (grants.length) headers["x-nace-grant"] = grants[0];
+  const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  const text = await r.text();
+  if (!r.ok) throw new ApiError(r.status, text);
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
+
+export type SecurityStatus = {
+  authenticated: boolean;
+  principal: string;
+  grants: Record<string, number>;
+  audit: { chain_ok: boolean; length: number; head: string; counts: Record<string, number> };
+  policy: { tools: number; grant_required_classes: string[]; actions: string[] };
+  cors: { origins: string[]; origin_regex: string | null; note: string };
+};
 
 
 export type ResearchArm = {
@@ -206,8 +273,20 @@ export type GeneralizationOverview = {
 export const api = {
   status: () => jget<Status>("/api/status"),
   health: () => jget<{ ok: boolean; db: string; state: string }>("/api/health"),
-  chat: (message: string, allowActions = true) =>
-    jpost<ChatReply>("/api/chat", { message, allow_actions: allowActions }),
+  chat: (message: string, allowActions = true, grants: string[] = []) =>
+    jpost<ChatReply>("/api/chat", { message, allow_actions: allowActions }, grants),
+  securityStatus: () => jget<SecurityStatus>("/api/security/status"),
+  securityInventory: () =>
+    jget<{ tools: { tool: string; class: string }[]; actions: string[] }>("/api/security/inventory"),
+  grant: (action: string, scope = "", resource?: string) =>
+    jpost<{ grant: { id: string; action: string; scope: string; expires_at: string } }>(
+      "/api/security/grant",
+      { action, scope, resource },
+    ),
+  securityAudit: (limit = 25) =>
+    jget<{ items: Record<string, unknown>[]; chain: { ok: boolean; length: number } }>(
+      `/api/security/audit?limit=${limit}`,
+    ),
   graph: () => jget<{ nodes: GraphNode[]; edges: GraphEdge[] }>("/api/graph"),
   episodes: () => jget<{ items: Record<string, unknown>[] }>("/api/episodes?limit=40"),
   skills: () => jget<{ items: Record<string, unknown>[]; stats: Record<string, number> }>("/api/skills"),
@@ -220,6 +299,11 @@ export const api = {
   callTool: (tool: string, args: Record<string, unknown>) =>
     jpost<{ ok: boolean; result: Record<string, unknown>; checks: string[] }>("/api/editor/tool", { tool, args }),
   snapshots: () => jpost<{ path: string; bytes: number }>("/api/export/snapshot", {}),
+  // mutation helpers that need a grant minted by the caller
+  grantFor: async (action: string, scope = "", resource?: string) => {
+    const r = await jpost<{ grant: { id: string } }>("/api/security/grant", { action, scope, resource });
+    return r.grant.id;
+  },
   learningOverview: () => jget<LearningOverviewResponse>("/api/learning/overview"),
   researchOverview: () => jget<ResearchOverviewResponse>("/api/research/overview"),
   cognitionOverview: () => jget<CognitionOverview>("/api/cognition/overview"),
@@ -229,12 +313,15 @@ export const api = {
   learningExperiments: () => jget<{ experiments: Record<string, unknown>[] }>(
     "/api/learning/experiments",
   ),
-  inspectImage: async (file: File) => {
+  inspectImage: async (file: File, grants: string[] = []) => {
     const fd = new FormData();
     fd.append("file", file);
-    const r = await fetch("/api/vision/inspect", { method: "POST", body: fd });
-    if (!r.ok) throw new Error(await r.text());
-    return (await r.json()) as Record<string, any>;
+    const headers: Record<string, string> = authHeaders();
+    if (grants.length) headers["x-nace-grant"] = grants[0];
+    const r = await fetch("/api/vision/inspect", { method: "POST", body: fd, headers });
+    const text = await r.text();
+    if (!r.ok) throw new ApiError(r.status, text);
+    return JSON.parse(text) as Record<string, any>;
   },
 };
 

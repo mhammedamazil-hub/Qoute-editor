@@ -23,13 +23,18 @@ class EditorBridge:
     explicit ``BridgeUnavailable`` rather than a silent mock.
     """
 
-    def __init__(self, home: Path | None = None, timeout: float = 120.0) -> None:
+    def __init__(self, home: Path | None = None, timeout: float = 120.0, *, auth=None) -> None:
         # ``home`` here means the *installation* root that holds the editor
         # source, not the data home (see config.install_root).
         from minicoder.config import install_root
 
         self.home = (home or install_root()).resolve()
         self.timeout = timeout
+        # Default authority for this client.  ``None`` means "no authority":
+        # every mutating tool then needs an explicit ``auth=`` per call.
+        # Only in-process operator code (learning pipeline, sleep worker) sets
+        # this, with an internal context it constructs deliberately.
+        self.auth = auth
         self._proc: subprocess.Popen[str] | None = None
         self._lock = threading.Lock()
         self._next_id = 0
@@ -95,13 +100,28 @@ class EditorBridge:
     def list_tools(self) -> list[dict[str, Any]]:
         return self.request({"op": "list"}).get("tools", [])
 
-    def reset(self, width: int = 1080, height: int = 1350) -> dict[str, Any]:
+    def reset(self, width: int = 1080, height: int = 1350, *, auth=None) -> dict[str, Any]:
+        # A reset wipes the canvas: it is the ``new_project`` tool in disguise
+        # and is authorized as such.
+        from minicoder.security.guard import check_tool
+
+        check_tool("new_project", {"width": width, "height": height},
+                   auth if auth is not None else self.auth)
         return self.request({"op": "reset", "width": width, "height": height}).get("state", {})
 
     def state(self) -> dict[str, Any]:
         return self.request({"op": "state"}).get("state", {})
 
-    def call(self, tool: str, args: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    def call(self, tool: str, args: dict[str, Any] | None = None, *, auth=None) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Execute one editor tool.
+
+        The authorization check happens here — immediately before the request
+        is written to the editor process — so no caller can reach the editor
+        without one.  ``AuthorizationRequired`` is raised, never swallowed.
+        """
+        from minicoder.security.guard import check_tool
+
+        check_tool(tool, args or {}, auth if auth is not None else self.auth)
         msg = self.request({"op": "call", "tool": tool, "args": args or {}})
         if not msg.get("ok"):
             raise BridgeUnavailable(msg.get("error", "tool call failed"))

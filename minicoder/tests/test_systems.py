@@ -157,9 +157,15 @@ def test_cli_memory_search_prints_nothing_for_unrelated_query(capsys):
 def client(home):
     from fastapi.testclient import TestClient
 
+    # Phase 5: bind the runtime to *this* test's home.  The module-level
+    # singleton may hold a service from an earlier test whose home has since
+    # been torn down; without this the API writes into that (or the live) brain.
+    import minicoder.api.app as api_module
     from minicoder.api.app import app, service
 
-    service.cache_clear() if hasattr(service, "cache_clear") else None
+    api_module.SERVICE = None
+    svc = service()
+    assert str(svc.db.db_path).startswith(str(home)), (svc.db.db_path, home)
     return TestClient(app)
 
 
@@ -176,12 +182,34 @@ def test_api_refuses_off_domain_chat_honestly(client):
 
 
 def test_api_chat_routes_a_poster_request_to_a_verified_skill(client, home):
+    """A build is a mutation, so it needs a grant — and still produces steps.
+
+    Phase 4 ran this without any authorization.  Phase 5 keeps the behavioural
+    assertion (a poster request must reach the editor) and adds the security
+    one: the same request without a grant is refused and changes nothing.
+    """
+    from minicoder.api.app import service
+    from minicoder.security import policy, security
     from minicoder.seed import seed_brain
 
     seed_brain()
-    body = client.post("/api/chat", json={
-        "message": "Create a cinematic poster about patience at 1080x1350 with gold light",
-    }).json()
+    message = "Create a cinematic poster about patience at 1080x1350 with gold light"
+    denied = client.post("/api/chat", json={"message": message})
+    assert denied.status_code == 401, denied.text
+
+    sec = security(service().db)
+    headers = {"authorization": f"Bearer {sec.operator_token()}"}
+    grant = client.post(
+        "/api/security/grant",
+        json={"action": policy.ACTION_INSTRUCTION,
+              "scope": policy.instruction_scope(message)},
+        headers=headers,
+    ).json()["grant"]
+
+    body = client.post(
+        "/api/chat", json={"message": message},
+        headers={**headers, "x-nace-grant": grant["id"]},
+    ).json()
     assert body["source"] in ("skill", "tool"), body
     assert body["steps"], "a poster request must produce editor steps"
 

@@ -244,11 +244,40 @@ class TrainingConfig:
     min_skill_gain: float = 0.01
 
 
+def _default_origins() -> tuple[str, ...]:
+    """Explicit browser origins, never ``*``.
+
+    Phase 4 shipped ``Access-Control-Allow-Origin: *``, which let any web page
+    the operator happened to visit drive the local editor.  The default list is
+    the dev dashboard (vite) and the API's own origin; deployments extend it with
+    ``NACE_ALLOWED_ORIGINS`` (comma separated).
+    """
+    raw = os.environ.get("NACE_ALLOWED_ORIGINS", "").strip()
+    if raw:
+        return tuple(o.strip() for o in raw.split(",") if o.strip())
+    return (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    )
+
+
+def _default_origin_regex() -> str | None:
+    """Optional regex for ephemeral preview hosts (e.g. the sandbox proxy)."""
+    raw = os.environ.get("NACE_ALLOWED_ORIGIN_REGEX", "").strip()
+    if raw:
+        return raw
+    # Arena/preview proxies serve the dashboard from <port>-<sandbox>.e2b.app.
+    return r"https://[0-9]{2,5}-[a-z0-9-]+\.e2b\.app"
+
+
 @dataclass(frozen=True)
 class ApiConfig:
     host: str = "0.0.0.0"
     port: int = 8000
-    cors_origins: tuple[str, ...] = ("*",)
+    cors_origins: tuple[str, ...] = field(default_factory=_default_origins)
+    cors_origin_regex: str | None = field(default_factory=_default_origin_regex)
     ws_telemetry_hz: float = 2.0
 
 

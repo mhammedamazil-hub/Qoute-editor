@@ -37,9 +37,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     from minicoder.learning.criteria import EditorState, evaluate_editor_criteria
+    from minicoder.security import internal_context
     from minicoder.tools.editor_bridge import EditorBridge
 
-    bridge = EditorBridge()
+    bridge = EditorBridge(auth=internal_context("learning.replay"))
     try:
         bridge._ensure()
         bridge.call("new_project", {})

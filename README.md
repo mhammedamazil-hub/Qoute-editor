@@ -75,6 +75,7 @@ learn   benchmark acceptance neural safeguard
 | `minicoder safeguard baseline/evaluate/rollback` | immutable baselines and regression-gated updates |
 | `minicoder research run/security/reproduce` | Phase 3 blind tasks, control arms, transfer, retention |
 | `minicoder generalize --seeds 11,23,37` | Phase 4 seven-axis generalization against a frozen baseline |
+| `minicoder security token/inventory/audit/verify/mint` | Phase 5 authorization boundary: capability, tool policy, audit chain |
 
 ---
 
@@ -358,6 +359,52 @@ improves (0.000 → 0.500); the other six show retention, and `unseen_family` is
 Five sleep cycles: 20/20 rotation replays passed, 30 skills verified each cycle. Security: 22
 escape probes, 0 escapes. Calibration rests on 8 samples — the number is reported with its `n`
 everywhere it appears.
+
+## 5e. Security boundary (Phase 5)
+
+Phase 4's independent audit found the authorization guarantee was cosmetic:
+`POST /api/editor/tool` executed `new_project` and `delete_elements` with no
+authorization and no audit row, twelve destructive phrasings never reached the
+gate, and CORS was `*`. Phase 5 moves the decision to the place where tools
+actually execute. Design: `docs/PHASE5_SECURITY_ARCHITECTURE.md`; measured
+results: `docs/PHASE5_SECURITY_RESULTS.md`; threat model and residual risk:
+`docs/PHASE5_THREAT_MODEL.md`.
+
+**How it works.** Two things are needed for any change: an *operator token*
+(a 0600 file, `python -m minicoder.cli security token`) and a *single-use grant*
+minted for one action, one resource and one exact scope (`POST /api/security/grant`).
+`EditorBridge.call` checks them immediately before it writes to the editor, so
+every path — HTTP, script, learning pipeline — passes through one gate. Grants
+expire (60 s for editor actions), are consumed atomically
+(`UPDATE … WHERE consumed_at IS NULL` inside `BEGIN IMMEDIATE`), and are
+unforgeable (HMAC over every field, so editing one to extend it is detected).
+Every decision — requested, authorized, executed, failed, rejected, replayed — is
+appended to a hash-chained `security_audit` table whose head is anchored
+separately, so a deleted or edited row breaks verification
+(`minicoder security verify`).
+
+```bash
+python -m minicoder.cli security inventory   # 37 tools, 4 classes
+python -m minicoder.cli security token       # operator capability (0600, outside git)
+python -m minicoder.cli security verify      # audit chain integrity
+curl -X POST localhost:8000/api/security/grant \
+     -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+     -d '{"action":"editor.tool","scope":"add_text"}'
+```
+
+**What it is not.** There is no user authentication: the token is a capability
+bound to the OS account, not an identity, and anything running as that user can
+act as the operator. That limit is stated rather than hidden — see the threat
+model §6 for what it does and does not buy.
+
+**Measured.** 114 adversarial tests (32 destructive phrasings, 22 direct API
+attacks, 17 grant/replay cases, 10 concurrency, 10 failure/rollback, 10 audit
+integrity) pass alongside the existing suite: 248 collected, 247 passed,
+1 skipped, 0 failed. The Phase 4 attacks replayed against the live server now
+return `401` with the canvas unchanged; a valid grant executes once and a replay
+returns `409`; a preflight from `https://evil.example` gets no
+`Access-Control-Allow-Origin`. Not claimed: safety against code running as the
+operator, protection from a stolen token, or DoS resistance.
 
 ## 6. Continual learning loop
 

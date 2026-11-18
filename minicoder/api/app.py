@@ -12,16 +12,23 @@ import base64
 import io
 import json
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from minicoder.config import CONFIG
 from minicoder.memory.db import BrainDB
+from minicoder.security import (
+    AuthorizationDenied,
+    AuthorizationRequired,
+    security,
+)
+from minicoder.security import policy as sec_policy
 
 # --------------------------------------------------------------------------
 # request/response models (Pydantic v2, strict where it matters)
@@ -188,13 +195,63 @@ app = FastAPI(
     description="A compact, multimodal, self-evolving cognitive brain.",
     version="1.0.0",
 )
+# Phase 5: an explicit origin policy.  ``*`` let any page the operator visited
+# drive the editor; CORS is not authentication, so this list is a browser
+# convenience layered on top of the grant boundary, never a substitute for it.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(CONFIG.api.cors_origins),
+    allow_origin_regex=CONFIG.api.cors_origin_regex,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["content-type", "authorization", "x-nace-grant", "x-request-id"],
+    expose_headers=["x-request-id"],
+    max_age=600,
 )
+
+
+@app.middleware("http")
+async def security_context(request: Request, call_next):
+    """Give every request an id so audit rows can be correlated end to end."""
+    rid = request.headers.get("x-request-id") or uuid.uuid4().hex
+    request.state.request_id = rid
+    request.state.bearer = _bearer(request)
+    response = await call_next(request)
+    response.headers["x-request-id"] = rid
+    response.headers["x-content-type-options"] = "nosniff"
+    response.headers["referrer-policy"] = "no-referrer"
+    return response
+
+
+def _bearer(request: Request) -> str | None:
+    raw = request.headers.get("authorization", "")
+    if raw.lower().startswith("bearer "):
+        return raw[7:].strip() or None
+    return None
+
+
+def _grant_id(request: Request) -> str:
+    return (request.headers.get("x-nace-grant") or "").strip()
+
+
+def _rid(request: Request) -> str:
+    return getattr(request.state, "request_id", "")
+
+
+def _denied(exc: AuthorizationDenied | AuthorizationRequired, request: Request) -> JSONResponse:
+    body: dict[str, Any] = {
+        "error": getattr(exc, "code", "authorization_required"),
+        "detail": getattr(exc, "detail", "") or str(exc),
+        "request_id": _rid(request),
+        "authentication": "operator-token",
+    }
+    if isinstance(exc, AuthorizationRequired):
+        body["error"] = "authorization_required"
+        body["tool"] = exc.tool
+    requires = getattr(exc, "requires", None)
+    if requires:
+        body["requires_grant"] = requires
+    return JSONResponse(status_code=getattr(exc, "status", 403), content=body)
 
 
 @app.get("/api/health")
@@ -210,15 +267,84 @@ def status() -> dict[str, Any]:
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(req: ChatRequest) -> ChatResponse:
+def chat(req: ChatRequest, request: Request) -> ChatResponse:
+    """Reason over a message; execute only under a grant.
+
+    The Phase 4 API accepted ``authorize: true`` as the whole authorization
+    model.  That boolean now grants nothing: it is recorded as a rejected
+    attempt and the request needs a real, single-use grant bound to this exact
+    instruction (``action=editor.instruction``, ``scope=sha256(instruction)``).
+    """
     svc = service()
+    sec = security(svc.db)
+    rid = _rid(request)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
     t0 = time.time()
     svc.emit("THINK", "chat_start", {"chars": len(req.message)})
     turns = svc.session_turns.setdefault(req.session_id, [])
     svc.working.put("message", req.message, priority=0.95)
 
+    if req.authorize:
+        sec.deny(
+            request_id=rid,
+            principal=principal or "anonymous",
+            action="chat.legacy_authorize",
+            resource="canvas",
+            reason="authorize=true is not an authorization mechanism and grants nothing",
+        )
+
+    intent: dict[str, Any] = {}
     if req.allow_actions:
-        traj = svc.agent.execute(req.message, authorize=req.authorize)
+        from minicoder.cognition.intent import classify
+        from minicoder.security.guard import plan_is_mutating
+
+        pre = classify(req.message)
+        try:
+            planned, _ = svc.agent.plan(req.message)
+        except Exception:  # pragma: no cover - planner is deterministic
+            planned = []
+        needs_grant = plan_is_mutating(planned) or pre.requires_authorization
+
+        ctx = None
+        if needs_grant:
+            if not principal:
+                sec.deny(request_id=rid, principal="anonymous", action="chat.execute",
+                         resource="canvas", reason="unauthenticated",
+                         grant_id=_grant_id(request))
+                return _denied(
+                    AuthorizationDenied("unauthenticated", "operator token required", status=401),
+                    request,
+                )
+            try:
+                ctx = sec.authorize_execution(
+                    grant_id=_grant_id(request),
+                    principal=principal,
+                    action=sec_policy.ACTION_INSTRUCTION,
+                    resource="canvas",
+                    scope=sec_policy.instruction_scope(req.message),
+                    request_id=rid,
+                    instruction=req.message,
+                )
+            except AuthorizationDenied as exc:
+                return _denied(exc, request)  # type: ignore[return-value]
+
+        try:
+            if ctx is not None:
+                traj = svc.agent.execute(req.message, auth=ctx)
+            else:
+                traj = svc.agent.execute(req.message, auth=None)
+        except AuthorizationRequired as exc:
+            if ctx is not None:
+                sec.finish(ctx, ok=False, detail=str(exc))
+            return _denied(exc, request)  # type: ignore[return-value]
+        except Exception as exc:
+            if ctx is not None:
+                sec.finish(ctx, ok=False, detail=f"exception: {exc}")
+            raise
+        else:
+            if ctx is not None:
+                sec.finish(ctx, ok=bool(traj.verified), detail=str(traj.summary)[:400])
+
         answer = traj.summary
         if traj.steps:
             source = "skill" if traj.verified else "tool"
@@ -231,16 +357,16 @@ def chat(req: ChatRequest) -> ChatResponse:
         steps = [s.to_json() for s in traj.steps]
         verified = traj.verified
         confidence = traj.confidence
+        intent = getattr(traj, "intent", {}) or {}
     else:
         gen = svc.agent.answerer.answer(req.message)
         answer, source, grounding = gen.text, gen.source, gen.grounding
         steps, verified, confidence = [], gen.source in ("skill", "memory"), 0.5
 
-    intent = getattr(traj, "intent", {}) if req.allow_actions else {}
     if intent.get("requires_authorization"):
         svc.db.log_provenance(
             "chat", None, "authorization",
-            detail={"granted": bool(req.authorize), "intent": intent.get("type"),
+            detail={"granted": bool(principal), "intent": intent.get("type"),
                     "actions": intent.get("consequential", [])[:3]})
 
     turns.append({"user": req.message, "assistant": answer[:2000]})
@@ -259,26 +385,99 @@ def chat(req: ChatRequest) -> ChatResponse:
 
 
 @app.post("/api/editor/canvas")
-def set_canvas(req: CanvasRequest) -> dict[str, Any]:
+def set_canvas(req: CanvasRequest, request: Request) -> Any:
+    """Resize the canvas.  A mutation, so it needs a grant."""
     svc = service()
-    traj = svc.agent.execute(f"Set the canvas to {req.width}x{req.height}")
+    sec = security(svc.db)
+    rid = _rid(request)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
+    scope = f"{req.width}x{req.height}"
+    if not principal:
+        sec.deny(request_id=rid, principal="anonymous", action=sec_policy.ACTION_CANVAS,
+                 resource="canvas", reason="unauthenticated", grant_id=_grant_id(request))
+        return _denied(AuthorizationDenied("unauthenticated", "operator token required", status=401), request)
+    try:
+        ctx = sec.authorize_execution(
+            grant_id=_grant_id(request),
+            principal=principal,
+            action=sec_policy.ACTION_CANVAS,
+            resource="canvas",
+            scope=scope,
+            request_id=rid,
+        )
+    except AuthorizationDenied as exc:
+        return _denied(exc, request)
+    try:
+        traj = svc.agent.execute(f"Set the canvas to {scope}", auth=ctx)
+    except AuthorizationRequired as exc:
+        sec.finish(ctx, ok=False, detail=str(exc))
+        return _denied(exc, request)
+    except Exception as exc:
+        sec.finish(ctx, ok=False, detail=f"exception: {exc}")
+        raise
+    sec.finish(ctx, ok=bool(traj.verified), detail=str(traj.summary)[:300])
     return {"ok": traj.verified, "summary": traj.summary, "steps": [s.to_json() for s in traj.steps]}
 
 
 @app.post("/api/editor/tool")
-def call_tool(req: ToolRequest) -> dict[str, Any]:
-    """Raw tool passthrough with the same verification gate as the agent."""
+def call_tool(req: ToolRequest, request: Request) -> Any:
+    """Raw tool passthrough.
+
+    Phase 4 executed any tool here with no authorization and no audit row — the
+    critical finding of the independent audit.  Every mutating tool now requires
+    a single-use grant scoped to *that exact tool*, and read-only tools are
+    allowed because they change nothing.
+    """
     from minicoder.tools.editor_bridge import verify_tool_outcome
 
     svc = service()
-    svc.emit("ACT", "tool_call", {"tool": req.tool})
+    sec = security(svc.db)
+    rid = _rid(request)
+    cls = sec_policy.classify_tool(req.tool)
+    if cls is None:
+        sec.deny(request_id=rid, principal=sec.authenticate(getattr(request.state, "bearer", None)) or "anonymous",
+                 action=f"{sec_policy.ACTION_TOOL}:{req.tool}", resource="canvas",
+                 reason="unknown tool rejected by policy", grant_id=_grant_id(request))
+        return _denied(AuthorizationRequired(req.tool, "unknown tool"), request)
+
+    svc.emit("ACT", "tool_call", {"tool": req.tool, "class": cls.value})
+
+    ctx = None
+    if sec_policy.is_mutating(req.tool):
+        principal = sec.authenticate(getattr(request.state, "bearer", None))
+        if not principal:
+            sec.deny(request_id=rid, principal="anonymous",
+                     action=f"{sec_policy.ACTION_TOOL}:{req.tool}", resource="canvas",
+                     reason="unauthenticated", grant_id=_grant_id(request))
+            return _denied(AuthorizationDenied("unauthenticated", "operator token required", status=401), request)
+        try:
+            ctx = sec.authorize_execution(
+                grant_id=_grant_id(request),
+                principal=principal,
+                action=sec_policy.ACTION_TOOL,
+                resource="canvas",
+                scope=req.tool,
+                request_id=rid,
+            )
+        except AuthorizationDenied as exc:
+            return _denied(exc, request)
+
     try:
         before = svc.agent.bridge.state()
-        result, after = svc.agent.bridge.call(req.tool, req.args)
+        result, after = svc.agent.bridge.call(req.tool, req.args, auth=ctx)
         ok, checks = verify_tool_outcome(req.tool, req.args, result, before, after)
+    except AuthorizationRequired as exc:
+        if ctx is not None:
+            sec.finish(ctx, ok=False, detail=str(exc))
+        return _denied(exc, request)
     except Exception as exc:
+        if ctx is not None:
+            sec.finish(ctx, ok=False, detail=f"exception: {exc}")
         raise HTTPException(status_code=503, detail=f"editor bridge: {exc}") from exc
-    return {"ok": ok, "result": result, "checks": checks}
+    if ctx is not None:
+        sec.finish(ctx, ok=bool(ok), detail=str(result.get("summary", ""))[:300],
+                   correlation={"tool": req.tool, "class": cls.value})
+    return {"ok": ok, "result": result, "checks": checks, "tool_class": cls.value}
 
 
 @app.get("/api/editor/tools")
@@ -298,8 +497,23 @@ def editor_state() -> dict[str, Any]:
 
 
 @app.post("/api/vision/inspect")
-async def inspect_image(file: UploadFile) -> dict[str, Any]:
+async def inspect_image(file: UploadFile, request: Request) -> Any:
     svc = service()
+    sec = security(svc.db)
+    rid = _rid(request)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
+    if not principal:
+        sec.deny(request_id=rid, principal="anonymous", action=sec_policy.ACTION_VISION_INSPECT,
+                 resource="memory:visual", reason="unauthenticated", grant_id=_grant_id(request))
+        return _denied(AuthorizationDenied("unauthenticated", "operator token required", status=401), request)
+    try:
+        ctx = sec.authorize_execution(
+            grant_id=_grant_id(request), principal=principal,
+            action=sec_policy.ACTION_VISION_INSPECT, resource="memory:visual",
+            scope="upload", request_id=rid,
+        )
+    except AuthorizationDenied as exc:
+        return _denied(exc, request)
     svc.emit("PERCEIVE", "image_received", {"name": file.filename})
     from PIL import Image
 
@@ -336,6 +550,8 @@ async def inspect_image(file: UploadFile) -> dict[str, Any]:
     thumb.thumbnail((720, 720))
     thumb.save(buf, format="PNG")
     payload["_preview"] = base64.b64encode(buf.getvalue()).decode()
+    sec.finish(ctx, ok=True, detail=str(report.ui_class or "inspected"),
+               correlation={"class": report.ui_class})
     return payload
 
 
@@ -370,12 +586,33 @@ def memory_search(q: str, limit: int = 8) -> dict[str, Any]:
 
 
 @app.post("/api/memory")
-def memory_write(req: MemoryWrite) -> dict[str, Any]:
+def memory_write(req: MemoryWrite, request: Request) -> Any:
+    """Write a semantic fact.  Memory is state: it needs a grant."""
     svc = service()
-    nid = svc.semantic.upsert(
-        req.kind, req.label, req.content,
-        status="UNVERIFIED", source=req.source, confidence=req.confidence,
-    )
+    sec = security(svc.db)
+    rid = _rid(request)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
+    if not principal:
+        sec.deny(request_id=rid, principal="anonymous", action=sec_policy.ACTION_MEMORY_WRITE,
+                 resource="memory:semantic", reason="unauthenticated", grant_id=_grant_id(request))
+        return _denied(AuthorizationDenied("unauthenticated", "operator token required", status=401), request)
+    try:
+        ctx = sec.authorize_execution(
+            grant_id=_grant_id(request), principal=principal,
+            action=sec_policy.ACTION_MEMORY_WRITE, resource="memory:semantic",
+            scope=req.label, request_id=rid,
+        )
+    except AuthorizationDenied as exc:
+        return _denied(exc, request)
+    try:
+        nid = svc.semantic.upsert(
+            req.kind, req.label, req.content,
+            status="UNVERIFIED", source=req.source, confidence=req.confidence,
+        )
+    except Exception as exc:
+        sec.finish(ctx, ok=False, detail=f"exception: {exc}")
+        raise
+    sec.finish(ctx, ok=True, detail=f"node {nid}", correlation={"label": req.label})
     return {"id": nid, "status": "UNVERIFIED"}
 
 
@@ -403,8 +640,23 @@ def skills(status: str | None = None) -> dict[str, Any]:
 
 
 @app.post("/api/sleep")
-def sleep(req: SleepRequest) -> dict[str, Any]:
+def sleep(req: SleepRequest, request: Request) -> Any:
+    """Run a consolidation cycle.  Mutates memory heavily, so: grant required."""
     svc = service()
+    sec = security(svc.db)
+    rid = _rid(request)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
+    if not principal:
+        sec.deny(request_id=rid, principal="anonymous", action=sec_policy.ACTION_SLEEP_RUN,
+                 resource="memory", reason="unauthenticated", grant_id=_grant_id(request))
+        return _denied(AuthorizationDenied("unauthenticated", "operator token required", status=401), request)
+    try:
+        ctx = sec.authorize_execution(
+            grant_id=_grant_id(request), principal=principal, action=sec_policy.ACTION_SLEEP_RUN,
+            resource="memory", scope="cycle", request_id=rid,
+        )
+    except AuthorizationDenied as exc:
+        return _denied(exc, request)
     if svc.sleep_engine and svc.sleep_engine.busy:
         raise HTTPException(status_code=409, detail="a sleep cycle is already running")
     from minicoder.sleep.engine import SleepEngine
@@ -419,11 +671,15 @@ def sleep(req: SleepRequest) -> dict[str, Any]:
     )
     svc.sleep_engine = engine
     svc.emit("SLEEP", "sleep_start", {"trigger": req.trigger})
+    engine.auth = ctx
     try:
         report = engine.sleep(trigger=req.trigger)
     except Exception as exc:
+        sec.finish(ctx, ok=False, detail=f"exception: {exc}")
         svc.emit("WAKE", "sleep_failed", {"error": str(exc)})
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    sec.finish(ctx, ok=True, detail=f"cycle {report.cycle_id}",
+               correlation={"seconds": report.duration_seconds})
     svc.emit("WAKE", "sleep_done", {"cycle": report.cycle_id, "seconds": report.duration_seconds})
     return report.to_json()
 
@@ -853,11 +1109,147 @@ def learning_skills() -> dict[str, Any]:
     return {"learned": learned, "seeded": seeded, "dependencies": deps}
 
 
-@app.get("/api/export/snapshot")
-def export_snapshot() -> dict[str, Any]:
+@app.post("/api/export/snapshot")
+def export_snapshot(request: Request) -> Any:
+    """Write a consistent copy of the brain.
+
+    Phase 4 exposed this as a GET that wrote a file — a state-changing GET is
+    both a CSRF vector (``<img src=...>`` is enough) and invisible to every
+    authorization check.  It is a POST under a grant now.
+    """
     svc = service()
-    path = svc.db.backup(tag="api_export")
+    sec = security(svc.db)
+    rid = _rid(request)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
+    if not principal:
+        sec.deny(request_id=rid, principal="anonymous", action=sec_policy.ACTION_SNAPSHOT,
+                 resource="memory", reason="unauthenticated", grant_id=_grant_id(request))
+        return _denied(AuthorizationDenied("unauthenticated", "operator token required", status=401), request)
+    try:
+        ctx = sec.authorize_execution(
+            grant_id=_grant_id(request), principal=principal, action=sec_policy.ACTION_SNAPSHOT,
+            resource="memory", scope="brain", request_id=rid,
+        )
+    except AuthorizationDenied as exc:
+        return _denied(exc, request)
+    try:
+        path = svc.db.backup(tag="api_export")
+    except Exception as exc:
+        sec.finish(ctx, ok=False, detail=f"exception: {exc}")
+        raise
+    sec.finish(ctx, ok=True, detail=str(path))
     return {"path": str(path), "bytes": path.stat().st_size}
+
+
+# --------------------------------------------------------------------------
+# security surface (Phase 5)
+# --------------------------------------------------------------------------
+
+
+class GrantRequest(BaseModel):
+    action: str = Field(min_length=1, max_length=64)
+    resource: str | None = None
+    scope: str = Field(default="", max_length=200)
+    ttl: int | None = Field(default=None, ge=1, le=3600)
+    reason: str = Field(default="", max_length=300)
+
+
+@app.get("/api/security/status")
+def security_status(request: Request) -> dict[str, Any]:
+    """Public, non-secret view of the boundary."""
+    svc = service()
+    sec = security(svc.db)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
+    status = sec.status()
+    status["authenticated"] = principal is not None
+    status["principal"] = principal or ""
+    status["request_id"] = _rid(request)
+    status["cors"] = {
+        "origins": list(CONFIG.api.cors_origins),
+        "origin_regex": CONFIG.api.cors_origin_regex,
+        "note": "CORS restricts browsers; it is not authentication.",
+    }
+    return status
+
+
+@app.get("/api/security/inventory")
+def security_inventory() -> dict[str, Any]:
+    """The tool permission matrix (read-only)."""
+    return {
+        "tools": sec_policy.inventory(),
+        "grant_required_classes": sorted(c.value for c in sec_policy.GRANT_REQUIRED),
+        "actions": sorted(sec_policy.GRANTABLE_ACTIONS),
+    }
+
+
+@app.post("/api/security/grant")
+def security_grant(req: GrantRequest, request: Request) -> Any:
+    """Mint a single-use grant.  Operator token required."""
+    svc = service()
+    sec = security(svc.db)
+    rid = _rid(request)
+    try:
+        grant = sec.issue_grant(
+            getattr(request.state, "bearer", None),
+            action=req.action,
+            resource=req.resource,
+            scope=req.scope,
+            ttl=req.ttl,
+            request_id=rid,
+            reason=req.reason,
+        )
+    except AuthorizationDenied as exc:
+        return _denied(exc, request)
+    return {"grant": grant.to_json(), "request_id": rid}
+
+
+@app.get("/api/security/grants/{grant_id}")
+def security_grant_detail(grant_id: str, request: Request) -> Any:
+    svc = service()
+    sec = security(svc.db)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
+    if principal is None:
+        return _denied(AuthorizationDenied("unauthenticated", "operator token required", status=401), request)
+    grant = sec.grants.get(grant_id)
+    if grant is None:
+        raise HTTPException(status_code=404, detail="grant not found")
+    return {"grant": grant.to_json(), "owner": grant.principal == principal}
+
+
+@app.post("/api/security/grants/{grant_id}/revoke")
+def security_grant_revoke(grant_id: str, request: Request) -> Any:
+    svc = service()
+    sec = security(svc.db)
+    rid = _rid(request)
+    try:
+        sec.require_operator(getattr(request.state, "bearer", None), request_id=rid, action="grant.revoke")
+    except AuthorizationDenied as exc:
+        return _denied(exc, request)
+    revoked = sec.grants.revoke(grant_id)
+    sec.audit.record_tx(
+        request_id=rid,
+        principal=sec.authenticate(getattr(request.state, "bearer", None)) or "",
+        action="grant.revoke",
+        resource="security",
+        decision="authorized",
+        grant_id=grant_id,
+        result="revoked" if revoked else "noop",
+    )
+    return {"revoked": revoked, "grant_id": grant_id}
+
+
+@app.get("/api/security/audit")
+def security_audit(request: Request, limit: int = 50) -> Any:
+    svc = service()
+    sec = security(svc.db)
+    principal = sec.authenticate(getattr(request.state, "bearer", None))
+    if principal is None:
+        return _denied(AuthorizationDenied("unauthenticated", "operator token required", status=401), request)
+    return {
+        "items": sec.audit.recent(max(1, min(limit, 500))),
+        "chain": sec.audit.verify(),
+        "counts": sec.audit.counts(),
+    }
 
 
 @app.websocket("/ws/telemetry")

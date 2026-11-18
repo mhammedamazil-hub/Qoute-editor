@@ -5,6 +5,49 @@ reports in `memory/sleep_logs/` and `datasets/training_runs/`, and — for Phase
 `datasets/learning/`.
 
 
+## Phase 5 — Security remediation (authorization, grants, audit)
+
+Found by the independent Phase 4 audit (`docs/PHASE4_INDEPENDENT_AUDIT.md`): the
+authorization guarantee was cosmetic. Fixed here; design in
+`docs/PHASE5_SECURITY_ARCHITECTURE.md`, evidence in
+`docs/PHASE5_SECURITY_RESULTS.md`, residual risk in `docs/PHASE5_THREAT_MODEL.md`.
+
+### Fixed
+
+* **CRITICAL — `/api/editor/tool` executed any tool with no authorization and no audit row.**
+  Authorization now lives in `EditorBridge.call`/`reset`, i.e. immediately before the request
+  reaches the editor, so every caller (HTTP, scripts, learning pipeline, sleep worker) passes
+  through one gate. Replayed Phase 4 attacks return `401` with the canvas unchanged.
+* **12 of 18 destructive rephrasings were ungated.** `intent.py` computed `requires_authorization`
+  before the final type/verb scan. The type is now decided first and authorization derived from the
+  complete risk picture (verbs, paraphrase families, negation, obfuscation); 32 destructive and 8
+  benign phrasings are asserted.
+* **A request-body boolean was the entire authorization model.** Authorization is now a single-use
+  grant: `X-NACE-Grant` header, HMAC-signed, scoped to one action/resource/exact instruction,
+  expiring, consumed atomically. `authorize: true` grants nothing and is audited as a rejection.
+* **Concurrent/replayed grant use.** Consumption is `UPDATE … WHERE consumed_at IS NULL` inside
+  `BEGIN IMMEDIATE`; N concurrent callers produce exactly one execution and N−1 × `409`.
+* **CORS was `*`.** Explicit origins plus a preview regex; `allow_credentials=False`; preflight
+  from an unknown origin gets no `Access-Control-Allow-Origin`.
+* **`GET /api/export/snapshot` mutated state.** Now `POST` under a grant.
+* **`audit_log` swallowed write failures** and could omit a record after a successful mutation.
+  `security_audit` is hash-chained, head-anchored, and a mutation is refused (`503`) when its
+  authorization row cannot be written.
+
+### Added
+
+* `minicoder/security/` (policy, grants, audit, service, guard), `auth_grants` and
+  `security_audit` tables (schema v4), `/api/security/{status,inventory,grant,audit,grants/:id}`,
+  `minicoder security …` CLI, dashboard token + grant flow.
+* `minicoder/tests/test_phase5_security.py`: 114 adversarial tests (32 NL bypass, 22 API attacks,
+  17 grant/replay, 10 concurrency, 10 failure/rollback, 10 audit integrity).
+
+### Suite
+
+248 collected, 247 passed, 1 skipped, 0 failed (was 134/133/1/0). Two Phase 4 tests were updated to
+the new contract — the old `authorize=True` assertion encoded the vulnerability; the replacements
+assert the refusal and add the legitimate grant path.
+
 ## Fixes found by testing the live system
 
 ### Fixed

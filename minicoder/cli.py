@@ -427,6 +427,87 @@ def cmd_snapshots(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def cmd_security(args: argparse.Namespace) -> int:
+    """Inspect and operate the Phase 5 authorization boundary."""
+    import json as _json
+
+    from minicoder.memory.db import BrainDB
+    from minicoder.security import policy, security
+
+    db = BrainDB()
+    sec = security(db)
+    action = getattr(args, "security_cmd", None)
+
+    if action == "token":
+        token = sec.operator_token()
+        head("Operator token")
+        kv("file", str(sec.grants.db.paths.home / ".security" / "operator.token"))
+        kv("principal", sec.authenticate(token) or "")
+        say("")
+        say("This is a capability, not a user identity: anything that can read this")
+        say("file (mode 0600, same OS user) can act as the local operator.")
+        say("The token is the last line below (kept last so `| tail -1` is safe).")
+        say("")
+        say(token)
+        return 0
+
+    if action == "inventory":
+        head("Tool permission matrix")
+        rows = [[r["tool"], r["class"]] for r in policy.inventory()]
+        table(rows, ["tool", "class"])
+        kv("grant required", ", ".join(sorted(c.value for c in policy.GRANT_REQUIRED)))
+        return 0
+
+    if action == "mint":
+        grant = sec.grants.issue(
+            principal="process:" + __import__("getpass").getuser(),
+            action=args.action,
+            resource=args.resource or policy.resource_for(args.action),
+            scope=args.scope,
+            ttl=args.ttl,
+        )
+        head("Grant issued")
+        print(_json.dumps(grant.to_json(), indent=2))
+        sec.audit.record_tx(
+            request_id="cli", principal=grant.principal, action=f"grant.issue:{args.action}",
+            resource=grant.resource, decision="authorized", grant_id=grant.id,
+            result="issued", reason="cli",
+        )
+        return 0
+
+    if action == "audit":
+        head("Security audit")
+        chain = sec.audit.verify()
+        kv("chain", "ok" if chain["ok"] else f"BROKEN at {chain.get('broken_at')}")
+        kv("rows", str(chain["length"]))
+        kv("decisions", _json.dumps(sec.audit.counts()))
+        rows = [[r["ts"], r["decision"], r["action"], r["resource"], r["grant_id"][:12]]
+                for r in sec.audit.recent(args.limit)]
+        table(rows, ["ts", "decision", "action", "resource", "grant"])
+        return 0
+
+    if action == "verify":
+        chain = sec.audit.verify()
+        head("Audit chain verification")
+        kv("ok", str(chain["ok"]))
+        kv("length", str(chain["length"]))
+        kv("head", str(chain.get("head", ""))[:32])
+        return 0 if chain["ok"] else 1
+
+    if action == "revoke":
+        ok(f"revoked: {sec.grants.revoke(args.grant_id)}")
+        return 0
+
+    if action == "status":
+        head("Authorization boundary")
+        print(_json.dumps(sec.status(), indent=2))
+        return 0
+
+    bad("unknown security command")
+    return 2
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     from minicoder.api.app import run
 
@@ -571,6 +652,29 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--list", action="store_true")
     s.add_argument("--restore", default="")
     s.set_defaults(func=cmd_snapshots)
+
+    s = sub.add_parser("security", help="Phase 5: grants, audit chain, tool policy")
+    sec_sub = s.add_subparsers(dest="security_cmd", required=True)
+    sp = sec_sub.add_parser("token", help="show the local operator token path and value")
+    sp.set_defaults(func=cmd_security)
+    sp = sec_sub.add_parser("inventory", help="tool permission matrix")
+    sp.set_defaults(func=cmd_security)
+    sp = sec_sub.add_parser("status", help="boundary status as JSON")
+    sp.set_defaults(func=cmd_security)
+    sp = sec_sub.add_parser("audit", help="recent audit rows + chain state")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.set_defaults(func=cmd_security)
+    sp = sec_sub.add_parser("verify", help="verify the hash chain")
+    sp.set_defaults(func=cmd_security)
+    sp = sec_sub.add_parser("mint", help="issue a grant (operator capability)")
+    sp.add_argument("--action", required=True)
+    sp.add_argument("--scope", default="")
+    sp.add_argument("--resource", default=None)
+    sp.add_argument("--ttl", type=int, default=120)
+    sp.set_defaults(func=cmd_security)
+    sp = sec_sub.add_parser("revoke", help="revoke an unused grant")
+    sp.add_argument("grant_id")
+    sp.set_defaults(func=cmd_security)
 
     s = sub.add_parser("serve", help="serve the API and dashboard")
     s.add_argument("--host", default=CONFIG.api.host)

@@ -43,3 +43,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+
+# Phase 5: server secrets (operator token, grant signing key). Never commit.
+.security/
+*.token

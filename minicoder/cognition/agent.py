@@ -323,7 +323,15 @@ class DesignAgent:
         return unmet
 
     def execute(self, instruction: str, *, dry_run: bool = False,
-                authorize: bool = False) -> Trajectory:
+                authorize: bool = False, auth=None) -> Trajectory:
+        """Run one instruction.
+
+        ``auth`` is the Phase 5 authorization context (a consumed grant or an
+        explicit internal context).  ``authorize`` is the Phase 4 boolean and is
+        kept only so old clients do not crash: it grants nothing.  A mutating
+        plan without ``auth`` raises ``AuthorizationRequired`` *before the first
+        step runs*, so a refusal can never leave a half-applied canvas.
+        """
         t0 = time.time()
         traj = Trajectory(instruction=instruction)
         try:
@@ -355,7 +363,7 @@ class DesignAgent:
         intent = classify(instruction)
         traj.intent = intent.to_json()
 
-        if intent.requires_authorization and not authorize:
+        if intent.requires_authorization and not (auth is not None and getattr(auth, 'authorized', False)):
             traj.summary = authorization_message(intent)
             traj.plan = ["authorization required"]
             traj.source = "refuse"
@@ -387,7 +395,7 @@ class DesignAgent:
             traj.source = gen.source
             traj.confidence = pre.calibrated_confidence
             traj.seconds = time.time() - t0
-            self._observe_outcome(traj, intent.to_json(), authorized=authorize)
+            self._observe_outcome(traj, intent.to_json(), authorized=bool(auth is not None and getattr(auth, 'authorized', False)))
             self._record(traj, intent={}, answer=gen.to_json())
             return traj
 
@@ -401,7 +409,7 @@ class DesignAgent:
             traj.error = ""
             traj.source = gen.source
             traj.plan = ["answer (no canvas action implied)"]
-            self._observe_outcome(traj, intent.to_json(), authorized=authorize)
+            self._observe_outcome(traj, intent.to_json(), authorized=bool(auth is not None and getattr(auth, 'authorized', False)))
             self._record(traj, intent=plan_intent, answer=gen.to_json())
             return traj
         if dry_run:
@@ -409,13 +417,19 @@ class DesignAgent:
             traj.verified = True
             return traj
 
+        # Authorize the whole plan before executing the first step.  The bridge
+        # re-checks every call; this up-front pass exists so a plan is either
+        # fully authorized or not started at all.
+        from minicoder.security.guard import check_plan
+
+        check_plan(planned, auth)
         state = self.bridge.state()
         checks: list[str] = []
         for p in planned:
             step = Step(tool=p["tool"], args=p["args"])
             s0 = time.time()
             try:
-                result, new_state = self.bridge.call(p["tool"], p["args"])
+                result, new_state = self.bridge.call(p["tool"], p["args"], auth=auth)
                 ok, checks = verify_tool_outcome(p["tool"], p["args"], result, state, new_state)
                 step.ok = ok
                 step.summary = str(result.get("summary", ""))[:300]
@@ -451,7 +465,7 @@ class DesignAgent:
         traj.verified = post.matched
         traj.confidence = round(max(0.0, min(1.0, traj.confidence + post.confidence_delta)), 3)
         traj.seconds = time.time() - t0
-        self._observe_outcome(traj, intent.to_json(), authorized=authorize)
+        self._observe_outcome(traj, intent.to_json(), authorized=bool(auth is not None and getattr(auth, 'authorized', False)))
         self._record(traj, intent=plan_intent, post=post.to_json())
         return traj
 

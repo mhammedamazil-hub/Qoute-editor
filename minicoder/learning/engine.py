@@ -46,6 +46,7 @@ from minicoder.learning.ledger import (
     SkillPromoter,
 )
 from minicoder.learning.planner import SearchPlanner
+from minicoder.security import internal_context
 
 
 @dataclass
@@ -107,6 +108,8 @@ class LearningLoop:
         self.promoter = SkillPromoter(self.ledger.db)
         self._bridge = None
         self._bridge_factory = bridge_factory
+        # Phase 5: authority for every editor call this engine makes.
+        self._auth = internal_context("learning.engine")
         self._index: ToolIndex | None = None
 
     # ------------------------------------------------------------ bridge mgmt
@@ -117,7 +120,10 @@ class LearningLoop:
             else:
                 from minicoder.tools.editor_bridge import EditorBridge
 
-                self._bridge = EditorBridge()
+                # Skill acquisition runs in the operator's process (CLI or a
+                # granted sleep cycle); it presents an internal context rather
+                # than bypassing the guard.
+                self._bridge = EditorBridge(auth=internal_context("learning.engine"))
             self._bridge._ensure()
         return self._bridge
 
@@ -315,16 +321,16 @@ class LearningLoop:
 
     def _replay_inline(self, procedure: list[dict[str, Any]], task: TaskSpec) -> dict[str, Any]:
         bridge = self.bridge()
-        bridge.call("new_project", {})
+        bridge.call("new_project", {}, auth=self._auth)
         for step in procedure:
             try:
-                result, _ = bridge.call(step["tool"], step.get("args") or {})
+                result, _ = bridge.call(step["tool"], step.get("args") or {}, auth=self._auth)
                 if isinstance(result, dict) and result.get("ok") is False:
                     return {"passed": False,
                             "detail": f"{step['tool']} failed: {result.get('error') or result.get('summary')}"}
             except Exception as exc:
                 return {"passed": False, "detail": f"{step['tool']} raised: {exc}"}
-        _, raw = bridge.call("get_app_state", {})
+        _, raw = bridge.call("get_app_state", {}, auth=self._auth)
         state = EditorState.from_snapshot(raw.get("snapshot") or {})
         results = evaluate_editor_criteria(task.criteria, state)
         failed = [r for r in results if not r.passed]
@@ -391,7 +397,7 @@ class LearningLoop:
                     break
                 rounds += 1
                 planner.repair(task.criteria, self.bridge(), only=result["failed"])
-                _, raw = self.bridge().call("get_app_state", {})
+                _, raw = self.bridge().call("get_app_state", {}, auth=self._auth)
                 state = EditorState.from_snapshot(raw.get("snapshot") or {})
                 final = evaluate_editor_criteria(task.criteria, state)
                 result = {
@@ -471,11 +477,11 @@ class LearningLoop:
 
     def _run_procedure(self, procedure: list[dict[str, Any]], task: TaskSpec) -> dict[str, Any]:
         bridge = self.bridge()
-        bridge.call("new_project", {})
+        bridge.call("new_project", {}, auth=self._auth)
         log: list[dict[str, Any]] = []
         for step in procedure:
             try:
-                result, _ = bridge.call(step["tool"], step.get("args") or {})
+                result, _ = bridge.call(step["tool"], step.get("args") or {}, auth=self._auth)
                 ok = not (isinstance(result, dict) and result.get("ok") is False)
                 log.append({"tool": step["tool"], "ok": ok,
                             "error": (result or {}).get("error", "") if isinstance(result, dict) else ""})
@@ -484,7 +490,7 @@ class LearningLoop:
             except Exception as exc:
                 log.append({"tool": step["tool"], "ok": False, "error": str(exc)})
                 break
-        _, raw = bridge.call("get_app_state", {})
+        _, raw = bridge.call("get_app_state", {}, auth=self._auth)
         state = EditorState.from_snapshot(raw.get("snapshot") or {})
         results = evaluate_editor_criteria(task.criteria, state)
         failed = [r.criterion for r in results if not r.passed]

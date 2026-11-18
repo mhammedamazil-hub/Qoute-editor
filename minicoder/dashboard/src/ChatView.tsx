@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { api, type ChatReply, type Status } from "./api";
+import { ApiError, api, getToken, setToken, type ChatReply, type GrantNeeded, type Status } from "./api";
 import { Badge, Bar, Empty, Panel, fmtNum } from "./ui";
 
 type Turn = {
@@ -33,6 +33,9 @@ export function ChatView({ status }: { status: Status | null }) {
   const [input, setInput] = useState("");
   const [allowActions, setAllowActions] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [token, setTokenState] = useState(getToken());
+  const [needsGrant, setNeedsGrant] = useState<{ message: string; need: GrantNeeded } | null>(null);
+  const [needsToken, setNeedsToken] = useState(false);
   const scroller = useRef<HTMLDivElement | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
 
@@ -41,7 +44,7 @@ export function ChatView({ status }: { status: Status | null }) {
   }, [turns]);
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, grants: string[] = []) => {
       const message = text.trim();
       if (!message || busy) return;
       const uid = crypto.randomUUID();
@@ -50,12 +53,20 @@ export function ChatView({ status }: { status: Status | null }) {
       setTurns((t) => [...t, { id: placeholder, role: "brain", text: "", pending: true }]);
       setInput("");
       setBusy(true);
+      setNeedsGrant(null);
+      setNeedsToken(false);
       try {
-        const reply = await api.chat(message, allowActions);
+        const reply = await api.chat(message, allowActions, grants);
         setTurns((t) =>
           t.map((x) => (x.id === placeholder ? { ...x, text: reply.answer, reply, pending: false } : x)),
         );
       } catch (err) {
+        // Phase 5: a mutation needs the operator token and a single-use grant.
+        // The refusal says exactly which grant; the operator confirms explicitly.
+        if (err instanceof ApiError && err.status === 401) setNeedsToken(true);
+        if (err instanceof ApiError && err.requiresGrant) {
+          setNeedsGrant({ message, need: err.requiresGrant });
+        }
         setTurns((t) =>
           t.map((x) =>
             x.id === placeholder
@@ -69,6 +80,20 @@ export function ChatView({ status }: { status: Status | null }) {
     },
     [allowActions, busy],
   );
+
+  const authorizeAndRun = useCallback(async () => {
+    if (!needsGrant) return;
+    const { message, need } = needsGrant;
+    setBusy(true);
+    try {
+      const grantId = await api.grantFor(need.action, need.scope, need.resource);
+      await send(message, [grantId]);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) setNeedsToken(true);
+    } finally {
+      setBusy(false);
+    }
+  }, [needsGrant, send]);
 
   const upload = useCallback(async (file: File) => {
     const uid = crypto.randomUUID();
@@ -134,6 +159,60 @@ export function ChatView({ status }: { status: Status | null }) {
             allow editor actions
           </label>
         </div>
+
+        {(needsToken || !token) && (
+          <div className="mb-2 rounded-lg border border-[var(--color-edge)] bg-[#12151d] p-2 text-[11px]">
+            <div className="mb-1 text-[var(--color-muted)]">
+              Operator token required for any change. Read it from{" "}
+              <code className="text-[var(--color-accent)]">python -m minicoder.cli security token</code>{" "}
+              and paste it here — it is kept in this browser tab only.
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={token}
+                onChange={(e) => setTokenState(e.target.value)}
+                placeholder="nace_…"
+                className="min-w-0 flex-1 rounded border border-[var(--color-edge)] bg-[#0b0c10] px-2 py-1 text-[11px] text-[var(--color-bright)]"
+              />
+              <button
+                onClick={() => {
+                  setToken(token.trim());
+                  setNeedsToken(false);
+                }}
+                className="rounded bg-[var(--color-accent)] px-3 py-1 text-[11px] font-semibold text-black"
+              >
+                save
+              </button>
+            </div>
+          </div>
+        )}
+
+        {needsGrant && (
+          <div className="mb-2 rounded-lg border border-[var(--color-warn,#d89b35)] bg-[#1a1610] p-2 text-[11px]">
+            <div className="mb-1 text-[var(--color-bright)]">
+              This changes the canvas. Authorize exactly this instruction once?
+            </div>
+            <div className="mb-2 font-mono text-[10px] text-[var(--color-muted)]">
+              {needsGrant.need.action} · {needsGrant.need.resource} · {needsGrant.need.scope.slice(0, 26)}…
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => void authorizeAndRun()}
+                disabled={busy}
+                className="rounded bg-[var(--color-accent)] px-3 py-1 text-[11px] font-semibold text-black disabled:opacity-50"
+              >
+                authorize &amp; run
+              </button>
+              <button
+                onClick={() => setNeedsGrant(null)}
+                className="rounded border border-[var(--color-edge)] px-3 py-1 text-[11px] text-[var(--color-muted)]"
+              >
+                cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {turns.length === 0 && (

@@ -344,3 +344,54 @@ INSERT OR IGNORE INTO schema_meta(key, value) VALUES ('schema_version', '3');
 UPDATE schema_meta SET value = '3' WHERE key = 'schema_version';
 
 INSERT OR IGNORE INTO schema_meta(key, value) VALUES ('created_at', datetime('now'));
+
+-- ---------------------------------------------------------------------------
+-- Phase 5: the authorization boundary.
+--
+-- auth_grants: a scoped, signed, expiring, single-use capability.  Issuance and
+-- consumption are both audited in security_audit; the signature column makes a
+-- forged identifier detectable without trusting the caller.
+CREATE TABLE IF NOT EXISTS auth_grants (
+    id          TEXT PRIMARY KEY,
+    principal   TEXT NOT NULL,              -- fingerprint of the issuing capability
+    action      TEXT NOT NULL,              -- editor.tool | editor.instruction | sleep.run | ...
+    resource    TEXT NOT NULL,              -- canvas | memory | memory:semantic | ...
+    scope       TEXT NOT NULL DEFAULT '',   -- exact tool name / instruction hash / label
+    created_at  TEXT NOT NULL,
+    expires_at  TEXT NOT NULL,
+    nonce       TEXT NOT NULL,
+    signature   TEXT NOT NULL,
+    consumed_at TEXT,
+    consumed_by TEXT,                       -- request id that consumed it
+    outcome     TEXT NOT NULL DEFAULT 'issued',  -- issued|consumed|executed|failed|revoked
+    request_id  TEXT NOT NULL DEFAULT '',
+    meta        TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_grants_consumed ON auth_grants(consumed_at);
+CREATE INDEX IF NOT EXISTS idx_auth_grants_expires ON auth_grants(expires_at);
+
+-- security_audit: append-only, hash-chained record of every authorization
+-- decision and its outcome.  `hash` = sha256(prev_hash | canonical(row)), so a
+-- deleted or edited row breaks verification.
+CREATE TABLE IF NOT EXISTS security_audit (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts          TEXT NOT NULL,
+    request_id  TEXT NOT NULL DEFAULT '',
+    principal   TEXT NOT NULL DEFAULT '',
+    action      TEXT NOT NULL,
+    resource    TEXT NOT NULL DEFAULT '',
+    decision    TEXT NOT NULL,              -- requested|authorized|executed|failed|rejected|replayed
+    grant_id    TEXT NOT NULL DEFAULT '',
+    result      TEXT NOT NULL DEFAULT '',
+    reason      TEXT NOT NULL DEFAULT '',
+    correlation TEXT NOT NULL DEFAULT '{}',
+    prev_hash   TEXT NOT NULL,
+    hash        TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_security_audit_request ON security_audit(request_id);
+CREATE INDEX IF NOT EXISTS idx_security_audit_decision ON security_audit(decision);
+
+INSERT OR IGNORE INTO schema_meta(key, value) VALUES ('schema_version', '4');
+UPDATE schema_meta SET value = '4' WHERE key = 'schema_version';
