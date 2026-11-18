@@ -7,11 +7,14 @@ availability) and is logged to episodic memory so sleep can analyse it.
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from typing import Any
+
+from minicoder.memory.db import utcnow
 
 _WORD = re.compile(r"[A-Za-z][A-Za-z0-9_]+")
 
@@ -67,22 +70,121 @@ class Metacognition:
     def __init__(self, db=None) -> None:
         self.db = db
         self._pairs: list[tuple[float, float]] = []
+        # Samples whose database write failed (no db, or a locked connection).
+        # Only these are added to the stored history, so a pair is never counted twice.
+        self._unpersisted: list[tuple[float, float]] = []
 
     # ---------------------------------------------------------- inputs
-    def observe_outcome(self, predicted: float, actual: float) -> None:
-        """Log a calibration sample (actual = 1.0 success, 0.0 failure)."""
+    def observe_outcome(self, predicted: float, actual: float, *,
+                        source: str = "execution", detail: dict[str, Any] | None = None) -> None:
+        """Log a calibration sample (actual = 1.0 success, 0.0 failure).
+
+        The sample is written to the database as well as memory. Before Phase 4
+        these pairs lived only in the process, so calibration silently reset on
+        every restart and ``calibrated()`` was effectively fitted on nothing.
+        """
         self._pairs.append((predicted, actual))
+        stored = False
+        if self.db is not None:
+            try:
+                self.db.execute(
+                    "INSERT INTO calibration(ts, source, predicted, outcome, detail)"
+                    " VALUES (?,?,?,?,?)",
+                    (utcnow(), source, float(predicted), float(actual),
+                     json.dumps(detail or {})))
+                stored = True
+            except Exception:  # a failed write must not break the answer
+                stored = False
+        if not stored:
+            self._unpersisted.append((predicted, actual))
+
+    def history(self) -> list[tuple[float, float]]:
+        """Every stored sample, oldest first, plus any this process could not store.
+
+        A sample is counted once: rows that reached the database are read from
+        there, and only the ones that failed to persist are appended.
+        """
+        if self.db is None:
+            return list(self._pairs)
+        rows: list[tuple[float, float]] = []
+        try:
+            for r in self.db.query("SELECT predicted, outcome FROM calibration ORDER BY id"):
+                rows.append((float(r["predicted"]), float(r["outcome"])))
+        except Exception:
+            return list(self._pairs)
+        return rows + self._unpersisted
+
+    def reliability(self) -> dict[str, Any]:
+        """Calibration plus where the samples came from, for the dashboard."""
+        cal = self.calibration()
+        sources: dict[str, int] = {}
+        if self.db is not None:
+            try:
+                for r in self.db.query(
+                        "SELECT source, COUNT(*) c FROM calibration GROUP BY source"):
+                    sources[str(r["source"])] = int(r["c"])
+            except Exception:
+                sources = {}
+        cal["sources"] = sources
+        pairs = self.history()
+        cal["mean_predicted"] = round(sum(p for p, _ in pairs) / len(pairs), 3) if pairs else None
+        cal["mean_actual"] = round(sum(a for _, a in pairs) / len(pairs), 3) if pairs else None
+        return cal
+
+    def coverage(self, instruction: str, semantic=None, procedural=None) -> dict[str, Any]:
+        """What is known about a request, and whether answering is justified.
+
+        ``support`` counts the memories and skills retrieval can actually reach.
+        The recommendation is deliberately blunt: no support means *say so*, not
+        answer anyway. Confidence is the measured success rate for that kind of
+        request, shrunk toward 0.5 when there is no history.
+        """
+        facts: list[dict[str, Any]] = []
+        skills: list[dict[str, Any]] = []
+        try:
+            if semantic is not None:
+                facts = [dict(r) for r in semantic.search(instruction, limit=5)]
+        except Exception:
+            facts = []
+        try:
+            if procedural is not None:
+                skills = [dict(r) for r in procedural.search(instruction, limit=3)]
+        except Exception:
+            skills = []
+        cal = self.calibration()
+        measured = cal.get("brier")
+        confidence = self.calibrated(0.7 if (facts or skills) else 0.25)
+        recommendation = "answer" if facts or skills else "insufficient"
+        if not (facts or skills) and self.should_experiment():
+            recommendation = "experiment"
+        return {
+            "support_memories": len(facts),
+            "support_skills": len(skills),
+            "evidence": [str(f.get("label", ""))[:80] for f in facts[:3]],
+            "confidence": confidence,
+            "measured_brier": measured,
+            "calibration_n": cal.get("n", 0),
+            "recommendation": recommendation,
+        }
+
+    def should_experiment(self) -> bool:
+        """True when measured calibration is too poor to answer from memory."""
+        cal = self.calibration()
+        if not cal.get("n"):
+            return False
+        return cal["n"] >= 5 and cal.get("brier", 1.0) > 0.25
 
     def calibration(self) -> dict[str, Any]:
-        if not self._pairs:
+        pairs = self.history()
+        if not pairs:
             return {"n": 0, "ece": float("nan"), "brier": float("nan"), "buckets": []}
-        n = len(self._pairs)
-        brier = sum((p - a) ** 2 for p, a in self._pairs) / n
+        n = len(pairs)
+        brier = sum((p - a) ** 2 for p, a in pairs) / n
         buckets = []
         ece = 0.0
         for lo in [0.0, 0.2, 0.4, 0.6, 0.8]:
             hi = lo + 0.2
-            sel = [(p, a) for p, a in self._pairs if lo <= p < hi or (hi == 1.0 and p == 1.0)]
+            sel = [(p, a) for p, a in pairs if lo <= p < hi or (hi == 1.0 and p == 1.0)]
             if not sel:
                 continue
             mean_p = sum(p for p, _ in sel) / len(sel)
@@ -94,9 +196,10 @@ class Metacognition:
 
     def calibrated(self, raw: float) -> float:
         """Shrink overconfident predictions toward the observed success rate."""
-        if len(self._pairs) < 8:
+        if len(self.history()) < 8:
             return round(0.5 + (raw - 0.5) * 0.8, 4)  # conservative before data exists
-        mean_actual = sum(a for _, a in self._pairs) / len(self._pairs)
+        pairs = self.history()
+        mean_actual = sum(a for _, a in pairs) / len(pairs)
         # Reliability blend: keep ordering, pull magnitude to the real mean.
         return round(max(0.02, min(0.98, 0.55 * raw + 0.45 * mean_actual)), 4)
 
@@ -221,3 +324,22 @@ class Metacognition:
             confidence_delta=delta,
             verified=bool(matched),
         )
+
+
+def audit(db, action: str, *, intent: str = "", authorized: bool = False,
+          allowed: bool = True, detail: dict[str, Any] | None = None) -> None:
+    """Record a consequential action attempt.
+
+    Written *before* the outcome is known where possible, so a refused request is
+    still auditable. Failures are swallowed deliberately: an audit write must
+    never be the reason a safe request fails, but the attempt is reported on the
+    security endpoint so a silent failure would be visible there.
+    """
+    try:
+        db.execute(
+            "INSERT INTO audit_log(ts, action, intent, authorized, allowed, detail)"
+            " VALUES (?,?,?,?,?,?)",
+            (utcnow(), action, intent, int(bool(authorized)), int(bool(allowed)),
+             json.dumps(detail or {})))
+    except Exception:
+        pass

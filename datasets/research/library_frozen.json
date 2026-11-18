@@ -1,0 +1,77 @@
+{
+ "entries": {
+  "abs_all": "def solve(xs):\n    return [abs(x) for x in xs]\n",
+  "adversarial_scale": "def solve(xs):\n    return [x * 2 for x in xs]\n",
+  "chunk": "def solve(xs, k):\n    return [xs[i:i + k] for i in range(0, len(xs), k)]\n",
+  "count_by": "def solve(rows, f):\n    return {r[f]: [t[f] for t in rows].count(r[f]) for r in rows}\n",
+  "dedupe": "def solve(xs):\n    return list(dict.fromkeys(xs))\n",
+  "even_then_scale": "def solve(xs, k):\n    return [x for x in [x * k for x in xs] if x % 2 == 0]\n",
+  "rle": "def solve(xs):\n    return [[v, xs.count(v)] for v in dict.fromkeys(xs)]\n",
+  "running_total": "def solve(xs):\n    return [sum(xs[:i + 1]) for i in range(len(xs))]\n",
+  "scale": "def solve(xs, k):\n    return [x * k for x in xs]\n",
+  "scale_then_running": "def solve(xs, k):\n    return [sum([x * k for x in xs][:i + 1]) for i in range(len([x * k for x in xs]))]\n",
+  "sort_by": "def solve(rows, f):\n    return sorted(rows, key=lambda r: r[f])\n",
+  "sum_even": "def solve(xs):\n    return sum(([x for x in xs if x % 2 == 0]))\n"
+ },
+ "tasks": {
+  "abs_all": {
+   "key": "abs_all_s11_04",
+   "seed": 11
+  },
+  "adversarial_scale": {
+   "key": "adversarial_scale_s11_21",
+   "seed": 11
+  },
+  "chunk": {
+   "key": "chunk_s11_15",
+   "seed": 11
+  },
+  "count_by": {
+   "key": "count_by_s11_18",
+   "seed": 11
+  },
+  "dedupe": {
+   "key": "dedupe_s11_01",
+   "seed": 11
+  },
+  "even_then_scale": {
+   "key": "even_then_scale_s23_20",
+   "seed": 23
+  },
+  "rle": {
+   "key": "rle_s37_16",
+   "seed": 37
+  },
+  "running_total": {
+   "key": "running_total_s11_02",
+   "seed": 11
+  },
+  "scale": {
+   "key": "scale_s11_12",
+   "seed": 11
+  },
+  "scale_then_running": {
+   "key": "scale_then_running_s11_19",
+   "seed": 11
+  },
+  "sort_by": {
+   "key": "sort_by_s11_09",
+   "seed": 11
+  },
+  "sum_even": {
+   "key": "sum_even_s11_06",
+   "seed": 11
+  }
+ },
+ "verified": [
+  "dedupe",
+  "running_total",
+  "abs_all",
+  "sum_even",
+  "sort_by",
+  "scale",
+  "chunk",
+  "count_by",
+  "scale_then_running"
+ ]
+}

@@ -32,6 +32,9 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     session_id: str = "default"
     allow_actions: bool = True
+    # Explicit grant for consequential actions (delete, export, push, reset…). Without it
+    # such a request is refused with the reason, never executed "helpfully".
+    authorize: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -43,6 +46,7 @@ class ChatResponse(BaseModel):
     steps: list[dict[str, Any]] = []
     verified: bool = False
     elapsed_ms: float = 0.0
+    intent: dict[str, Any] = {}
 
 
 class CanvasRequest(BaseModel):
@@ -214,7 +218,7 @@ def chat(req: ChatRequest) -> ChatResponse:
     svc.working.put("message", req.message, priority=0.95)
 
     if req.allow_actions:
-        traj = svc.agent.execute(req.message)
+        traj = svc.agent.execute(req.message, authorize=req.authorize)
         answer = traj.summary
         if traj.steps:
             source = "skill" if traj.verified else "tool"
@@ -232,6 +236,13 @@ def chat(req: ChatRequest) -> ChatResponse:
         answer, source, grounding = gen.text, gen.source, gen.grounding
         steps, verified, confidence = [], gen.source in ("skill", "memory"), 0.5
 
+    intent = getattr(traj, "intent", {}) if req.allow_actions else {}
+    if intent.get("requires_authorization"):
+        svc.db.log_provenance(
+            "chat", None, "authorization",
+            detail={"granted": bool(req.authorize), "intent": intent.get("type"),
+                    "actions": intent.get("consequential", [])[:3]})
+
     turns.append({"user": req.message, "assistant": answer[:2000]})
     svc.emit("REMEMBER", "chat_done", {"source": source, "verified": verified})
     return ChatResponse(
@@ -243,6 +254,7 @@ def chat(req: ChatRequest) -> ChatResponse:
         steps=steps,
         verified=verified,
         elapsed_ms=round((time.time() - t0) * 1000, 1),
+        intent=intent,
     )
 
 

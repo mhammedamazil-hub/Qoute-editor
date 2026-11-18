@@ -293,6 +293,59 @@ class GroundedAnswerer:
         base = cls._content(text)
         return base | {syn for w in base for syn in _SYNONYMS.get(w, ())}
 
+    _QUESTION_START = re.compile(
+        r"^\s*(what|which|how|why|who|when|where|should|is|are|do|does|can|could|would)\b", re.I)
+    _IMPERATIVE_START = re.compile(
+        r"^\s*(build|make|create|add|apply|set|change|move|resize|delete|remove|duplicate|"
+        r"translate|export|render|generate|draw|place|put)\b", re.I)
+
+    @classmethod
+    def is_question(cls, text: str) -> bool:
+        """True for a request for information, false for a request for action.
+
+        Measured failure: "How many fonts should I use in one poster?" (with a question mark)
+        was routed to the procedural branch and answered with a raw tool sequence, because
+        the skill scorer is checked before prose and skills outrank facts by design.
+        """
+        stripped = text.strip()
+        return bool(cls._QUESTION_START.match(stripped)) and not cls._IMPERATIVE_START.match(stripped)
+
+    @staticmethod
+    def render_procedure(skill: dict[str, Any]) -> str:
+        """A verified procedure, described in words instead of dumped as JSON."""
+        import json as _json
+
+        steps: list[dict[str, Any]] = []
+        try:
+            parsed = _json.loads(skill.get("solution") or "[]")
+            if isinstance(parsed, list):
+                steps = [s for s in parsed if isinstance(s, dict)]
+        except (ValueError, TypeError):
+            steps = []
+        tools = [str(s.get("tool")) for s in steps if s.get("tool")]
+        name = skill.get("name") or skill.get("slug") or "that procedure"
+        bits = [f"I know a verified {len(steps)}-step procedure for {name.lower()}."]
+        if tools:
+            chain = " → ".join(tools[:6]) + (" → …" if len(tools) > 6 else "")
+            bits.append(f"It runs {chain}.")
+        desc = str(skill.get("description") or "").strip()
+        if desc:
+            bits.append(desc[:220].rstrip(".") + ".")
+        bits.append("Ask me to run it and I will apply it to the canvas.")
+        return " ".join(bits)
+
+    @staticmethod
+    def _is_junk_fact(label: str, content: str) -> bool:
+        """Facts that are answer scaffolding, not answers.
+
+        Measured: a consolidated lesson captured the opening line of an earlier reply
+        ("Here is what memory holds:") and it later surfaced as if it were knowledge.
+        """
+        text = f"{label} {content}".strip().lower()
+        return (text.startswith("here is what memory holds")
+                or text.startswith("i don't have a verified memory")
+                or text.startswith("rather than guess"))
+
     def _subject(self, question: str) -> str:
         """The entity a question is *about* — its head noun, crudely.
 
@@ -356,6 +409,14 @@ class GroundedAnswerer:
 
     def answer(self, question: str, *, max_tokens: int = 96, allow_neural: bool = True) -> Generation:
         evidence: list[dict[str, Any]] = []
+        # 0. Questions about this system are answered from its own records.
+        from minicoder.cognition.selfmodel import self_answer
+
+        self_report = self_answer(question)
+        if self_report is not None:
+            evidence.append({"type": "self_report", "topic": self_report["topic"]})
+            return Generation(self_report["text"], len(self_report["text"].split()), 0.0, 0.0,
+                              "self", evidence, self.brain.backend)
         # 1. Verified skills first — executables beat prose.
         skills = self.procedural.verified(exported=None)
         q = self._content(question)
@@ -370,6 +431,25 @@ class GroundedAnswerer:
         bar = 0.4 if coding_intent else 0.6
         if scored and scored[0][0] >= bar:
             overlap, skill = scored[0]
+            if self.is_question(question) and not coding_intent:
+                # Prose first: does a remembered fact answer the question itself?
+                for m in self.semantic.search(question, limit=6):
+                    if self._relevant(question, m) and not self._is_junk_fact(
+                            str(m.get("label", "")), str(m.get("content", ""))):
+                        text = self._claim(m.get("content", "")).strip() or str(m.get("label", ""))
+                        evidence.append({"type": "semantic", "id": m["id"],
+                                         "label": m["label"], "status": m["status"],
+                                         "confidence": m["confidence"], "score": m.get("score"),
+                                         "chosen_over": skill["slug"]})
+                        return Generation(text, len(text.split()), 0.0, 0.0, "memory",
+                                          evidence, self.brain.backend)
+                text = self.render_procedure(skill)
+                self.procedural.record_use(skill["slug"])
+                evidence.append({"type": "skill", "slug": skill["slug"],
+                                 "score": round(overlap, 3), "status": skill["status"],
+                                 "rendered": "as_prose"})
+                return Generation(text, len(text.split()), 0.0, 0.0, "skill", evidence,
+                                  self.brain.backend)
             self.procedural.record_use(skill["slug"])
             text = skill["solution"].strip() or skill["description"]
             evidence.append({"type": "skill", "slug": skill["slug"], "score": round(overlap, 3),
@@ -381,7 +461,9 @@ class GroundedAnswerer:
         # so cosine alone cannot carry the decision. Lexical overlap is the
         # stronger signal at this model size; cosine breaks ties.
         kn_all = self.semantic.search(question, limit=6)
-        kn = [m for m in kn_all if self._relevant(question, m)][:3]
+        kn = [m for m in kn_all
+              if self._relevant(question, m)
+              and not self._is_junk_fact(str(m.get("label", "")), str(m.get("content", "")))][:3]
         for m in kn:
             evidence.append({"type": "semantic", "id": m["id"], "label": m["label"],
                              "status": m["status"], "confidence": m["confidence"],
@@ -394,6 +476,9 @@ class GroundedAnswerer:
                 evidence.append({"type": "episode", "id": e["id"], "status": e["status"],
                                  "situation": e["situation"][:160], "score": e.get("score")})
 
+        # ``brain`` may be absent (an answerer built from memory alone); provenance
+        # must still be truthful rather than raising.
+        backend = getattr(self.brain, "backend", "memory") if self.brain is not None else "memory"
         if kn:
             top = kn[0]
             # Entity aggregation: when several remembered facts answer the *same*
@@ -427,12 +512,14 @@ class GroundedAnswerer:
                     if top["status"] != VERIFIED:
                         text += "\n\n(Note: this memory is not yet verified.)"
                     return Generation(text, len(text.split()), 0.0, 0.0, "memory", evidence,
-                                      self.brain.backend)
+                                      backend)
             extra = [m["label"] for m in kn[1:3]]
+            # Never echo the answer back as its own "related" item.
+            extra = [e for e in extra if e.strip()[:60] and e.strip()[:60] not in top["content"]]
             text = top["content"] + (f"\nRelated: {', '.join(extra)}." if extra else "")
             if top["status"] != "VERIFIED":
                 text += "\n\n(Note: this memory is not yet verified.)"
-            return Generation(text, len(text.split()), 0.0, 0.0, "memory", evidence, self.brain.backend)
+            return Generation(text, len(text.split()), 0.0, 0.0, "memory", evidence, backend)
 
         # 4. Neural fallback — used only where it was actually trained.
         #

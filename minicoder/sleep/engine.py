@@ -51,12 +51,15 @@ class SleepReport:
     shard: dict[str, Any] = field(default_factory=dict)
     conflicts: list[str] = field(default_factory=list)
     metrics: dict[str, Any] = field(default_factory=dict)
+    adaptive: dict[str, Any] = field(default_factory=dict)
+    fingerprint: str = ""
     ended_at: str = ""
     duration_seconds: float = 0.0
 
     def to_json(self) -> dict[str, Any]:
         return {
             "cycle_id": self.cycle_id, "trigger": self.trigger,
+            "adaptive": self.adaptive, "fingerprint": self.fingerprint,
             "started_at": self.started_at, "ended_at": self.ended_at,
             "duration_seconds": self.duration_seconds, "stages": self.stages,
             "learned": self.learned, "archived": self.archived, "promoted": self.promoted,
@@ -87,6 +90,49 @@ class SleepReport:
         lines += [f"- {p}" for p in self.promoted] or ["- (no new verified skills this cycle)"]
         lines += ["", "## Archived / compressed (recoverable)"]
         lines += [f"- {a}" for a in self.archived] or ["- (nothing crossed the decay threshold)"]
+        if self.adaptive:
+            a = self.adaptive
+            lines += ["", "## Adaptive measurements (Sleep 2.0)"]
+            if a.get("error"):
+                lines += [f"- analysis error: {a['error']}"]
+            h = a.get("hygiene") or {}
+            if h and not h.get("error"):
+                lines += [f"- node usefulness: mean {h.get('usefulness_mean')}, "
+                          f"{h.get('weak_nodes')} below the prune threshold, "
+                          f"{h.get('archived_duplicates')} duplicate node(s) archived "
+                          f"in {h.get('redundant_groups')} group(s)"]
+            c = a.get("contradictions") or {}
+            if c and not c.get("error"):
+                lines += [f"- contradictions: {c.get('detected', 0)} detected, "
+                          f"{c.get('recorded', 0)} newly recorded"]
+            ab = a.get("abstractions") or {}
+            if ab:
+                lines += [f"- semantic abstractions created: {ab.get('created', 0)}"]
+            sk = a.get("skills") or {}
+            if sk and not sk.get("error"):
+                lines += [f"- skill verification: {sk.get('verified')} verified, "
+                          f"{sk.get('broken')} unusable as training examples"]
+            rr = a.get("rotation_retention") or {}
+            if rr.get("tested"):
+                lines += [f"- rotation retention: {rr.get('passed')}/{rr.get('tested')} "
+                          f"step-level replays passed"]
+            fg = a.get("forgetting") or {}
+            if fg and not fg.get("error"):
+                lines += [f"- forgetting: {fg.get('archived', 0)} previously archived, "
+                          f"regret rate {fg.get('regret_rate', 0)}, "
+                          f"compression {fg.get('compression', 0)}"]
+            pr = a.get("promotion") or {}
+            if pr and not pr.get("error"):
+                lines += [f"- candidate promotion: {pr.get('promoted', 0)} promoted, "
+                          f"{pr.get('held', 0)} held, {pr.get('rejected', 0)} rejected"]
+            d = (a.get("delta") or {}).get("changes") or {}
+            if d:
+                lines += ["- change since previous cycle: "
+                          + ", ".join(f"{k} {v['delta']:+g}" for k, v in d.items()
+                                      if isinstance(v, dict) and v.get("delta"))]
+            if self.fingerprint:
+                lines += [f"- reproducibility fingerprint: `{self.fingerprint}`"]
+
         lines += ["", "## Conflicts & unresolved"]
         lines += [f"- {c}" for c in (self.conflicts + self.unresolved)] or ["- (none)"]
         if self.shard.get("created"):
@@ -176,6 +222,10 @@ class SleepEngine:
                 "backup": str(backup) if backup else "",
                 "db_stats": self.db.stats(),
             }
+            # Adaptive Sleep 2.0 runs *after* the metrics exist so its
+            # cycle-over-cycle delta compares like with like. It adds no ninth
+            # stage: each measurement attaches to the stage that owns it.
+            self._adaptive_pass(report)
             report.ended_at = utcnow()
             report.duration_seconds = round(time.time() - t0, 2)
             self._write_report(report)
@@ -194,6 +244,149 @@ class SleepEngine:
             raise
         finally:
             self.busy = False
+
+    # ------------------------------------------------- adaptive sleep 2.0
+    def _merge_stage(self, report: SleepReport, idx: int, key: str,
+                     payload: dict[str, Any]) -> None:
+        for stage in report.stages:
+            if stage.get("stage") == idx:
+                stage[key] = payload
+                return
+
+    def _adaptive_pass(self, report: SleepReport) -> None:
+        """Usefulness, redundancy, contradictions, abstraction, verification,
+        rotation retention, forgetting regret, promotion, delta and fingerprint.
+
+        Failures here are recorded, never raised: a measurement that cannot run
+        must not fail a sleep cycle whose memory work already committed.
+        """
+        try:
+            from minicoder.sleep.adaptive import AdaptiveAnalysis
+
+            analysis = AdaptiveAnalysis(self.db, self.semantic)
+            out: dict[str, Any] = {}
+            deduped_ids: list[int] = []
+
+            try:
+                usefulness = analysis.score_nodes()
+                groups = analysis.find_redundant()
+                dedupe = analysis.dedupe(groups)
+                self._merge_stage(report, 2, "hygiene",
+                                  {"usefulness": usefulness, "redundancy": dedupe})
+                deduped_ids = list(dedupe.get("ids", []))
+                report.archived.extend(f"redundant node #{i}" for i in deduped_ids)
+                out["hygiene"] = {"usefulness_mean": usefulness.get("mean"),
+                                  "weak_nodes": usefulness.get("below_threshold"),
+                                  "redundant_groups": dedupe.get("groups"),
+                                  "archived_duplicates": dedupe.get("archived")}
+            except Exception as exc:
+                out["hygiene"] = {"error": f"{type(exc).__name__}: {exc}"}
+
+            try:
+                pairs = analysis.find_contradictions()
+                recorded = analysis.record_conflicts(pairs)
+                abstractions = analysis.abstract()
+                self._merge_stage(report, 4, "adaptive",
+                                  {"contradictions": recorded, "abstractions": abstractions})
+                out["contradictions"] = recorded
+                out["abstractions"] = {"created": abstractions.get("created")}
+            except Exception as exc:
+                out["contradictions"] = {"error": f"{type(exc).__name__}: {exc}"}
+
+            try:
+                verify = analysis.verify_skills()
+                retention = analysis.retention_probe(self._adaptive_replay)
+                self._merge_stage(report, 5, "verification",
+                                  {"skills": verify, "rotation_retention": retention})
+                out["skills"] = {"verified": verify.get("verified"),
+                                 "broken": verify.get("broken_count")}
+                out["rotation_retention"] = {k: retention.get(k) for k in
+                                             ("tested", "passed", "failed", "pass_rate")}
+                if retention.get("failed"):
+                    report.unresolved.append(
+                        f"{retention['failed']} skill(s) failed rotation replay")
+            except Exception as exc:
+                out["skills"] = {"error": f"{type(exc).__name__}: {exc}"}
+
+            try:
+                # Nodes archived seconds ago by this cycle's dedupe are not
+                # "regret": they never had a chance to be missed.
+                forgetting = analysis.forgetting_analysis(exclude_ids=deduped_ids)
+                self._merge_stage(report, 6, "adaptive", {"forgetting": forgetting})
+                out["forgetting"] = forgetting
+            except Exception as exc:
+                out["forgetting"] = {"error": f"{type(exc).__name__}: {exc}"}
+
+            try:
+                promotion = analysis.promote_candidates()
+                self._merge_stage(report, 8, "promotion", promotion)
+                out["promotion"] = {k: promotion.get(k) for k in ("promoted", "held", "rejected")}
+                report.promoted.extend(f"candidate promoted: {p['slug']}"
+                                       for p in promotion.get("items", []))
+            except Exception as exc:
+                out["promotion"] = {"error": f"{type(exc).__name__}: {exc}"}
+
+            report.adaptive = out
+            report.fingerprint = analysis.fingerprint(report.to_json())
+            prev = self._previous_report(report.cycle_id)
+            report.adaptive["delta"] = analysis.cycle_delta(prev, report.to_json())
+            report.adaptive["fingerprint"] = report.fingerprint
+        except Exception as exc:  # pragma: no cover - defensive, reported not raised
+            report.adaptive = {"error": f"{type(exc).__name__}: {exc}"}
+
+    def _previous_report(self, cycle_id: int | None) -> dict[str, Any] | None:
+        if not cycle_id:
+            return None
+        row = self.db.query_one(
+            "SELECT report FROM sleep_cycles WHERE id < ? AND status = 'ok'"
+            " ORDER BY id DESC LIMIT 1", (cycle_id,))
+        if not row or not row["report"]:
+            return None
+        try:
+            return json.loads(row["report"])
+        except json.JSONDecodeError:
+            return None
+
+    def _adaptive_replay(self, slug: str, procedure: list[dict[str, Any]]) -> bool:
+        """Re-execute a procedure's steps and record the result.
+
+        This is a *step-level* retention check: it proves the stored calls still
+        execute against the live bridge. It is weaker than the criteria-based
+        replay in stage 5, and it says so in ``skill_replays.detail`` — the two
+        are reported separately rather than merged into one flattering number.
+        """
+        if not procedure:
+            return False
+        ok = False
+        detail: dict[str, Any] = {"mode": "steps"}
+        try:
+            from minicoder.tools.editor_bridge import EditorBridge
+
+            bridge = EditorBridge()
+            try:
+                bridge._ensure()
+                bridge.call("new_project", {})
+                ok = True
+                for step in procedure:
+                    result, _ = bridge.call(step["tool"], step.get("args") or {})
+                    if isinstance(result, dict) and result.get("ok") is False:
+                        ok = False
+                        detail["error"] = str(result.get("error"))[:200]
+                        break
+            finally:
+                try:
+                    bridge.close()
+                except Exception:
+                    pass
+        except Exception as exc:
+            ok = False
+            detail["error"] = f"{type(exc).__name__}: {exc}"[:200]
+        self.db.execute(
+            "INSERT INTO skill_replays(ts, skill_slug, task_key, variation, passed, detail)"
+            " VALUES (?,?,?,?,?,?)",
+            (utcnow(), slug, "adaptive_rotation", "adaptive_rotation", int(ok),
+             json.dumps(detail)))
+        return ok
 
     # ---------------------------------------------------------- stages
     def _replay(self, report: SleepReport) -> dict[str, Any]:

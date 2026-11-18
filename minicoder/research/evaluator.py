@@ -116,15 +116,19 @@ def detect_hardcoding(code: str, record: task_mod.TaskRecord) -> dict[str, Any]:
 
 
 def hidden_inputs_for(record: task_mod.TaskRecord, store: PrivateStore,
-                      count: int = 5) -> list[list[Any]]:
+                      count: int = 5, *, scale: int = 1,
+                      edge_only: bool = False) -> list[list[Any]]:
     salt = store.salt()
-    return [task_mod.hidden_draw(record.family, salt, record.key, i) for i in range(count)]
+    return [task_mod.hidden_draw(record.family, salt, record.key, i,
+                                 scale=scale, edge_only=edge_only)
+            for i in range(count)]
 
 
 # --------------------------------------------------------------------------- evaluation
 def evaluate(record: task_mod.TaskRecord, code: str, *, store: PrivateStore,
              mode: str | None = None, timeout: float = 15.0,
-             fresh_inputs: bool = True) -> Verdict:
+             fresh_inputs: bool = True, scale: int = 1,
+             edge_only: bool = False) -> Verdict:
     """Score ``code`` against hidden inputs computed here.
 
     ``fresh_inputs`` derives new draws on every call (indices offset by the salt), so a
@@ -134,7 +138,7 @@ def evaluate(record: task_mod.TaskRecord, code: str, *, store: PrivateStore,
     if not check["ok"]:
         return Verdict("no_result", detail=f"evaluator integrity check failed: {check['problems']}")
 
-    inputs = hidden_inputs_for(record, store, count=5)
+    inputs = hidden_inputs_for(record, store, count=5, scale=scale, edge_only=edge_only)
     expected = [task_mod.expected_output(record.family, args) for args in inputs]
     usable = [(a, e) for a, e in zip(inputs, expected) if not isinstance(e, task_mod._Missing)]
     if not usable:

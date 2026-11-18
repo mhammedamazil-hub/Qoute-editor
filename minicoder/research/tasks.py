@@ -257,6 +257,22 @@ def _composition(name: str, prompt: str, rng: random.Random, size: int) -> tuple
     if name == "scale_then_running":
         xs, k = _ints(rng, size), rng.randint(2, 5)
         return [xs, k], lambda a, b: [sum((x * b) for x in a[: i + 1]) for i in range(len(a))]
+    if name == "dedupe_running_even":
+        # Phase 4 combination axis: dedupe -> keep evens -> running total.
+        xs = _ints(rng, size)
+
+        def combo(a, _b=None):
+            seen, out, total = set(), [], 0
+            for x in a:
+                if x in seen:
+                    continue
+                seen.add(x)
+                if x % 2 == 0:
+                    total += x
+                    out.append(total)
+            return out
+
+        return [xs], combo
     if name == "even_then_scale":
         xs, k = _ints(rng, size), rng.randint(2, 5)
         return [xs, k], lambda a, b: [x * b for x in a if x % 2 == 0]
@@ -350,29 +366,41 @@ def generate(seed: int, n: int = 24, *, include_special: bool = True) -> list[Ta
     return records
 
 
-def hidden_draw(family_name: str, salt: str, key: str, index: int) -> list[Any]:
+def hidden_draw(family_name: str, salt: str, key: str, index: int, *,
+               scale: int = 1, edge_only: bool = False) -> list[Any]:
     """Derive one hidden input from the private salt. Unknown to the agent.
 
     The salt lives in the private store, outside the repository, so reading this module does
     not reveal the hidden inputs.
+
+    ``scale`` and ``edge_only`` exist for Phase 4's generalization axes: they make the
+    *hidden* inputs larger or boundary-heavy without changing the defaults, so every
+    Phase 3 result stays reproducible byte for byte (both default to the old behaviour).
     """
-    digest = hashlib.sha256(f"{salt}|{key}|{index}".encode()).hexdigest()
+    # Defaults keep the exact Phase 3 digest string, so every Phase 3 hidden draw
+    # is still reproducible; the axis suffix only appears when an axis asks for it.
+    material = (f"{salt}|{key}|{index}" if scale == 1 and not edge_only
+                else f"{salt}|{key}|{index}|{scale}|{int(edge_only)}")
+    digest = hashlib.sha256(material.encode()).hexdigest()
     rng = random.Random(int(digest[:16], 16))
-    if family_name.startswith(("scale_then_running", "even_then_scale", "dedupe_then_chunk")):
-        args, _ = _composition(family_name, "", rng, rng.choice([4, 5, 6, 9]))
+    if family_name.startswith(("scale_then_running", "even_then_scale", "dedupe_then_chunk",
+                               "dedupe_running_even")):
+        base = rng.choice([4, 5, 6, 9]) * max(1, scale)
+        args, _ = _composition(family_name, "", rng, min(base, 40))
         return args
     fam = FAMILIES.get(family_name)
     if fam is None:
         return []
-    size = rng.choice([9, 10, 11])
-    if fam.edge_draws and rng.random() < 0.34:
+    size = rng.choice([9, 10, 11]) * max(1, scale)
+    if fam.edge_draws and (edge_only or rng.random() < 0.34):
         return rng.choice(fam.edge_draws)(rng)
-    return fam.draw(rng, size)
+    return fam.draw(rng, min(size, 48))
 
 
 def expected_output(family_name: str, args: list[Any], prompt: str = "") -> Any:
     """Reference output, computed by the evaluator — never handed to the agent."""
-    if family_name.startswith(("scale_then_running", "even_then_scale", "dedupe_then_chunk")):
+    if family_name.startswith(("scale_then_running", "even_then_scale", "dedupe_then_chunk",
+                               "dedupe_running_even")):
         _, fn = _composition(family_name, prompt, random.Random(0), 4)
         return fn(*args)
     fam = FAMILIES.get(family_name)

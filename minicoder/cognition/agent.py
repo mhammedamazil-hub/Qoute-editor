@@ -62,6 +62,7 @@ class Trajectory:
     confidence: float = 0.0
     seconds: float = 0.0
     tool_names: list[str] = field(default_factory=list)
+    intent: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -73,6 +74,7 @@ class Trajectory:
             "error": self.error,
             "confidence": self.confidence,
             "seconds": round(self.seconds, 2),
+            "intent": self.intent,
         }
 
 
@@ -157,6 +159,21 @@ def parse_instruction(instruction: str) -> dict[str, Any]:
 
     quoted = re.search(r'["“]([^"”]{3,160})["”]', text)
     quote = _scrub_copy(quoted.group(1)) if quoted else ""
+
+    if not quote:
+        # Single quotes, and the unquoted case after a naming verb. Measured: "build a
+        # 1080x1350 poster with the headline 'Quiet'" produced no text step at all,
+        # because only typographic double quotes were recognised.
+        named = re.search(
+            r"\b(?:headline|title|caption|quote|text|reads?|saying|announcing)\b[^'\"\u201c\u201d\n]{0,12}"
+            r"(?<![A-Za-z])['\u2018]([^'\u2019\n]{2,60})['\u2019](?![A-Za-z])", text, re.I)
+        if named:
+            quote = _scrub_copy(named.group(1))
+    if not quote:
+        lone = re.search(
+            r"(?<![A-Za-z])['\u2018]([^'\u2019\n]{2,60})['\u2019](?![A-Za-z])", text)
+        if lone:
+            quote = _scrub_copy(lone.group(1))
 
     if not quote:
         for verb in ("about", "saying", "reads", "says"):
@@ -274,7 +291,39 @@ class DesignAgent:
         return f"{t[:1].upper() + t[1:]} is not given. It is built, one quiet day at a time."
 
     # ------------------------------------------------------------ execution
-    def execute(self, instruction: str, *, dry_run: bool = False) -> Trajectory:
+    @staticmethod
+    def _unmet_requirements(instruction: str, state: dict[str, Any]) -> list[str]:
+        """Requirements the instruction states explicitly and the canvas does not meet.
+
+        Only checks things the instruction actually names — a quoted headline, a WxH canvas,
+        a dark background — so it cannot invent expectations the user never expressed.
+        """
+        from minicoder.learning.criteria import EditorState, evaluate_editor_criteria
+
+        try:
+            snapshot = state.get("snapshot") if isinstance(state, dict) else None
+            if not snapshot:
+                return []
+            observed = EditorState.from_snapshot(snapshot)
+        except Exception:  # noqa: BLE001 - a malformed state must not fail the request
+            return []
+
+        criteria: list[str] = []
+        for quoted in re.findall(r"['\"\u201c]([^'\"\u201d]{2,60})['\"\u201d]", instruction):
+            criteria.append(f'text_present("{quoted}")')
+        size = re.search(r"(\d{2,5})\s*[x\u00d7]\s*(\d{2,5})", instruction)
+        if size:
+            criteria.append(f"canvas_size({int(size.group(1))}, {int(size.group(2))})")
+        if not criteria:
+            return []
+        unmet = []
+        for result in evaluate_editor_criteria(criteria, observed):
+            if not result.passed:
+                unmet.append(result.detail or result.text)
+        return unmet
+
+    def execute(self, instruction: str, *, dry_run: bool = False,
+                authorize: bool = False) -> Trajectory:
         t0 = time.time()
         traj = Trajectory(instruction=instruction)
         try:
@@ -298,9 +347,39 @@ class DesignAgent:
             self._record(traj, intent={})
             return traj
 
-        question_like = bool(re.match(r"^\s*(what|which|how|why|who|when|where|should|can|could|is|are|do|does)\b",
-                                       instruction, re.I)) and "?" in instruction
-        if question_like:
+        # Explicit, typed intent. Phase 3 inferred this with a regex that required a
+        # question mark, which is how "How many fonts should I use in one poster" reached
+        # the planner and mutated the canvas.
+        from minicoder.cognition.intent import IntentType, authorization_message, classify
+
+        intent = classify(instruction)
+        traj.intent = intent.to_json()
+
+        if intent.requires_authorization and not authorize:
+            traj.summary = authorization_message(intent)
+            traj.plan = ["authorization required"]
+            traj.source = "refuse"
+            traj.verified = False
+            self._observe_outcome(traj, intent.to_json(), authorized=False)
+            self._record(traj, intent=intent.to_json())
+            return traj
+
+        if intent.type == IntentType.PLANNING:
+            planned, plan_intent = self.plan(instruction)
+            if planned:
+                lines = [f"{i}. {p['tool']}" + (f"({', '.join(list(p['args'])[:3])})" if p["args"] else "")
+                         for i, p in enumerate(planned, 1)]
+                traj.summary = ("Here is the plan, nothing has been changed yet:\n"
+                                + "\n".join(lines)
+                                + "\nSay \"go ahead\" and I will run it.")
+                traj.plan = [p["tool"] for p in planned]
+                traj.source = "plan"
+                traj.verified = False
+                self._observe_outcome(traj, plan_intent)
+                self._record(traj, intent=plan_intent)
+                return traj
+
+        if intent.is_answerable:
             gen = self.answerer.answer(instruction)
             traj.plan = ["answer from memory (no canvas mutation)"]
             traj.summary = gen.text
@@ -308,10 +387,11 @@ class DesignAgent:
             traj.source = gen.source
             traj.confidence = pre.calibrated_confidence
             traj.seconds = time.time() - t0
+            self._observe_outcome(traj, intent.to_json(), authorized=authorize)
             self._record(traj, intent={}, answer=gen.to_json())
             return traj
 
-        planned, intent = self.plan(instruction)
+        planned, plan_intent = self.plan(instruction)
         traj.plan = [f"{p['tool']}({', '.join(f'{k}={v!r}' for k, v in list(p['args'].items())[:2])})" for p in planned]
         if not planned:
             # Nothing actionable -> answer from memory instead of touching the canvas.
@@ -321,7 +401,8 @@ class DesignAgent:
             traj.error = ""
             traj.source = gen.source
             traj.plan = ["answer (no canvas action implied)"]
-            self._record(traj, intent=intent, answer=gen.to_json())
+            self._observe_outcome(traj, intent.to_json(), authorized=authorize)
+            self._record(traj, intent=plan_intent, answer=gen.to_json())
             return traj
         if dry_run:
             traj.summary = f"dry run: {len(planned)} step(s) planned"
@@ -350,9 +431,17 @@ class DesignAgent:
                 break
 
         traj.verified = bool(traj.steps) and all(s.ok for s in traj.steps)
+        # Steps succeeding is not the instruction being satisfied. Measured: "build a
+        # 1080x1350 poster with headline 'Quiet'" resized the canvas, reported success, and
+        # never placed the headline. Check what was asked for against what exists now.
+        unmet = self._unmet_requirements(instruction, state)
         traj.summary = self._narrate(traj) if traj.verified else (
             "; ".join(s.summary for s in traj.steps if s.summary)[:600] or "no steps executed"
         )
+        if unmet:
+            traj.verified = False
+            traj.summary = (traj.summary + " " if traj.summary else "") + (
+                "But this does not satisfy the request: " + "; ".join(unmet) + ".")
         post = self.mc.post_action(
             expected="; ".join(traj.plan), observed=traj.summary,
             tool_ok=all(s.ok for s in traj.steps), all_checks_passed=traj.verified,
@@ -362,7 +451,8 @@ class DesignAgent:
         traj.verified = post.matched
         traj.confidence = round(max(0.0, min(1.0, traj.confidence + post.confidence_delta)), 3)
         traj.seconds = time.time() - t0
-        self._record(traj, intent=intent, post=post.to_json())
+        self._observe_outcome(traj, intent.to_json(), authorized=authorize)
+        self._record(traj, intent=plan_intent, post=post.to_json())
         return traj
 
     @staticmethod
@@ -372,6 +462,34 @@ class DesignAgent:
         checks = sum(len(s.checks) for s in traj.steps)
         body = "; ".join(parts[:5])
         return f"{body}. Verified against {checks} deterministic checks on the live editor store."
+
+    def _observe_outcome(self, traj: Trajectory, intent: dict[str, Any], *,
+                         authorized: bool = False) -> None:
+        """Turn a finished trajectory into a calibration sample and an audit row.
+
+        Only trajectories that actually ran and were checked count: a refusal or
+        a plan has no measured outcome, and inventing one would corrupt the very
+        number this is meant to score.
+        """
+        from minicoder.cognition.metacognition import audit
+
+        ran = bool(traj.steps) and traj.source not in ("refuse", "plan")
+        if ran:
+            self.mc.observe_outcome(
+                traj.confidence, 1.0 if traj.verified else 0.0, source="execution",
+                detail={"instruction": traj.instruction[:160],
+                        "steps": [s.tool for s in traj.steps][:6],
+                        "intent": intent.get("type", "")})
+        if intent.get("requires_authorization") or intent.get("consequential"):
+            # ``allowed`` records the authorization decision, not whether a plan
+            # happened to exist: a granted request that turned out unactionable is
+            # audited as granted-but-unexecuted, which is the honest distinction.
+            audit(self.db, "execute", intent=str(intent.get("type", "")),
+                  authorized=authorized, allowed=authorized,
+                  detail={"instruction": traj.instruction[:160],
+                          "actions": intent.get("consequential", [])[:4],
+                          "executed": bool(traj.steps),
+                          "outcome": traj.source, "verified": traj.verified})
 
     def _record(self, traj: Trajectory, intent: dict[str, Any], post: dict[str, Any] | None = None,
                 answer: dict[str, Any] | None = None) -> int:

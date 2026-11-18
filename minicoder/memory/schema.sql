@@ -311,6 +311,36 @@ CREATE TABLE IF NOT EXISTS skill_dependencies (
     UNIQUE (skill_slug, depends_on)
 );
 
-INSERT OR IGNORE INTO schema_meta(key, value) VALUES ('schema_version', '2');
+-- Phase 4: calibration samples. Every row is a prediction the system made and
+-- the outcome it later measured, so confidence can be scored (Brier/ECE) instead
+-- of asserted. Additive: an older database gains the table on next open.
+CREATE TABLE IF NOT EXISTS calibration (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts        TEXT    NOT NULL,
+    source    TEXT    NOT NULL,          -- execution | answer | skill_replay | experiment
+    predicted REAL    NOT NULL,          -- confidence before the outcome was known
+    outcome   REAL    NOT NULL,          -- 1.0 measured success, 0.0 measured failure
+    detail    TEXT    NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_calibration_ts ON calibration(ts);
+
+-- Phase 4: the audit trail for consequential actions. provenance_events records
+-- what memory did; this records what the *agent* did and who allowed it.
+CREATE TABLE IF NOT EXISTS audit_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts         TEXT    NOT NULL,
+    action     TEXT    NOT NULL,
+    intent     TEXT    NOT NULL DEFAULT '',
+    authorized INTEGER NOT NULL DEFAULT 0,
+    allowed    INTEGER NOT NULL DEFAULT 1,
+    detail     TEXT    NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts);
+
+INSERT OR IGNORE INTO schema_meta(key, value) VALUES ('schema_version', '3');
+-- Keep the recorded version truthful (INSERT OR IGNORE leaves an old value alone).
+UPDATE schema_meta SET value = '3' WHERE key = 'schema_version';
 
 INSERT OR IGNORE INTO schema_meta(key, value) VALUES ('created_at', datetime('now'));
