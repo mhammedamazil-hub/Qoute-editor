@@ -1,0 +1,50 @@
+{
+ "before": {
+  "episodes": 146,
+  "semantic_nodes": 52,
+  "semantic_edges": 13,
+  "skills": 30,
+  "skill_candidates": 7,
+  "skill_replays": 36,
+  "experiments": 8,
+  "memory_conflicts": 11,
+  "sleep_cycles": 13,
+  "calibration": 24,
+  "audit_log": 2,
+  "dataset_shards": 3,
+  "provenance_events": 5759
+ },
+ "after": {
+  "episodes": 152,
+  "semantic_nodes": 52,
+  "semantic_edges": 13,
+  "skills": 30,
+  "skill_candidates": 7,
+  "skill_replays": 36,
+  "experiments": 8,
+  "memory_conflicts": 11,
+  "sleep_cycles": 13,
+  "calibration": 30,
+  "audit_log": 5,
+  "dataset_shards": 3,
+  "provenance_events": 5880
+ },
+ "changed": {
+  "episodes": [
+   146,
+   152
+  ],
+  "calibration": [
+   24,
+   30
+  ],
+  "audit_log": [
+   2,
+   5
+  ],
+  "provenance_events": [
+   5759,
+   5880
+  ]
+ }
+}

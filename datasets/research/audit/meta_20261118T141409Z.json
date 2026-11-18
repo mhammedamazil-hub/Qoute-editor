@@ -1,0 +1,11 @@
+{
+  "mean_candidates_arm_C": 172.8,
+  "mean_candidates_arm_E": 109.0,
+  "cost_reduction_from_reuse": 0.369,
+  "generated_at": "2026-11-18T14:14:09Z",
+  "first_occurrence_candidates": 169.7,
+  "later_occurrence_candidates": 199.5,
+  "families_measured": 35,
+  "reused_tasks_full_arm": 34,
+  "note": "Candidates are the real search cost. Arm C re-synthesises on every task; arm E reuses a consolidated procedure. A lower later-occurrence cost without reuse is the grammar finding the same program, and is labelled as such."
+}

@@ -1,0 +1,29 @@
+{
+ "commit": "1c476ddf6bb5cf95ed3bd63426fabf244e0ac896",
+ "counts": {
+  "episodes": 146,
+  "semantic_nodes": 52,
+  "semantic_edges": 13,
+  "skills": 30,
+  "skill_candidates": 7,
+  "skill_replays": 36,
+  "experiments": 8,
+  "memory_conflicts": 11,
+  "sleep_cycles": 13,
+  "calibration": 24,
+  "audit_log": 2,
+  "dataset_shards": 3,
+  "provenance_events": 5759
+ },
+ "brain_db_sha256": "7cda0d32a6dba3eb964178b8ec7e0a1c9d8d437401d3748724a7ed5c8bb39564",
+ "brain_db_bytes": 2101248,
+ "index_files": [
+  "acquisition_latest.json",
+  "generalization_latest.json",
+  "meta_latest.json",
+  "retention5_latest.json",
+  "retention_latest.json",
+  "security_latest.json",
+  "transfer_latest.json"
+ ]
+}

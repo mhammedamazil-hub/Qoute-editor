@@ -1,0 +1,166 @@
+{
+ "audit": {
+  "date": "2026-11-15",
+  "branch": "arena/70420343-qoute-editor",
+  "head": "1c476dd",
+  "commits": [
+   "bafdc90",
+   "7228fbe",
+   "1c476dd"
+  ]
+ },
+ "gates": {
+  "pytest": "133 passed, 1 skipped, 107.97s",
+  "ruff": "clean",
+  "tsc": "0 errors",
+  "vite": "264.24 kB (78.94 kB gzip)",
+  "render_check": "14/14"
+ },
+ "production_delta": {
+  "episodes": [
+   146,
+   152
+  ],
+  "calibration": [
+   24,
+   30
+  ],
+  "audit_log": [
+   2,
+   5
+  ],
+  "provenance_events": [
+   5759,
+   5880
+  ]
+ },
+ "m1": {
+  "inputs": 18,
+  "gated": 6,
+  "ungated_destructive": 12,
+  "confidence": "hardcoded literals 0.3/0.45/0.7/0.75/0.78/0.8/0.85/0.9",
+  "entities_missed": [
+   "palette (2/3)"
+  ]
+ },
+ "m2": {
+  "known": "3/3 memory",
+  "unknown": "3/3 refused",
+  "wrong_entity_answered": 1,
+  "contradiction_overwritten": true
+ },
+ "m3": {
+  "numbers_matched": true,
+  "mislabel": "learned by the acquisition loop (source=verified_execution)",
+  "empty_stages_claim": "Every stage completed without an error"
+ },
+ "m4": {
+  "salt_len": 64,
+  "store": "~/.local/share/nace-private",
+  "store_ok": true,
+  "salt_in_repo": false,
+  "frozen_equals_live": true,
+  "hidden_kwarg_diffs": [
+   "larger_input",
+   "shifted_distribution"
+  ],
+  "combination_program_wrong": true,
+  "hand_cases_failed": "5/5",
+  "discriminating_draws_pct": 9.0,
+  "scale3_pass": "2/5",
+  "unseen_family": {
+   "rate": 0.0,
+   "candidates": 380,
+   "diagnosis": null
+  },
+  "reproduction": {
+   "seed101": [
+    0.571,
+    0.643
+   ],
+   "seed202": [
+    0.571,
+    0.714
+   ]
+  }
+ },
+ "m5": {
+  "adaptive_seconds": [
+   42.35,
+   39.07
+  ],
+  "static_seconds": [
+   0.07,
+   0.05
+  ],
+  "only_delta": "skill_replays +8 vs +0",
+  "mutating_measurements": 5,
+  "report_only": 5,
+  "unaccounted_seconds_per_cycle": 38
+ },
+ "m6": {
+  "n": 30,
+  "outcomes": "all 1.0",
+  "brier_reported": 0.0033,
+  "ece_reported": 0.0375,
+  "mixed_probe": {
+   "n": 5,
+   "brier": 0.1807,
+   "ece": 0.2688,
+   "pred_mean": 0.869,
+   "actual": 0.6
+  },
+  "should_experiment_callers": 1,
+  "external_callers_of_coverage": 0
+ },
+ "m7": {
+  "tool_bypass": {
+   "tools_executed": 4,
+   "audit_rows_delta": 0,
+   "canvas": "1 -> 0"
+  },
+  "atomic_promotion": "rollback ok",
+  "concurrency": "1 row, 0 errors",
+  "replay": "authorized request executed twice",
+  "escape_probes": {
+   "total": 22,
+   "escapes": 0
+  }
+ },
+ "m8": {
+  "tabs": 10,
+  "numbers_traced": true,
+  "empty_states": true,
+  "error_path_tested": false,
+  "responsive": "not testable"
+ },
+ "phase3_reproduction": {
+  "seeds": [
+   51,
+   63,
+   77
+  ],
+  "arms": {
+   "A": 0.0,
+   "B": 0.5,
+   "C": 0.6061,
+   "D": 0.6061,
+   "E": 0.6212,
+   "F1": 0.5455,
+   "F2": 0.4091,
+   "F3": 0.4697
+  },
+  "historical": {
+   "C": 0.6061,
+   "E": 0.6061,
+   "F2": 0.4242
+  },
+  "transfer_all_1_0": true,
+  "retention": "9/10",
+  "production_unchanged": true
+ },
+ "library_hashes": {
+  "library.json": "278d721a1b4a1d8b",
+  "library_frozen.json": "a9bbfce5ee3e561b"
+ }
+}

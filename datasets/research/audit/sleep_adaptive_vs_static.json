@@ -1,0 +1,140 @@
+{
+ "adaptive": {
+  "arm": "adaptive",
+  "before": {
+   "semantic_nodes": 52,
+   "skills": 30,
+   "skill_replays": 36,
+   "episodes": 148,
+   "skill_candidates": 7,
+   "memory_conflicts": 11,
+   "archived_nodes": 1,
+   "abstractions": 6
+  },
+  "after": {
+   "semantic_nodes": 53,
+   "skills": 30,
+   "skill_replays": 44,
+   "episodes": 148,
+   "skill_candidates": 7,
+   "memory_conflicts": 11,
+   "archived_nodes": 1,
+   "abstractions": 6
+  },
+  "delta": {
+   "semantic_nodes": 1,
+   "skills": 0,
+   "skill_replays": 8,
+   "episodes": 0,
+   "skill_candidates": 0,
+   "memory_conflicts": 0,
+   "archived_nodes": 0,
+   "abstractions": 0
+  },
+  "cycles": [
+   {
+    "cycle": 14,
+    "seconds": 42.35,
+    "stage_ms": {
+     "1": 0,
+     "2": 1040,
+     "3": 35,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 1,
+     "8": 0
+    },
+    "adaptive_block": true,
+    "fingerprint": "721ccff2cfe98a97",
+    "episodes_archived": 0
+   },
+   {
+    "cycle": 15,
+    "seconds": 39.07,
+    "stage_ms": {
+     "1": 0,
+     "2": 0,
+     "3": 42,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0
+    },
+    "adaptive_block": true,
+    "fingerprint": "f41e421da4a055fd",
+    "episodes_archived": 0
+   }
+  ]
+ },
+ "static": {
+  "arm": "static",
+  "before": {
+   "semantic_nodes": 52,
+   "skills": 30,
+   "skill_replays": 36,
+   "episodes": 148,
+   "skill_candidates": 7,
+   "memory_conflicts": 11,
+   "archived_nodes": 1,
+   "abstractions": 6
+  },
+  "after": {
+   "semantic_nodes": 53,
+   "skills": 30,
+   "skill_replays": 36,
+   "episodes": 148,
+   "skill_candidates": 7,
+   "memory_conflicts": 11,
+   "archived_nodes": 1,
+   "abstractions": 6
+  },
+  "delta": {
+   "semantic_nodes": 1,
+   "skills": 0,
+   "skill_replays": 0,
+   "episodes": 0,
+   "skill_candidates": 0,
+   "memory_conflicts": 0,
+   "archived_nodes": 0,
+   "abstractions": 0
+  },
+  "cycles": [
+   {
+    "cycle": 14,
+    "seconds": 0.07,
+    "stage_ms": {
+     "1": 0,
+     "2": 8,
+     "3": 41,
+     "4": 0,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0
+    },
+    "adaptive_block": false,
+    "fingerprint": "",
+    "episodes_archived": 0
+   },
+   {
+    "cycle": 15,
+    "seconds": 0.05,
+    "stage_ms": {
+     "1": 0,
+     "2": 0,
+     "3": 40,
+     "4": 1,
+     "5": 0,
+     "6": 0,
+     "7": 0,
+     "8": 0
+    },
+    "adaptive_block": false,
+    "fingerprint": "",
+    "episodes_archived": 0
+   }
+  ]
+ }
+}
