@@ -140,6 +140,69 @@ export type LearningSkillsResponse = {
   dependencies: Array<Record<string, any>>;
 };
 
+
+export type CalibrationBucket = { range: string; n: number; predicted: number; actual: number };
+
+export type CognitionOverview = {
+  calibration: {
+    n: number;
+    ece: number;
+    brier: number;
+    buckets: CalibrationBucket[];
+    sources: Record<string, number>;
+    mean_predicted: number | null;
+    mean_actual: number | null;
+  };
+  calibration_history: { ts: string; predicted: number; outcome: number; source: string }[];
+  intent_counts: Record<string, number>;
+  audit: {
+    ts: string;
+    action: string;
+    intent: string;
+    authorized: boolean;
+    allowed: boolean;
+    detail: Record<string, any>;
+  }[];
+  refused_actions: number;
+  memory: { episodes: number; semantic_nodes: number; skills: number };
+  capabilities: Record<string, any>;
+};
+
+export type GeneralizationAxis = {
+  axis: string;
+  description: string;
+  tasks: number;
+  baseline: number;
+  system: number;
+  lift: number;
+  families: string[];
+};
+
+export type GeneralizationOverview = {
+  available: boolean;
+  axes: GeneralizationAxis[];
+  overall: { tasks?: number; baseline?: number; system?: number };
+  leakage: {
+    ok: boolean;
+    findings: string[];
+    production_unchanged: boolean;
+    library_unchanged: boolean;
+    hidden_keys_scanned: number;
+    baseline_hash: string;
+  };
+  fingerprint: string;
+  seed: number | null;
+  seconds: number;
+  results: {
+    axis: string;
+    key: string;
+    family: string;
+    baseline: string;
+    system: string;
+    notes: string;
+  }[];
+};
+
 export const api = {
   status: () => jget<Status>("/api/status"),
   health: () => jget<{ ok: boolean; db: string; state: string }>("/api/health"),
@@ -159,6 +222,9 @@ export const api = {
   snapshots: () => jpost<{ path: string; bytes: number }>("/api/export/snapshot", {}),
   learningOverview: () => jget<LearningOverviewResponse>("/api/learning/overview"),
   researchOverview: () => jget<ResearchOverviewResponse>("/api/research/overview"),
+  cognitionOverview: () => jget<CognitionOverview>("/api/cognition/overview"),
+  generalizationOverview: () => jget<GeneralizationOverview>("/api/generalization/overview"),
+  sleepAdaptive: () => jget<Record<string, any>>("/api/sleep/adaptive"),
   learningSkills: () => jget<LearningSkillsResponse>("/api/learning/skills"),
   learningExperiments: () => jget<{ experiments: Record<string, unknown>[] }>(
     "/api/learning/experiments",

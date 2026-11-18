@@ -616,6 +616,13 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--report", default="")
     s.add_argument("--out", default="")
     s.set_defaults(func=cmd_research)
+    s = sub.add_parser("generalize", help="Phase 4: generalization axes vs a frozen baseline")
+    s.add_argument("--seed", type=int, default=11)
+    s.add_argument("--seeds", default="", help="comma separated seeds; multiplies the report")
+    s.add_argument("--per-axis", dest="per_axis", type=int, default=2)
+    s.add_argument("--budget", type=float, default=20.0)
+    s.add_argument("--json", action="store_true")
+    s.set_defaults(func=cmd_generalize)
     s = sub.add_parser("neural", help="controlled study of training changes")
     s.add_argument("--quick", action="store_true", help="4 epochs per variant")
     s.add_argument("--json", action="store_true")
@@ -798,6 +805,43 @@ def cmd_safeguard(args: argparse.Namespace) -> int:
         return 0 if out.get("rolled_back") else 1
     print(f"unknown action {args.action}", file=sys.stderr)
     return 2
+
+
+def cmd_generalize(args: argparse.Namespace) -> int:
+    """Run the Phase 4 generalization axes and write both report formats."""
+    import json
+
+    from minicoder.research.generalization import GeneralizationEngine
+
+    engine = GeneralizationEngine(budget=args.budget)
+    frozen = engine.freeze_baseline()
+    seeds = [int(x) for x in args.seeds.split(",") if x.strip()] or [args.seed]
+    reports = []
+    for seed in seeds:
+        report = engine.run(seed=seed, per_axis=args.per_axis)
+        reports.append(report.to_json())
+        print(f"{C.G}seed {seed}{C.R} · {report.seconds:.1f}s · "
+              f"baseline {report.axes.get('overall', {}).get('baseline')} -> "
+              f"system {report.axes.get('overall', {}).get('system')}")
+        for axis, row in report.axes.items():
+            if axis == "overall":
+                continue
+            print(f"  {axis:22s} base={row['baseline']:.3f} system={row['system']:.3f} "
+                  f"lift={row['lift']:+.3f} ({row['tasks']} task(s))")
+        print(f"  leakage: {'clean' if report.leakage['ok'] else 'FAILED'}")
+        engine.write(report)
+    if len(reports) > 1:
+        combined = {"frozen": frozen, "seeds": seeds, "runs": reports,
+                    "mean": {
+                        axis: sum(r["axes"].get(axis, {}).get("system", 0) for r in reports)
+                        / len(reports)
+                        for axis in reports[0]["axes"] if axis != "overall"}}
+        path = Path("datasets/research") / "generalization_multi_seed.json"
+        path.write_text(json.dumps(combined, indent=1, sort_keys=True))
+        print(f"multi-seed summary -> {path}")
+    if args.json:
+        print(json.dumps(reports[-1], indent=2, default=str))
+    return 0 if all(r["leakage"]["ok"] for r in reports) else 1
 
 
 def cmd_research(args: argparse.Namespace) -> int:

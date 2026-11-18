@@ -481,6 +481,98 @@ def training_runs() -> dict[str, Any]:
 
 # --------------------------------------------------------------- learning API
 
+@app.get("/api/cognition/overview")
+def cognition_overview() -> dict:
+    """Phase 4: intent mix, calibration and audit, all from recorded rows.
+
+    A missing measurement is reported as missing (``n`` is zero), never as a
+    zero that reads like a passing score.
+    """
+    from minicoder.cognition.metacognition import Metacognition
+
+    svc = service()
+    semantic = svc.agent.semantic
+    mc = Metacognition(svc.db)
+    cal = mc.reliability()
+
+    intents: dict[str, int] = {}
+    for r in svc.db.query("SELECT intent FROM audit_log WHERE intent != ''"):
+        intents[str(r["intent"])] = intents.get(str(r["intent"]), 0) + 1
+
+    audits = []
+    for r in svc.db.query(
+            "SELECT ts, action, intent, authorized, allowed, detail FROM audit_log"
+            " ORDER BY id DESC LIMIT 20"):
+        audits.append({"ts": r["ts"], "action": r["action"], "intent": r["intent"],
+                       "authorized": bool(r["authorized"]), "allowed": bool(r["allowed"]),
+                       "detail": json.loads(r["detail"] or "{}")})
+
+    refusals = sum(1 for a in audits if not a["allowed"])
+    return {
+        "calibration": cal,
+        "calibration_history": [
+            {"ts": r["ts"], "predicted": r["predicted"], "outcome": r["outcome"],
+             "source": r["source"]}
+            for r in svc.db.query("SELECT ts, predicted, outcome, source FROM calibration"
+                                  " ORDER BY id DESC LIMIT 50")],
+        "intent_counts": intents,
+        "audit": audits,
+        "refused_actions": refusals,
+        "memory": {"episodes": svc.db.query_one(
+            "SELECT COUNT(*) c FROM episodes")["c"],
+            "semantic_nodes": svc.db.query_one(
+                "SELECT COUNT(*) c FROM semantic_nodes WHERE archived = 0")["c"],
+            "skills": svc.db.query_one(
+                "SELECT COUNT(*) c FROM skills WHERE status='VERIFIED'")["c"]},
+        "capabilities": semantic.stats() if semantic else {},
+    }
+
+
+@app.get("/api/generalization/overview")
+def generalization_overview() -> dict:
+    """Phase 4 generalization axes, read from the recorded report."""
+    base = Path("datasets/research")
+    path = base / "generalization_latest.json"
+    if not path.exists():
+        return {"available": False,
+                "hint": "run `python -m minicoder.cli generalize` to produce a report"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {"available": False, "error": "unreadable report"}
+    data["available"] = True
+    axes = []
+    for name, row in (data.get("axes") or {}).items():
+        if name == "overall":
+            continue
+        axes.append({"axis": name, **row})
+    return {"available": True, "axes": axes,
+            "overall": (data.get("axes") or {}).get("overall", {}),
+            "leakage": data.get("leakage", {}),
+            "fingerprint": data.get("fingerprint", ""),
+            "seed": data.get("seed"), "seconds": data.get("seconds"),
+            "results": data.get("results", [])}
+
+
+@app.get("/api/sleep/adaptive")
+def sleep_adaptive() -> dict:
+    """The Adaptive Sleep 2.0 section of the last cycle, straight from its report."""
+    svc = service()
+    row = svc.db.query_one(
+        "SELECT id, report FROM sleep_cycles WHERE status='ok' ORDER BY id DESC LIMIT 1")
+    if not row or not row["report"]:
+        return {"available": False}
+    try:
+        report = json.loads(row["report"])
+    except json.JSONDecodeError:
+        return {"available": False, "error": "unreadable cycle report"}
+    return {"available": True, "cycle_id": row["id"],
+            "adaptive": report.get("adaptive", {}),
+            "fingerprint": report.get("fingerprint", ""),
+            "stages": [{"stage": s.get("stage"), "name": s.get("name"),
+                        "ms": s.get("ms")} for s in report.get("stages", [])]}
+
+
 @app.get("/api/research/overview")
 def research_overview() -> dict:
     """Phase 3 measurements, read from the recorded reports only.

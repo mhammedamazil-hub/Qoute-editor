@@ -4,6 +4,8 @@ import { useTelemetry } from "./api";
 import { ChatView } from "./ChatView";
 import { GraphView } from "./GraphView";
 import { LearningView } from "./LearningView";
+import { CognitionView } from "./CognitionView";
+import { GeneralizationView } from "./GeneralizationView";
 import { Research } from "./ResearchView";
 import { MemoryView } from "./MemoryView";
 import { Overview } from "./Overview";
@@ -19,6 +21,8 @@ const TABS = [
   { id: "vision", label: "Vision" },
   { id: "training", label: "Training" },
   { id: "learning", label: "Acquisition" },
+  { id: "cognition", label: "Cognition" },
+  { id: "generalization", label: "Generalization" },
   { id: "research", label: "Research" },
 ] as const;
 
@@ -112,6 +116,8 @@ export default function App() {
             <LearningView />
           </div>
         )}
+        {tab === "cognition" && <CognitionView />}
+        {tab === "generalization" && <GeneralizationView />}
         {tab === "research" && (
           <div className="h-full overflow-y-auto pr-1">
             <Research />

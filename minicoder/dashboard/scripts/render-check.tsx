@@ -68,8 +68,10 @@ check("live status reaches the DOM", text().includes("params") || text().include
 // Walk every tab and assert it renders its own content. "Training" and
 // "Acquisition" are separate screens: the first covers model training and eval,
 // the second covers the learning loop (experiments, replays, acceptance).
+// "Cognition" shows intent, calibration and audit; "Generalization" shows the
+// Phase 4 axes against the frozen baseline.
 const tabs = ["Overview", "Copilot", "Knowledge", "Memory", "Vision", "Training",
-              "Acquisition", "Research"];
+              "Acquisition", "Cognition", "Generalization", "Research"];
 for (const tab of tabs) {
   const btn = [...container.querySelectorAll("button")].find((b) => b.textContent?.trim() === tab);
   if (!btn) {

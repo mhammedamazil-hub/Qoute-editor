@@ -241,16 +241,16 @@ def test_generalization_builds_all_seven_axes(tmp_path: Path) -> None:
 def test_leakage_guard_detects_a_planted_hidden_key(home: Path) -> None:
     from minicoder.memory.db import BrainDB
     from minicoder.memory.systems import SemanticMemory
-    from minicoder.research.generalization import GeneralizationEngine
+    from minicoder.research.generalization import GeneralizationEngine, _library_hash
 
-    db = BrainDB()
-    SemanticMemory(db).upsert(
-        "fact", "leaked hidden task", "saw abs_all_s11_00 during training",
-        status="UNVERIFIED", source="training_data", confidence=0.5)
     engine = GeneralizationEngine(root=Path(__file__).resolve().parents[2])
     tasks = engine.build_tasks(seed=11, per_axis=1)
-    from minicoder.research.generalization import _library_hash
-
+    # Plant the key that this seed actually produced; family selection is
+    # seed-dependent, so a hardcoded key would test nothing.
+    key = tasks["unseen_family"][0].key
+    SemanticMemory(BrainDB()).upsert(
+        "fact", "leaked hidden task", f"saw {key} during training",
+        status="UNVERIFIED", source="training_data", confidence=0.5)
     report = engine._leakage({}, {}, _library_hash(engine.library_path),
                              tasks, type("R", (), {"results": []})())
     assert report["ok"] is False
@@ -304,7 +304,7 @@ def test_promotion_requires_three_passing_replays(db) -> None:
         ("flaky_evidence", 3, 1, 2),
         ("empty_procedure", 3, 3, 0),
     ]
-    for i, (slug, runs, passed, failed) in enumerate(rows):
+    for slug, runs, passed, failed in rows:
         proc = "[]" if slug == "empty_procedure" else json.dumps(
             [{"tool": "set_canvas_size", "args": {"width": 10, "height": 10}}])
         db.execute(

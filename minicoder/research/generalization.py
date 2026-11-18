@@ -191,17 +191,22 @@ class GeneralizationEngine:
                 "entries": len(lib.get("entries", {}))}
 
     # --------------------------------------------------------------- tasks
-    def _unseen_families(self, library: dict[str, Any], count: int) -> list[str]:
+    def _unseen_families(self, library: dict[str, Any], count: int,
+                         rng: random.Random | None = None) -> list[str]:
         """Families with no *verified* program.
 
         A family can sit in ``entries`` with a program that never passed its
         hidden check. Counting that as "seen" would overstate the baseline, so
         the axis is defined by verification, not by presence in the file.
         """
-        verified = {f for f in library.get("verified", [])}
+        verified = {f for f in library.get("verified", []) if f in FAMILIES}
         pool = sorted(set(FAMILIES) - verified)
         if not pool:
             pool = sorted(FAMILIES)[-count:]
+        # Seed-dependent selection: without this every seed reviews the same
+        # families and the multi-seed spread is an illusion of stability.
+        rng = rng or random.Random(0)
+        rng.shuffle(pool)
         return pool[:count]
 
     def _representation_record(self, family: str, rng: random.Random, seed: int,
@@ -263,13 +268,17 @@ class GeneralizationEngine:
         library = self._load(self.library_path)
         out: dict[str, list[TaskRecord]] = {}
 
-        unseen = self._unseen_families(library, per_axis)
+        unseen = self._unseen_families(library, per_axis, rng)
         out["unseen_family"] = [
             _make_record(f, FAMILIES[f], rng, i, seed, size=rng.choice([4, 5, 6]),
                          transfer_category="unseen_family")
             for i, f in enumerate(unseen)]
 
-        seen = sorted(library.get("entries", {})) or sorted(FAMILIES)[:per_axis]
+        # The library also holds pseudo-entries for special tasks (e.g.
+        # "adversarial_scale"); only real families can carry a dev task here.
+        seen = [f for f in sorted(library.get("entries", {})) if f in FAMILIES] \
+            or sorted(FAMILIES)
+        rng.shuffle(seen)
         out["larger_input"] = [
             _make_record(f, FAMILIES[f], rng, i, seed, size=rng.choice([4, 5]),
                          transfer_category="larger_input")

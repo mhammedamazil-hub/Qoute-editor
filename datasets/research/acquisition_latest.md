@@ -1,6 +1,6 @@
-# Phase 3 acquisition experiment `p3-20261117T173400Z`
+# Phase 3 acquisition experiment `p3-20261118T031243Z`
 
-- commit `1107b4fe651ed75e3173dca057b371a87c2a5d54`
+- commit `bafdc90304f3d315c681d62fcd701c81cd26068e`
 - generator `nace-gen-3.0`
 - tasks per seed: 24, seeds [11, 23, 37]
 - hardware: 2 cores, torch 2.15.0+cu132
@@ -10,7 +10,7 @@
 
 | arm | tasks | hidden pass | rate | 95% CI | dev pass | test-fitted | mean candidates | mean s |
 |---|---|---|---|---|---|---|---|---|
-| A | 66 | 0 | 0.000 | [0.000, 0.000] | 0 | 0 | 0.0 | 0.68 |
+| A | 66 | 0 | 0.000 | [0.000, 0.000] | 0 | 0 | 0.0 | 0.52 |
 | B | 66 | 33 | 0.500 | [0.379, 0.621] | 33 | 0 | 0.0 | 0.04 |
 | C | 66 | 40 | 0.606 | [0.485, 0.727] | 46 | 6 | 180.4 | 0.13 |
 | D | 66 | 40 | 0.606 | [0.485, 0.727] | 46 | 6 | 155.4 | 0.12 |

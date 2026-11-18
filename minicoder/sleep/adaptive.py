@@ -467,7 +467,7 @@ class AdaptiveAnalysis:
                              "why": f"needs >= {MIN_PROMOTION_RUNS} recorded passes"})
                 continue
 
-            def _tx(conn, r=r, steps=steps):
+            def _tx(conn, r=r, steps=steps, runs=runs, good=good):
                 exists = conn.execute("SELECT id FROM skills WHERE slug = ?", (r["slug"],)).fetchone()
                 if not exists:
                     conn.execute(

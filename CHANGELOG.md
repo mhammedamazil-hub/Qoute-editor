@@ -21,14 +21,82 @@ reports in `memory/sleep_logs/` and `datasets/training_runs/`, and — for Phase
   there. It now runs in a throwaway home unless `--live` is passed. Verified: skills 30→30,
   experiments 8→8, candidates 7→7 across a full 8/8 run.
 
-### Known weaknesses (not fixed, measured)
+### Known weaknesses at the time of Phase 3 (all three closed in Phase 4)
 
-* A design question can be answered with a tool sequence: "How many fonts should I use in one
-  poster?" returns a raw JSON trajectory instead of the stored rule, reproducibly.
-* Instruction-shaped requests are sometimes *executed* rather than answered, and incompletely:
+* A design question could be answered with a tool sequence: "How many fonts should I use in one
+  poster?" returned a raw JSON trajectory instead of the stored rule, reproducibly.
+  → **Fixed in Phase 4.** Procedures render as prose and a relevant fact is tried first;
+  `test_no_raw_trajectory_in_an_answer` pins it.
+* Instruction-shaped requests were sometimes *executed* rather than answered, and incompletely:
   "build a 1080x1350 poster with headline 'Quiet'" resized the canvas and reported only that.
-* The system cannot describe itself: "summarise your last sleep cycle" is refused even though the
-  report is on disk.
+  → **Fixed in Phase 4.** A typed intent router decides question-vs-action and the unmet-requirement
+  post-check catches a partial build; `test_a_question_never_mutates_the_canvas` pins the first.
+* The system could not describe itself: "summarise your last sleep cycle" was refused even though
+  the report was on disk.
+  → **Fixed in Phase 4.** `cognition/selfmodel.py` answers from the records;
+  `test_introspection_reads_an_existing_sleep_report` pins it.
+
+## Phase 4 — cognitive integration
+
+Additive. Every Phase 3 module, table and report reader still works; the eight sleep stages are
+still eight. Two new tables (`calibration`, `audit_log`) are created with `IF NOT EXISTS`, so an
+existing database migrates on next open.
+
+### Added
+
+* **`cognition/intent.py` — intent router (M1).** One classifier for six request types
+  (question, explanation, planning, execution, experimentation, self-introspection) with a
+  confidence, extracted entities and the consequential verbs it found. Consequential actions
+  require an explicit grant; without it the request is refused *before* planning.
+  `DesignAgent.execute(..., authorize=…)`, and `/api/chat` accepts `authorize`.
+* **`cognition/selfmodel.py` — self-introspection (M3).** Answers about sleep cycles, skills,
+  research state and memory size from the records that hold them, and says what it looked for when
+  the record is absent.
+* **`sleep/adaptive.py` — Adaptive Sleep 2.0 (M5).** Ten measurements attached to the existing
+  stages: usefulness scoring, redundancy detection + archive, contradiction detection, semantic
+  abstraction, skill verification, rotation retention, forgetting regret, safe candidate promotion,
+  cycle-over-cycle delta, and a reproducibility fingerprint.
+* **`research/generalization.py` — generalization engine (M4).** Seven axes (unseen family, larger
+  input, shifted distribution, representation shift, multi-step, combination, adversarial) run
+  against a frozen baseline with train/dev/hidden separation and leakage guards. `hidden_draw()`
+  gained `scale`/`edge_only`; the default digests are unchanged, so Phase 3 draws reproduce.
+  New CLI: `minicoder generalize --seeds 11,23,37 --per-axis 2`.
+* **Persisted calibration (M6).** `Metacognition` now stores every (predicted, outcome) pair, scores
+  itself with Brier and ECE, estimates coverage before answering, and can conclude that an
+  experiment is justified. `calibrated()` no longer resets on restart.
+* **Audit trail and atomic promotion (M7).** `audit_log` records every consequential request with
+  `authorized`/`allowed`/`executed`; promotion writes the skill and the candidate row in one
+  transaction and requires ≥ 3 passing replays.
+* **Dashboard: Cognition and Generalization tabs (M8).** Calibration curve, intent mix, adaptive
+  sleep measurements and the audit table; the seven axes against the frozen baseline with the run's
+  leakage check. `render-check`: 14/14.
+
+### Fixed
+
+* Acceptance-suite contamination, duplicate nodes, empty examples, raw-trajectory answers,
+  question-triggered actions and introspection blindness are now each covered by a regression test
+  in `minicoder/tests/test_phase4.py` (27 tests).
+
+### Measured (see `docs/PHASE4_RESULTS.md`)
+
+* Blind benchmark re-run after integration: arms unchanged (A 0.000 … E 0.606), production memory
+  unchanged — the integration did not disturb the learning result.
+* Generalization, four seeds: one axis improves (`combination` 0.000 → 0.500 the only lift),
+  six axes unchanged (retention), `unseen_family` 0.000 for both arms; leakage clean in all runs.
+* Five sleep cycles: 20/20 rotation replays passed, 30 skills verified each cycle, fingerprints
+  identical once memory stopped changing.
+* Security: 22 escape probes, 0 escapes; every consequential request audited.
+* Calibration: n=8, Brier 0.008, ECE 0.067 — too few samples to claim quality, reported with `n`.
+
+### Still open (measured, not fixed)
+
+* `unseen_family` generalization is zero: the candidate grammar cannot express `group_sum`.
+* Two learned skills are verified but carry an empty `solution`, so they can never become training
+  examples. Reported every cycle instead of being dropped silently.
+* Contradiction detection finds nothing in the current corpus; the rule is tested on synthetic
+  pairs only.
+* Rotation retention replays steps, not the original success criteria; it is reported separately
+  from the criteria-based retention in stage 5.
 
 ## Phase 3 — independent capability acquisition
 

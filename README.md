@@ -74,6 +74,7 @@ learn   benchmark acceptance neural safeguard
 | `minicoder neural [--quick]` | controlled study of training changes, one variable at a time |
 | `minicoder safeguard baseline/evaluate/rollback` | immutable baselines and regression-gated updates |
 | `minicoder research run/security/reproduce` | Phase 3 blind tasks, control arms, transfer, retention |
+| `minicoder generalize --seeds 11,23,37` | Phase 4 seven-axis generalization against a frozen baseline |
 
 ---
 
@@ -332,6 +333,32 @@ Honest limits: the grammar bounds what can be acquired (4 of 12 families are unr
 diagnose→modify→retest repair chain was implemented, consolidation cycles were not exercised, and
 3 seeds give ±0.11 CIs. `PHASE3_ACCEPTANCE.md` marks AC5, AC6 and AC9 as **not demonstrated**.
 
+## 5d. Phase 4 — cognitive integration
+
+Phase 3 showed a capability can be acquired. Phase 4 changes how requests are understood and how
+the system reports on itself. Full numbers: `docs/PHASE4_RESULTS.md`; design decisions:
+`docs/PHASE4_DECISIONS.md`; architecture: `docs/PHASE4_ARCHITECTURE.md`.
+
+* **A request has a type.** `cognition/intent.py` classifies question / explanation / planning /
+  execution / experimentation / self-introspection with a confidence and its entities. A question
+  never reaches the planner; a consequential action (delete, export, push…) is refused before
+  planning unless it is explicitly authorised, and both outcomes are audited.
+* **It can describe itself.** Sleep cycles, skills, research state and memory size are answered
+  from the records that hold them — and a missing record is reported as missing.
+* **It measures its own sleep.** Usefulness, redundancy, contradiction, abstraction, skill
+  verification, rotation retention, forgetting regret, promotion gate, cycle delta and a
+  reproducibility fingerprint, all attached to the same eight stages.
+* **It measures its own confidence.** Every verified execution becomes a calibration sample;
+  Brier and ECE are computed from recorded outcomes, and the system can conclude that it does not
+  know enough instead of answering.
+
+Measured, not asserted: the blind benchmark re-ran bit-for-bit identical after integration (arms A
+0.000 → E 0.606, production memory unchanged). On the seven generalization axes only `combination`
+improves (0.000 → 0.500); the other six show retention, and `unseen_family` is 0.000 for both arms.
+Five sleep cycles: 20/20 rotation replays passed, 30 skills verified each cycle. Security: 22
+escape probes, 0 escapes. Calibration rests on 8 samples — the number is reported with its `n`
+everywhere it appears.
+
 ## 6. Continual learning loop
 
 ```
@@ -390,8 +417,11 @@ POST /api/editor/canvas  /api/editor/tool
 WS   /ws/telemetry
 ```
 
-**Dashboard** — eight tabs (Overview, Copilot, Knowledge, Memory, Vision, Training,
-**Acquisition**, **Research**). The Research tab shows the Phase 3 arm comparison with confidence
+**Dashboard** — ten tabs (Overview, Copilot, Knowledge, Memory, Vision, Training,
+**Acquisition**, **Cognition**, **Generalization**, **Research**). **Cognition** shows the
+calibration curve (predicted vs measured), the intent mix, the last cycle's Adaptive Sleep 2.0
+measurements and the authorisation audit trail. **Generalization** shows the seven axes against
+the frozen baseline and the leakage check for the run. The Research tab shows the Phase 3 arm comparison with confidence
 intervals, test-fitting counts, transfer by category, retention and the escape-probe result, all
 read from `datasets/research/*_latest.json`; when a report is missing the tab says so instead of
 drawing a zero. The Acquisition tab shows skills acquired vs awaiting verification vs rejected,

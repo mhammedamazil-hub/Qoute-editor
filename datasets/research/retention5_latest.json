@@ -1,0 +1,299 @@
+{
+ "cycles": [
+  {
+   "cycle": 9,
+   "seconds": 41.93,
+   "fp": "972e7b2e3ede0605",
+   "rotation": {
+    "tested": 4,
+    "passed": 4,
+    "failed": 0,
+    "pass_rate": 1.0
+   },
+   "skills": {
+    "verified": 30,
+    "broken": 2
+   },
+   "hygiene": {
+    "usefulness_mean": 0.861,
+    "archived_duplicates": 0,
+    "redundant_groups": 0
+   },
+   "contradictions": 0,
+   "abstractions": 1,
+   "promotion": {
+    "promoted": 0,
+    "held": 2,
+    "rejected": 0
+   },
+   "delta": {
+    "episodes_consolidated": {
+     "before": 0,
+     "after": 9,
+     "delta": 9
+    },
+    "nodes_added": {
+     "before": 0,
+     "after": 1,
+     "delta": 1
+    },
+    "learning_extracted": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "learning_retention_passed": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "episodes": {
+     "before": 118,
+     "after": 127,
+     "delta": 9
+    },
+    "semantic_nodes": {
+     "before": 48,
+     "after": 50,
+     "delta": 2
+    }
+   }
+  },
+  {
+   "cycle": 10,
+   "seconds": 39.33,
+   "fp": "15e6b3089ee9602b",
+   "rotation": {
+    "tested": 4,
+    "passed": 4,
+    "failed": 0,
+    "pass_rate": 1.0
+   },
+   "skills": {
+    "verified": 30,
+    "broken": 2
+   },
+   "hygiene": {
+    "usefulness_mean": 0.853,
+    "archived_duplicates": 0,
+    "redundant_groups": 0
+   },
+   "contradictions": 0,
+   "abstractions": 0,
+   "promotion": {
+    "promoted": 0,
+    "held": 2,
+    "rejected": 0
+   },
+   "delta": {
+    "episodes_consolidated": {
+     "before": 9,
+     "after": 0,
+     "delta": -9
+    },
+    "nodes_added": {
+     "before": 1,
+     "after": 0,
+     "delta": -1
+    },
+    "learning_extracted": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "learning_retention_passed": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "episodes": {
+     "before": 127,
+     "after": 127,
+     "delta": 0
+    },
+    "semantic_nodes": {
+     "before": 50,
+     "after": 51,
+     "delta": 1
+    }
+   }
+  },
+  {
+   "cycle": 11,
+   "seconds": 38.51,
+   "fp": "b6e20bfabf673382",
+   "rotation": {
+    "tested": 4,
+    "passed": 4,
+    "failed": 0,
+    "pass_rate": 1.0
+   },
+   "skills": {
+    "verified": 30,
+    "broken": 2
+   },
+   "hygiene": {
+    "usefulness_mean": 0.855,
+    "archived_duplicates": 0,
+    "redundant_groups": 0
+   },
+   "contradictions": 0,
+   "abstractions": 0,
+   "promotion": {
+    "promoted": 0,
+    "held": 2,
+    "rejected": 0
+   },
+   "delta": {
+    "episodes_consolidated": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "nodes_added": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "learning_extracted": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "learning_retention_passed": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "episodes": {
+     "before": 127,
+     "after": 127,
+     "delta": 0
+    },
+    "semantic_nodes": {
+     "before": 51,
+     "after": 51,
+     "delta": 0
+    }
+   }
+  },
+  {
+   "cycle": 12,
+   "seconds": 38.61,
+   "fp": "b6e20bfabf673382",
+   "rotation": {
+    "tested": 4,
+    "passed": 4,
+    "failed": 0,
+    "pass_rate": 1.0
+   },
+   "skills": {
+    "verified": 30,
+    "broken": 2
+   },
+   "hygiene": {
+    "usefulness_mean": 0.855,
+    "archived_duplicates": 0,
+    "redundant_groups": 0
+   },
+   "contradictions": 0,
+   "abstractions": 0,
+   "promotion": {
+    "promoted": 0,
+    "held": 2,
+    "rejected": 0
+   },
+   "delta": {
+    "episodes_consolidated": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "nodes_added": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "learning_extracted": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "learning_retention_passed": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "episodes": {
+     "before": 127,
+     "after": 127,
+     "delta": 0
+    },
+    "semantic_nodes": {
+     "before": 51,
+     "after": 51,
+     "delta": 0
+    }
+   }
+  },
+  {
+   "cycle": 13,
+   "seconds": 38.84,
+   "fp": "b6e20bfabf673382",
+   "rotation": {
+    "tested": 4,
+    "passed": 4,
+    "failed": 0,
+    "pass_rate": 1.0
+   },
+   "skills": {
+    "verified": 30,
+    "broken": 2
+   },
+   "hygiene": {
+    "usefulness_mean": 0.855,
+    "archived_duplicates": 0,
+    "redundant_groups": 0
+   },
+   "contradictions": 0,
+   "abstractions": 0,
+   "promotion": {
+    "promoted": 0,
+    "held": 2,
+    "rejected": 0
+   },
+   "delta": {
+    "episodes_consolidated": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "nodes_added": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "learning_extracted": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "learning_retention_passed": {
+     "before": 0,
+     "after": 0,
+     "delta": 0
+    },
+    "episodes": {
+     "before": 127,
+     "after": 127,
+     "delta": 0
+    },
+    "semantic_nodes": {
+     "before": 51,
+     "after": 51,
+     "delta": 0
+    }
+   }
+  }
+ ]
+}

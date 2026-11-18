@@ -1,0 +1,1160 @@
+{
+ "frozen": {
+  "created": false,
+  "hash": "a9bbfce5ee3e561b",
+  "path": "/home/user/Qoute-editor/datasets/research/library_frozen.json"
+ },
+ "mean": {
+  "adversarial": 0.5,
+  "combination": 0.5,
+  "larger_input": 0.875,
+  "multi_step": 0.5,
+  "representation_shift": 0.875,
+  "shifted_distribution": 1.0,
+  "unseen_family": 0.0
+ },
+ "runs": [
+  {
+   "axes": {
+    "adversarial": {
+     "baseline": 0.5,
+     "description": "requests that must be refused",
+     "families": [
+      "count_by",
+      "scale"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "combination": {
+     "baseline": 0.0,
+     "description": "a composition the library has never seen",
+     "families": [
+      "dedupe_running_even"
+     ],
+     "lift": 0.5,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "larger_input": {
+     "baseline": 1.0,
+     "description": "hidden inputs 2-3x the training size",
+     "families": [
+      "count_by",
+      "scale"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "multi_step": {
+     "baseline": 0.5,
+     "description": "two operations in sequence",
+     "families": [
+      "even_then_scale",
+      "scale_then_running"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "overall": {
+     "baseline": 0.571,
+     "system": 0.643,
+     "tasks": 14
+    },
+    "representation_shift": {
+     "baseline": 1.0,
+     "description": "same task, paraphrased with a distractor",
+     "families": [
+      "count_by",
+      "scale"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "shifted_distribution": {
+     "baseline": 1.0,
+     "description": "boundary-heavy hidden draws",
+     "families": [
+      "count_by",
+      "scale"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "unseen_family": {
+     "baseline": 0.0,
+     "description": "families with no verified program",
+     "families": [
+      "rle",
+      "transpose"
+     ],
+     "lift": 0.0,
+     "system": 0.0,
+     "tasks": 2
+    }
+   },
+   "fingerprint": "0be1a1d7cc36923b",
+   "leakage": {
+    "baseline_frozen": true,
+    "baseline_hash": "a9bbfce5ee3e561b",
+    "findings": [],
+    "hidden_keys_scanned": 14,
+    "library_unchanged": true,
+    "ok": true,
+    "private_store": false,
+    "production_unchanged": true
+   },
+   "per_axis": 2,
+   "results": [
+    {
+     "axis": "unseen_family",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "rle",
+     "key": "rle_s11_00",
+     "notes": "reused acquired program",
+     "passed_cases": 3,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "unseen_family",
+     "baseline": "fail",
+     "cases": 0,
+     "dev_pass": false,
+     "expected_verdict": "solvable",
+     "family": "transpose",
+     "key": "transpose_s11_01",
+     "notes": "acquisition exhausted",
+     "passed_cases": 0,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "larger_input",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "count_by",
+     "key": "count_by_s11_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "larger_input",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "scale_s11_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "shifted_distribution",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "count_by",
+     "key": "count_by_s11_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "shifted_distribution",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "scale_s11_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "representation_shift",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "count_by",
+     "key": "count_by_s11_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "representation_shift",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "scale_s11_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "multi_step",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale_then_running",
+     "key": "scale_then_running_s11_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "multi_step",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "even_then_scale",
+     "key": "even_then_scale_s11_01",
+     "notes": "reused acquired program",
+     "passed_cases": 2,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "combination",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "dedupe_running_even",
+     "key": "combo_s11_00",
+     "notes": "acquired in 200 candidates",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "combination",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "dedupe_running_even",
+     "key": "combo_s11_01",
+     "notes": "acquired in 200 candidates",
+     "passed_cases": 4,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "adversarial",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "adversarial_scale_s11_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "adversarial",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "expected_fail",
+     "family": "count_by",
+     "key": "impossible_network_4_s11_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "fail"
+    }
+   ],
+   "seconds": 1.14,
+   "seed": 11,
+   "started_at": "2026-11-18T03:07:33+00:00"
+  },
+  {
+   "axes": {
+    "adversarial": {
+     "baseline": 0.5,
+     "description": "requests that must be refused",
+     "families": [
+      "count_by",
+      "scale"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "combination": {
+     "baseline": 0.0,
+     "description": "a composition the library has never seen",
+     "families": [
+      "dedupe_running_even"
+     ],
+     "lift": 0.5,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "larger_input": {
+     "baseline": 1.0,
+     "description": "hidden inputs 2-3x the training size",
+     "families": [
+      "scale",
+      "sum_even"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "multi_step": {
+     "baseline": 0.5,
+     "description": "two operations in sequence",
+     "families": [
+      "even_then_scale",
+      "scale_then_running"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "overall": {
+     "baseline": 0.571,
+     "system": 0.643,
+     "tasks": 14
+    },
+    "representation_shift": {
+     "baseline": 1.0,
+     "description": "same task, paraphrased with a distractor",
+     "families": [
+      "scale",
+      "sum_even"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "shifted_distribution": {
+     "baseline": 1.0,
+     "description": "boundary-heavy hidden draws",
+     "families": [
+      "scale",
+      "sum_even"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "unseen_family": {
+     "baseline": 0.0,
+     "description": "families with no verified program",
+     "families": [
+      "rename_keys",
+      "transpose"
+     ],
+     "lift": 0.0,
+     "system": 0.0,
+     "tasks": 2
+    }
+   },
+   "fingerprint": "8d6fbab4e105afc3",
+   "leakage": {
+    "baseline_frozen": true,
+    "baseline_hash": "a9bbfce5ee3e561b",
+    "findings": [],
+    "hidden_keys_scanned": 14,
+    "library_unchanged": true,
+    "ok": true,
+    "private_store": false,
+    "production_unchanged": true
+   },
+   "per_axis": 2,
+   "results": [
+    {
+     "axis": "unseen_family",
+     "baseline": "fail",
+     "cases": 0,
+     "dev_pass": false,
+     "expected_verdict": "solvable",
+     "family": "transpose",
+     "key": "transpose_s23_00",
+     "notes": "acquisition exhausted",
+     "passed_cases": 0,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "unseen_family",
+     "baseline": "fail",
+     "cases": 0,
+     "dev_pass": false,
+     "expected_verdict": "solvable",
+     "family": "rename_keys",
+     "key": "rename_keys_s23_01",
+     "notes": "acquisition exhausted",
+     "passed_cases": 0,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "larger_input",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "sum_even",
+     "key": "sum_even_s23_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "larger_input",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "scale_s23_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "shifted_distribution",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "sum_even",
+     "key": "sum_even_s23_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "shifted_distribution",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "scale_s23_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "representation_shift",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "sum_even",
+     "key": "sum_even_s23_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "representation_shift",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "scale_s23_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "multi_step",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale_then_running",
+     "key": "scale_then_running_s23_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "multi_step",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "even_then_scale",
+     "key": "even_then_scale_s23_01",
+     "notes": "reused acquired program",
+     "passed_cases": 2,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "combination",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "dedupe_running_even",
+     "key": "combo_s23_00",
+     "notes": "acquired in 200 candidates",
+     "passed_cases": 3,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "combination",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "dedupe_running_even",
+     "key": "combo_s23_01",
+     "notes": "acquired in 200 candidates",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "adversarial",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "adversarial_scale_s23_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "adversarial",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "expected_fail",
+     "family": "count_by",
+     "key": "impossible_network_4_s23_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "fail"
+    }
+   ],
+   "seconds": 1.07,
+   "seed": 23,
+   "started_at": "2026-11-18T03:07:34+00:00"
+  },
+  {
+   "axes": {
+    "adversarial": {
+     "baseline": 0.5,
+     "description": "requests that must be refused",
+     "families": [
+      "count_by",
+      "scale"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "combination": {
+     "baseline": 0.0,
+     "description": "a composition the library has never seen",
+     "families": [
+      "dedupe_running_even"
+     ],
+     "lift": 0.5,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "larger_input": {
+     "baseline": 0.5,
+     "description": "hidden inputs 2-3x the training size",
+     "families": [
+      "chunk",
+      "rle"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "multi_step": {
+     "baseline": 0.5,
+     "description": "two operations in sequence",
+     "families": [
+      "even_then_scale",
+      "scale_then_running"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "overall": {
+     "baseline": 0.429,
+     "system": 0.5,
+     "tasks": 14
+    },
+    "representation_shift": {
+     "baseline": 0.5,
+     "description": "same task, paraphrased with a distractor",
+     "families": [
+      "chunk",
+      "rle"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "shifted_distribution": {
+     "baseline": 1.0,
+     "description": "boundary-heavy hidden draws",
+     "families": [
+      "chunk",
+      "rle"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "unseen_family": {
+     "baseline": 0.0,
+     "description": "families with no verified program",
+     "families": [
+      "rename_keys",
+      "rle"
+     ],
+     "lift": 0.0,
+     "system": 0.0,
+     "tasks": 2
+    }
+   },
+   "fingerprint": "3e072b22415d5a2a",
+   "leakage": {
+    "baseline_frozen": true,
+    "baseline_hash": "a9bbfce5ee3e561b",
+    "findings": [],
+    "hidden_keys_scanned": 14,
+    "library_unchanged": true,
+    "ok": true,
+    "private_store": false,
+    "production_unchanged": true
+   },
+   "per_axis": 2,
+   "results": [
+    {
+     "axis": "unseen_family",
+     "baseline": "fail",
+     "cases": 0,
+     "dev_pass": false,
+     "expected_verdict": "solvable",
+     "family": "rename_keys",
+     "key": "rename_keys_s37_00",
+     "notes": "acquisition exhausted",
+     "passed_cases": 0,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "unseen_family",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "rle",
+     "key": "rle_s37_01",
+     "notes": "reused acquired program",
+     "passed_cases": 4,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "larger_input",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "chunk",
+     "key": "chunk_s37_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "larger_input",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "rle",
+     "key": "rle_s37_01",
+     "notes": "reused acquired program",
+     "passed_cases": 2,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "shifted_distribution",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "chunk",
+     "key": "chunk_s37_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "shifted_distribution",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "rle",
+     "key": "rle_s37_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "representation_shift",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "chunk",
+     "key": "chunk_s37_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "representation_shift",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "rle",
+     "key": "rle_s37_01",
+     "notes": "reused acquired program",
+     "passed_cases": 4,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "multi_step",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale_then_running",
+     "key": "scale_then_running_s37_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "multi_step",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "even_then_scale",
+     "key": "even_then_scale_s37_01",
+     "notes": "reused acquired program",
+     "passed_cases": 3,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "combination",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "dedupe_running_even",
+     "key": "combo_s37_00",
+     "notes": "acquired in 200 candidates",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "combination",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "dedupe_running_even",
+     "key": "combo_s37_01",
+     "notes": "acquired in 200 candidates",
+     "passed_cases": 0,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "adversarial",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "adversarial_scale_s37_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "adversarial",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "expected_fail",
+     "family": "count_by",
+     "key": "impossible_network_4_s37_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "fail"
+    }
+   ],
+   "seconds": 1.05,
+   "seed": 37,
+   "started_at": "2026-11-18T03:07:35+00:00"
+  },
+  {
+   "axes": {
+    "adversarial": {
+     "baseline": 0.5,
+     "description": "requests that must be refused",
+     "families": [
+      "count_by",
+      "scale"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "combination": {
+     "baseline": 0.0,
+     "description": "a composition the library has never seen",
+     "families": [
+      "dedupe_running_even"
+     ],
+     "lift": 0.5,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "larger_input": {
+     "baseline": 1.0,
+     "description": "hidden inputs 2-3x the training size",
+     "families": [
+      "running_total",
+      "sum_even"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "multi_step": {
+     "baseline": 0.5,
+     "description": "two operations in sequence",
+     "families": [
+      "even_then_scale",
+      "scale_then_running"
+     ],
+     "lift": 0.0,
+     "system": 0.5,
+     "tasks": 2
+    },
+    "overall": {
+     "baseline": 0.571,
+     "system": 0.643,
+     "tasks": 14
+    },
+    "representation_shift": {
+     "baseline": 1.0,
+     "description": "same task, paraphrased with a distractor",
+     "families": [
+      "running_total",
+      "sum_even"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "shifted_distribution": {
+     "baseline": 1.0,
+     "description": "boundary-heavy hidden draws",
+     "families": [
+      "running_total",
+      "sum_even"
+     ],
+     "lift": 0.0,
+     "system": 1.0,
+     "tasks": 2
+    },
+    "unseen_family": {
+     "baseline": 0.0,
+     "description": "families with no verified program",
+     "families": [
+      "group_sum",
+      "rename_keys"
+     ],
+     "lift": 0.0,
+     "system": 0.0,
+     "tasks": 2
+    }
+   },
+   "fingerprint": "9aa90b06d3bb34c9",
+   "leakage": {
+    "baseline_frozen": true,
+    "baseline_hash": "a9bbfce5ee3e561b",
+    "findings": [],
+    "hidden_keys_scanned": 14,
+    "library_unchanged": true,
+    "ok": true,
+    "private_store": false,
+    "production_unchanged": true
+   },
+   "per_axis": 2,
+   "results": [
+    {
+     "axis": "unseen_family",
+     "baseline": "fail",
+     "cases": 0,
+     "dev_pass": false,
+     "expected_verdict": "solvable",
+     "family": "group_sum",
+     "key": "group_sum_s41_00",
+     "notes": "acquisition exhausted",
+     "passed_cases": 0,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "unseen_family",
+     "baseline": "fail",
+     "cases": 0,
+     "dev_pass": false,
+     "expected_verdict": "solvable",
+     "family": "rename_keys",
+     "key": "rename_keys_s41_01",
+     "notes": "acquisition exhausted",
+     "passed_cases": 0,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "larger_input",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "running_total",
+     "key": "running_total_s41_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "larger_input",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "sum_even",
+     "key": "sum_even_s41_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "shifted_distribution",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "running_total",
+     "key": "running_total_s41_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "shifted_distribution",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "sum_even",
+     "key": "sum_even_s41_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "representation_shift",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "running_total",
+     "key": "running_total_s41_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "representation_shift",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "sum_even",
+     "key": "sum_even_s41_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "multi_step",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale_then_running",
+     "key": "scale_then_running_s41_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "multi_step",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "even_then_scale",
+     "key": "even_then_scale_s41_01",
+     "notes": "reused acquired program",
+     "passed_cases": 3,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "combination",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "dedupe_running_even",
+     "key": "combo_s41_00",
+     "notes": "acquired in 200 candidates",
+     "passed_cases": 4,
+     "seconds": 0.0,
+     "system": "fail"
+    },
+    {
+     "axis": "combination",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "dedupe_running_even",
+     "key": "combo_s41_01",
+     "notes": "acquired in 200 candidates",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "adversarial",
+     "baseline": "pass",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "solvable",
+     "family": "scale",
+     "key": "adversarial_scale_s41_00",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "pass"
+    },
+    {
+     "axis": "adversarial",
+     "baseline": "fail",
+     "cases": 5,
+     "dev_pass": true,
+     "expected_verdict": "expected_fail",
+     "family": "count_by",
+     "key": "impossible_network_4_s41_01",
+     "notes": "reused acquired program",
+     "passed_cases": 5,
+     "seconds": 0.0,
+     "system": "fail"
+    }
+   ],
+   "seconds": 1.0,
+   "seed": 41,
+   "started_at": "2026-11-18T03:07:36+00:00"
+  }
+ ],
+ "seeds": [
+  11,
+  23,
+  37,
+  41
+ ]
+}
