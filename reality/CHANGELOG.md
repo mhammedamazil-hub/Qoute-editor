@@ -17,8 +17,9 @@ separately in `ARCHITECTURE.md` §5 (none so far).
   reference). Validation THER-06.
 - Phase 9 benchmarks: `biology.py` (logistic growth; Lotka-Volterra with exact first integral). Validation BIO-01..02.
   No biological system is modelled.
-- Phase 2 completion: `tests/test_objects.py` (17 tests) covering validation errors, shape dimension errors, weight,
+- Phase 2 completion: `tests/test_physical_object_api.py` (17 tests) covering validation errors, shape dimension errors, weight,
   kinetic energy, `above_melting_point` (None, True, False), and inertia about a point matching principal inertia.
+  The existing `tests/test_objects.py` (20 tests, from the Phase 2 slice commit) is kept unchanged.
 - Research gate: `test_ledger_row_count_matches_its_numbering` pins the verification ledger to its stated count.
 - `LIMITATIONS.md` §8: sources used by Phases 2-9 that are not yet in the verification ledger.
 - Phase 1 (scientific research) closed: `SCIENCE_RESEARCH.md` with every `[verify]` item resolved, DOIs added where
