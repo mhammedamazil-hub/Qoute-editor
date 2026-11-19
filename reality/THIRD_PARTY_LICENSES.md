@@ -63,12 +63,20 @@ These were identified in the research (`SCIENCE_RESEARCH.md`) and are **not** in
 | Eigen | Linear algebra for implicit solvers | MPL-2.0. Some third-party files are BSD or LGPL; `EIGEN_MPL2_ONLY` excludes LGPL code at build time | gitlab.com/libeigen/eigen (COPYING.README) | MPL-2.0 is file-level copyleft. Define `EIGEN_MPL2_ONLY` if LGPL code must be excluded |
 | OpenVDB | Sparse volumes | Apache-2.0 from v12.0 (2024); MPL-2.0 before that | github.com/AcademySoftwareFoundation/openvdb; phoronix.com (relicensing news) | **Depends on version.** The version vendored in Blender was not checked |
 
-### 5.2 Still unchecked
+### 5.2 Blender-linked components (checked)
 
-| Component | Status |
-|---|---|
-| Blender-vendored OpenVDB (`intern/openvdb`) | Version not identified. Read its licence from the vendored source before reuse |
-| Blender-vendored Eigen (`intern/eigen`) | Upstream licence is MPL-2.0. The vendored copy's files were not checked |
+Blender does not contain the OpenVDB or Eigen library sources. Its build scripts download pinned versions. The checks
+below use the pinned version, not the upstream default branch.
+
+| Component | Pinned in Blender (commit 69f2f845) | Licence found | Source checked |
+|---|---|---|---|
+| OpenVDB | 13.0.0 (`build_files/build_environment/cmake/versions.cmake`, line 433) | **Apache-2.0** (the LICENSE file at tag v13.0.0) | `github.com/AcademySoftwareFoundation/openvdb`, tag v13.0.0, `LICENSE`, read through the GitHub API |
+| Eigen | Commit `8a1083e9bf41b91fdea6546681f806154efdc25a`, 2025-11-24 (`versions.cmake`, line 1496) | **MPL-2.0** for most files. Some files are BSD or other MPL2-compatible licences | `COPYING.README` at that commit, read from the eigenteam git mirror (same SHA) |
+| Blender wrapper `intern/openvdb` | Blender source | GPL-2.0-or-later (SPDX headers in `openvdb_capi.cc`, `openvdb_fwd.hh`) | Blender clone |
+| Blender wrapper `intern/eigen` | Blender source | GPL-2.0-or-later (SPDX header in `eigen_capi.h`) | Blender clone |
+
+Consequences: OpenVDB 13.0.0 is permissive, and the Blender wrapper is GPL-2.0-or-later. Eigen is file-level MPL-2.0.
+Set `EIGEN_MPL2_ONLY` if an LGPL-free build is required. A future version bump must repeat these checks.
 
 ## 6. Project license
 
