@@ -31,6 +31,7 @@ reality/
   src/reality/        physics kernel (units, constants, materials, gravity, integrators, mechanics,
                       rigidbody, contact, objects, weibull, hydrostatics, thermal, thermal2d,
                       optics, acoustics, fracture, structures, biology, validation)
+  src/reality/control/ headless AI control layer: operations, CLI, Python API, MCP adapter, scene schema, preview
   tests/              pytest suite (unit tests and a registry test that asserts every validation case)
   tools/              run_validation.py, benchmark.py, export_materials.py (regenerate the reports)
   examples/           material_failure_table.py (glass vs steel under the same stress)
@@ -72,6 +73,19 @@ print(fracture.assess(steel, 100e6, 0.1e-3).mode)   # 'none'      (sigma_y = 370
 # Dimension checking:
 print(glass.q("fracture_toughness"))                # 750000 [M L^-1/2 T^-2]  (Pa*sqrt(m))
 ```
+
+## Headless control (CLI, Python API, MCP)
+
+One operation registry is exposed three ways. Start with `AI_CONTROL_ARCHITECTURE.md`, then `AI_AGENT_GUIDE.md`.
+
+```bash
+PYTHONPATH=src python -m reality.control info
+PYTHONPATH=src python -m reality.control simulate run scene.json --duration 3 --out run.json
+PYTHONPATH=src python -m reality.control mcp        # MCP over stdio (optional)
+```
+
+Reference: `CLI_REFERENCE.md`, `API_REFERENCE.md`, `MCP_REFERENCE.md`, `SCENE_SCHEMA.md`, `PREVIEW_SYSTEM.md`,
+`RESOURCE_LIMITS.md`. What is and is not implemented: `AI_CAPABILITY_MATRIX.md`.
 
 ## Design principles
 

@@ -6,6 +6,16 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 ## [Unreleased]
 
 ### Added
+- Headless AI control layer (`src/reality/control/`): one operation registry (22 operations) behind a CLI
+  (`python -m reality.control`), a Python API (`reality.control.api`) and a stdlib MCP stdio adapter. Includes JSON scene
+  schema v1 (one sphere, infinite planes, contacts), scene editing, headless runs with checkpoint and resume, friction
+  sweeps, inspection (body, scene, series, rolling onset, summary), run comparison, a pure-Python PNG preview with
+  numerical description, export bundles with SHA-256, resource limits and stable error codes. Documents:
+  `AI_CONTROL_ARCHITECTURE.md`, `CLI_REFERENCE.md`, `API_REFERENCE.md`, `MCP_REFERENCE.md`, `SCENE_SCHEMA.md`,
+  `PREVIEW_SYSTEM.md`, `RESOURCE_LIMITS.md`, `AI_AGENT_GUIDE.md`, `AI_CAPABILITY_MATRIX.md`. Tests `tests/test_control.py` (40).
+- Validation SIM-01, SIM-02 (slide-to-roll time of a steel sphere against 2 v0 / (7 mu g), through the scene pipeline) and
+  SIM-03 (checkpoint restart reproduces the continuous run). Validation cases now 79. Cases gained optional metadata
+  fields `model`, `initial_conditions` and `limitations` (empty for earlier cases).
 - Phase 3: `rigidbody.py` (single 3D rigid body: quaternion attitude, body-frame Euler equations, RK4 with
   renormalisation, kinetic energy, angular momentum) and `contact.py` (sphere on infinite planes: impulse contact with
   restitution, Coulomb friction with sticking and sliding, penetration projection). Validation RB-01..05 and CON-01..07.

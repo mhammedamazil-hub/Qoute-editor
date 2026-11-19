@@ -33,6 +33,10 @@ class ValidationCase:
     reference_source: str
     run: Callable[[], float]        # returns the measured value
     tolerance: float                # relative tolerance (absolute if reference == 0)
+    # Optional metadata (added for the AI control layer; empty for cases written before it).
+    model: str = ""                 # physical model under test
+    initial_conditions: str = ""    # state at t = 0
+    limitations: str = ""           # what the case does not establish
 
     def evaluate(self) -> Tuple[float, float, bool]:
         measured = self.run()
@@ -669,6 +673,51 @@ def _lotka_volterra_drift_value() -> float:
     return _lotka_volterra_drift()
 
 
+# ---------------------------------------------------- scene pipeline (AI control)
+def _sim_scene(friction: float, duration: float, v0: float = 2.0, radius: float = 0.05):
+    """Steel sphere sliding on a floor through the scene API and the headless runner."""
+    from .control import scene as S
+    from .control import simulate as SIM
+    sc = S.new_scene("sim-validation")
+    sc = S.add_sphere(sc, "ball", radius, material="steel", position=[0.0, 0.0, radius], velocity=[v0, 0.0, 0.0])
+    sc = S.add_plane(sc, "floor")
+    sc = S.set_contact(sc, "ball", "floor", friction, 0.0)
+    return SIM.run(sc, duration, dt=1e-4, record_interval=0.01)
+
+
+def _sim_slide_to_roll_time(friction: float, duration: float) -> float:
+    from .control import inspection as I
+    res = _sim_scene(friction, duration)
+    onset = I.rolling_onset(res, "ball")
+    if not onset.get("available"):
+        raise RuntimeError(f"rolling onset not available: {onset.get('reason')}")
+    return onset["time_s"]
+
+
+def _sim_roll_time_mu_01() -> float:
+    return _sim_slide_to_roll_time(0.1, 7.0)
+
+
+def _sim_roll_time_mu_03() -> float:
+    return _sim_slide_to_roll_time(0.3, 2.5)
+
+
+def _sim_checkpoint_restart_error() -> float:
+    """Max position difference between a continuous run and run-then-resume, both of 0.5 s + 0.5 s."""
+    from .control import scene as S
+    from .control import simulate as SIM
+    sc = S.new_scene("sim-checkpoint")
+    sc = S.add_sphere(sc, "ball", 0.05, material="steel", position=[0.0, 0.0, 0.05], velocity=[2.0, 0.0, 0.0])
+    sc = S.add_plane(sc, "floor")
+    sc = S.set_contact(sc, "ball", "floor", 0.2, 0.0)
+    full = SIM.run(sc, 1.0, dt=1e-4, record_interval=0.5)
+    first = SIM.run(sc, 0.5, dt=1e-4, record_interval=0.5)
+    second = SIM.run(sc, 0.5, dt=1e-4, record_interval=0.5, checkpoint=first["final_state"])
+    a = full["final_state"]["bodies"]["ball"]["position"]
+    b = second["final_state"]["bodies"]["ball"]["position"]
+    return max(abs(a[i] - b[i]) for i in range(3))
+
+
 CASES: List[ValidationCase] = [
     # --- classical mechanics
     ValidationCase("MECH-01", "mechanics", "freefall (quadratic drag)", "RK4 speed vs analytic v_t tanh(gt/v_t) at t = 3 s",
@@ -805,6 +854,25 @@ CASES: List[ValidationCase] = [
     ValidationCase("BIO-02", "biology", "Lotka-Volterra", "Relative drift of the Lotka-Volterra first integral over 40 time units",
                    "conservation", 0.0, "H = delta x - gamma ln x + beta y - alpha ln y is constant (verified by differentiation)",
                    _lotka_volterra_drift_value, 1e-9),
+    # --- scene pipeline (AI control layer): run through scene.py -> simulate.py -> inspection.py
+    ValidationCase("SIM-01", "scene pipeline", "sliding-to-rolling", "Steel sphere (R 5 cm, v0 2 m/s) on a floor, mu = 0.1: time to start rolling, s",
+                   "analytic", 2.0 * 2.0 / (7.0 * 0.1 * C.STANDARD_GRAVITY), "Slide-to-roll: t = 2 v0 / (7 mu g) for a solid sphere (derived from the Euler and Coulomb equations; CON-07)",
+                   _sim_roll_time_mu_01, 1e-3,
+                   model="rigid sphere, Coulomb kinetic friction, rolling constraint",
+                   initial_conditions="centre at height R on the floor, v = (2, 0, 0) m/s, omega = 0, dt = 1e-4 s",
+                   limitations="analytic time is for constant mu and flat floor; onset is estimated by a least-squares fit to recorded slip, not read from the solver"),
+    ValidationCase("SIM-02", "scene pipeline", "sliding-to-rolling", "Same sphere, mu = 0.3: time to start rolling, s",
+                   "analytic", 2.0 * 2.0 / (7.0 * 0.3 * C.STANDARD_GRAVITY), "Slide-to-roll: t = 2 v0 / (7 mu g) (as SIM-01)",
+                   _sim_roll_time_mu_03, 1e-3,
+                   model="rigid sphere, Coulomb kinetic friction, rolling constraint",
+                   initial_conditions="as SIM-01 with mu = 0.3",
+                   limitations="as SIM-01; the two cases together show the 1/mu dependence, not the coefficient's accuracy for any real pair of surfaces"),
+    ValidationCase("SIM-03", "scene pipeline", "checkpoint", "Max position difference: continuous 1 s run vs 0.5 s + resumed 0.5 s, m",
+                   "numerical-vs-analytic", 0.0, "Restart must reproduce the continuous run exactly (same operations in the same order)",
+                   _sim_checkpoint_restart_error, 1e-12,
+                   model="same as SIM-01 with mu = 0.2",
+                   initial_conditions="as SIM-01, mu = 0.2, checkpoint at t = 0.5 s",
+                   limitations="tests the checkpoint mechanism only, not the physics"),
     # --- rigid body (Phase 3)
     ValidationCase("CON-07", "contact", "rolling friction", "Solid sphere sliding on a floor (v0 = 2 m/s, mu = 0.3): speed after rolling is established, m/s",
                    "analytic", 10.0 / 7.0, "Sliding to rolling on a horizontal floor: v_final = 5/7 v0 (momentum and angular-momentum balance)",

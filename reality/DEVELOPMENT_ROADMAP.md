@@ -26,7 +26,7 @@ Priority follows the brief's rule: working, validated systems before broad but i
 | 10 | Universal interaction system | **Not started** | Interface design in `ARCHITECTURE.md` §3.2 | Coupling graph: fracture → fragment kinetic energy → acoustics and thermal |
 | 11 | Performance and architecture | **Partial** | `PERFORMANCE_REPORT.md` (pure-Python baseline); deterministic kernels | C++ ports of hot kernels, SIMD, GPU compute via `GPU_compute.hh`, adaptive time steps |
 | 12 | User experience and editor | **Not started** | Planned as Blender Python add-on panels (`bl_ui`) | Material inspector and gravity panel as a first add-on |
-| 13 | Scientific validation | **Partial** | `VALIDATION_REPORT.md`, **76 cases**, all passing; `validation.py` registry | Experimental datasets (drop tests, Hertz contact, glass fracture, sound chamber); cross-solver tests |
+| 13 | Scientific validation | **Partial** | `VALIDATION_REPORT.md`, **79 cases**, all passing (SIM-01..03 run through the scene pipeline); `validation.py` registry Experimental datasets (drop tests, Hertz contact, glass fracture, sound chamber); cross-solver tests |
 | 14 | Development rules | **Ongoing** | Units enforced; sources recorded per material and constant; limitations listed; `LIMITATIONS.md` §8 lists sources not yet in the ledger | Keep enforcing; add a reviewer checklist |
 | 15 | Execution strategy | **Partial** | Steps A, B, C, D, E, F, G, H done; step I partly; M done for the kernel | Continue with I (cross-domain coupling), J (interactions), K (editor), L (GPU) |
 
@@ -46,6 +46,12 @@ Priority follows the brief's rule: working, validated systems before broad but i
 - Phase 9 benchmarks: `biology.py`, BIO-01..02.
 - **76 validation cases, 0 failing.** Pytest: 248 tests, which are the 76 validation cases, 2 registry structural tests,
   7 research-gate tests, and 163 unit and regression tests (counted by `pytest --collect-only`).
+
+### M-1.2: Headless AI control layer (unreleased) - **Partial**
+- `control/`: operation registry shared by CLI, Python API and MCP; scene schema v1; headless run, checkpoint, sweep;
+  inspection; CPU PNG preview; export; limits and error codes. Status per item: `AI_CAPABILITY_MATRIX.md`.
+- Not in this milestone: multiple bodies and body-body contact, meshes, atmosphere, Blender integration, Rust core.
+- Tests: `tests/test_control.py` (40). Validation: SIM-01..03 (79 cases in total, 0 failing).
 
 ### M0: Blender-hosted prototype - **Not started**
 - Python add-on (no engine change) that loads `reality` and exposes material and gravity settings.
