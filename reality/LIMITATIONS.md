@@ -28,6 +28,7 @@ be read before relying on any result. The project rule is never to claim realism
 | Drag | Constant drag coefficient. No Reynolds-number dependence, no lift, no spin, no added mass. |
 | Projectiles | No drag. |
 | Pendulum | Single rigid pendulum, no damping, no driving. |
+| Physical objects | Uniform-density solids only (sphere, box, cylinder). Centre of mass is the geometric centre. Inertia is given in the body frame, with no orientation state and no 3D rotation dynamics. No composite objects, no temperature-dependent properties, no anisotropy, no contact. |
 | Orbits | Two-body only (N-body superposition exists for gravity but no orbit integrator for many bodies). |
 | Heat | Lumped or 1D. No 2D/3D conduction, convection, or radiation exchange between surfaces (only a single-body emittance). |
 | Phase change | Lumped energy balance only. No moving-boundary (Stefan) solver. No supercooling, no evaporation, no container heat loss. |

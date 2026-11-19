@@ -15,7 +15,7 @@ Priority follows the brief's rule: working, validated systems before broad but i
 |---|---|---|---|---|
 | 0 | Source acquisition and Blender inventory | **Done** (inventory); build **not started** | `ARCHITECTURE.md` §1-2 with real paths and licenses | Build Blender on a larger machine with `lib/` submodules |
 | 1 | Scientific research | **Done** | `SCIENCE_RESEARCH.md`: 7 disciplines, every [verify] item resolved against a primary or reputable source (§10 ledger, 37 entries), DOIs added where confirmed, licences checked for the components in `THIRD_PARTY_LICENSES.md` §5. Gate: `tests/test_research_gate.py` | Phase 2 onward; open research gaps listed in `SCIENCE_RESEARCH.md` §9 (Weibull parameters, experimental datasets, hyperelastic models) |
-| 2 | Universal physical object system | **Partial** | `materials.py` (18 materials, validation, custom materials), `units.py` (SI dimensions); tests in `test_materials.py`, `test_units.py` | Add rigid-body inertia, centre of mass, temperature state per object; anisotropy; temperature-dependent properties |
+| 2 | Universal physical object system | **Partial** | `objects.py` (`PhysicalObject`: sphere, box, cylinder; mass, centre of mass, principal and parallel-axis inertia, weight, kinetic energy, heat capacity, melting state), OBJ-01..08, `tests/test_objects.py`; plus `materials.py` (18 materials) and `units.py` (SI dimensions, `MOMENT_OF_INERTIA`) | Orientation and 3D rotation state; composite objects and non-uniform density; temperature-dependent properties; anisotropy (wood, bone); contact and deformable bodies |
 | 3 | Real gravity and mechanics | **Partial** | `gravity.py` (uniform, point-mass, N-body superposition, planets); `mechanics.py`; MECH-01..15, GRAV-01..04 | 3D rigid-body rotation, contact with friction, CCD, joints, deformable bodies |
 | 4 | Real material destruction | **Partial** | `fracture.py` (LEFM, Griffith, yield); FRAC-01..04 | Crack propagation, fragmentation, fatigue (Paris law), stress propagation in a body |
 | 5 | Real optics and light | **Partial** | `optics.py` (Snell, Fresnel, Brewster, BK7 dispersion); OPT-01..06 | Complex refractive index (absorption), thin film, spectral transport in Cycles |
@@ -26,7 +26,7 @@ Priority follows the brief's rule: working, validated systems before broad but i
 | 10 | Universal interaction system | **Not started** | Interface design in `ARCHITECTURE.md` §3.2 | Coupling graph: fracture → fragment kinetic energy → acoustics and thermal |
 | 11 | Performance and architecture | **Partial** | `PERFORMANCE_REPORT.md` (pure-Python baseline); deterministic kernels | C++ ports of hot kernels, SIMD, GPU compute via `GPU_compute.hh`, adaptive time steps |
 | 12 | User experience and editor | **Not started** | Planned as Blender Python add-on panels (`bl_ui`) | Material inspector and gravity panel as a first add-on |
-| 13 | Scientific validation | **Partial** | `VALIDATION_REPORT.md`, 45 cases, all passing; `validation.py` registry | Experimental datasets (drop tests, Hertz contact, glass fracture, sound chamber); cross-solver tests |
+| 13 | Scientific validation | **Partial** | `VALIDATION_REPORT.md`, 53 cases, all passing; `validation.py` registry | Experimental datasets (drop tests, Hertz contact, glass fracture, sound chamber); cross-solver tests |
 | 14 | Development rules | **Ongoing** | Units enforced; sources recorded per material and constant; limitations listed | Keep enforcing; add a reviewer checklist |
 | 15 | Execution strategy | **Partial** | Steps A, B, C, D, E, F, G, H done; step I partly; M done for the kernel | Continue with I (cross-domain coupling), J (interactions), K (editor), L (GPU) |
 
@@ -34,7 +34,8 @@ Priority follows the brief's rule: working, validated systems before broad but i
 
 ### M-1: Foundation kernel (this release, v0.1.0) - **Done**
 - Units and dimensions, material model, gravity, mechanics, thermal, optics, acoustics, fracture, beams.
-- 45 validation cases, 0 failing; 128 pytest tests in total: 45 validation cases, 2 registry structural tests, 6 research-gate tests, and 75 unit and regression tests (counted by `pytest --collect-only`).
+- Phase 2 first slice (added after M-1): physical objects with mass, centre of mass, inertia, heat capacity.
+- 53 validation cases (45 for M-1, 8 added in Phase 2), 0 failing; 156 pytest tests in total: 53 validation cases, 2 registry structural tests, 6 research-gate tests, and 95 unit and regression tests (counted by `pytest --collect-only`).
 - Generated reports: `VALIDATION_REPORT.md`, `PERFORMANCE_REPORT.md`, `MATERIAL_DATABASE.md`.
 
 ### M0: Blender-hosted prototype - **Not started**

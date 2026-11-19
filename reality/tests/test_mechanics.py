@@ -4,7 +4,7 @@ import pytest
 
 from reality import constants as C
 from reality import mechanics as M
-from reality.integrators import integrate_rk4, rk4_step, velocity_verlet_step
+from reality.integrators import integrate_rk4, velocity_verlet_step
 
 
 def test_rk4_exact_for_exponential_decay_order():

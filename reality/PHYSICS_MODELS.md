@@ -144,6 +144,29 @@ instead of returning a guess.
 - **Assumptions:** slender beam (L/h >~ 10), linear elastic, small slope, no shear deformation, no damping.
 - **Not modelled:** Timoshenko (shear) beams, plates, shells, torsion, buckling, contact.
 
+## M9. Physical objects (`objects.py`, Phase 2 first slice)
+
+A `PhysicalObject` is a rigid, uniform-density solid (sphere, box or cylinder) with a material, a temperature and a
+translational state. Everything below is in SI units and dimension-checked.
+
+- **Mass and volume:** m = rho V, with V = (4/3) pi r^3 (sphere), a b c (box), pi r^2 h (cylinder).
+- **Centre of mass:** the geometric centre of the shape, because density is uniform. Composite objects are not implemented.
+- **Principal moments of inertia about the centre of mass** (body frame, shape axes):
+  - sphere: I = (2/5) m r^2 about any axis through the centre;
+  - box: I_x = m (b^2 + c^2)/12 and cyclic permutations;
+  - cylinder: transverse I = m (3 r^2 + h^2)/12, axial I_z = m r^2 / 2.
+  These are standard centroidal results (Beer & Johnston, *Vector Mechanics for Engineers*, Appendix / moment-of-inertia tables).
+- **Inertia about another point:** parallel-axis theorem, I' = I_cm + m (|d|^2 E - d d^T). The trace identity
+  tr(I') = tr(I_cm) + 2 m |d|^2 is tested.
+- **Weight:** m g with standard gravity g = 9.80665 m/s^2 (or a supplied g).
+- **Kinetic energy:** (1/2) m |v|^2 (translation only).
+- **Heat capacity:** m c_p (J/K), assuming a uniform temperature.
+- **Melting state:** compares the object temperature with the material melting temperature, if one is stored.
+- **Validation:** OBJ-01..08 (`validation.py`): mass, sphere/box/cylinder inertia, the surface-point parallel-axis value
+  (7/5 m r^2), weight of ice, and heat capacity of water. Unit tests: `reality/tests/test_objects.py`.
+- **Not covered:** orientation and 3D rotation dynamics, non-uniform density, temperature-dependent properties,
+  anisotropy, and contact (see `LIMITATIONS.md`).
+
 ## M8. Dimensional validation (`units.py`, `materials.py`)
 
 - Quantities carry SI dimension vectors with rational exponents. Addition and assignment across dimensions raise

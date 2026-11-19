@@ -106,6 +106,7 @@ is independent; see `THIRD_PARTY_LICENSES.md`.
 | `units.py` | Numerics / object model | SI dimension vectors with rational exponents; dimension-checked `Q` type |
 | `constants.py` | Object model | Constants with provenance (CODATA 2018, IAU/IERS, US Standard Atmosphere) |
 | `materials.py` | Object model | `Material` with physical validation, `MaterialDatabase`, 18 built-in materials |
+| `objects.py` | Object model | `PhysicalObject` (sphere, box, cylinder): mass, centre of mass, principal and parallel-axis inertia, weight, kinetic energy, heat capacity, melting state |
 | `gravity.py` | Object model | `UniformGravity`, `GravityBody`, `PointMassGravity`, planetary presets |
 | `integrators.py` | Numerics | RK4 and velocity Verlet |
 | `mechanics.py` | Mechanics | Free fall with drag, projectile, pendulum (exact elliptic period), 1D collisions with restitution, Kepler orbits |

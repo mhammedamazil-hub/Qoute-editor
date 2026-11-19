@@ -3,6 +3,28 @@
 All notable changes to `reality/`. The format follows Keep a Changelog. Blender upstream changes are listed
 separately in `ARCHITECTURE.md` §5 (none so far).
 
+## [Unreleased]
+
+### Added
+- Phase 1 (scientific research) closed: `SCIENCE_RESEARCH.md` with every `[verify]` item resolved, DOIs added where
+  confirmed, a verification ledger (§10), and Weibull statistics for flaw populations. Gate test:
+  `tests/test_research_gate.py`.
+- `THIRD_PARTY_LICENSES.md` §5: licences verified for Meep, OpenFOAM, FEniCS, pyroomacoustics, Cantera, RDKit,
+  COPASI, NEURON, OpenSim, Chrono, OpenSees, MuJoCo, Pinocchio, Box2D, ngspice, SU2, Palabos, pbrt-v4, Taichi MPM,
+  Eigen and OpenVDB (OpenVDB depends on version).
+- Phase 2 first slice: `objects.py` (`PhysicalObject` for sphere, box and cylinder: mass, centre of mass,
+  principal and parallel-axis inertia, weight, kinetic energy, heat capacity, melting state) with validation cases
+  OBJ-01..08 and `tests/test_objects.py`. `units.MOMENT_OF_INERTIA` added.
+- `constants.py`: Schott N-BK7 mechanical constants (E, nu, density) stored separately from the soda-lime `glass` row.
+
+### Corrected
+- OpenSees was previously listed as BSD. It is a University of California non-commercial licence.
+- The `glass` material row is soda-lime glass; its source and uncertainty fields now say so, and BK7 is labelled
+  as a different glass.
+- Test count: 121 at v0.1.0 was 45 validation cases, 2 registry structural tests and 74 unit tests (not 76 unit tests).
+- Blender size measured at commit 69f2f845: 446 MB on disk including an 87 MB shallow `.git`; 20,962 files
+  outside `.git`; `tests/python` has 337 files (earlier figures 20,968 and 144 were wrong).
+
 ## [0.1.0] - 2026-11-19
 
 ### Added

@@ -376,6 +376,67 @@ def _database_dimension_binding() -> float:
     return 0.0 if dim_ok else 1.0
 
 
+# ----------------------------------------------------------- objects cases ---
+def _fixture_material(density: float):
+    from .materials import Material
+    return Material(name="test", category="test", phase="solid", behavior="brittle",
+                    density=density, specific_heat=1.0, thermal_conductivity=1.0,
+                    fracture_toughness=1.0e6, source="validation fixture", uncertainty="none")
+
+
+def _obj_sphere_mass() -> float:
+    from . import objects as O
+    obj = O.PhysicalObject("sphere", O.Sphere(0.1), _fixture_material(1000.0))
+    return obj.mass().value  # kg; reference rho * 4/3 pi r^3
+
+
+def _obj_sphere_inertia() -> float:
+    from . import objects as O
+    obj = O.PhysicalObject("sphere", O.Sphere(0.1), _fixture_material(1000.0))
+    return obj.principal_inertia()[0].value  # kg m^2; reference 2/5 m r^2
+
+
+def _obj_box_inertia() -> float:
+    from . import objects as O
+    obj = O.PhysicalObject("box", O.Box((0.2, 0.4, 0.6)), _fixture_material(2000.0))
+    return obj.principal_inertia()[0].value  # about x: m (b^2 + c^2)/12
+
+
+def _obj_cylinder_transverse() -> float:
+    from . import objects as O
+    obj = O.PhysicalObject("cyl", O.Cylinder(0.05, 0.3), _fixture_material(1500.0))
+    return obj.principal_inertia()[0].value  # m (3 r^2 + h^2)/12
+
+
+def _obj_cylinder_axial() -> float:
+    from . import objects as O
+    obj = O.PhysicalObject("cyl", O.Cylinder(0.05, 0.3), _fixture_material(1500.0))
+    return obj.principal_inertia()[2].value  # m r^2 / 2
+
+
+def _obj_parallel_axis_sphere() -> float:
+    # Sphere inertia about a surface point, along x: I_yy = (2/5 + 1) m r^2 = 7/5 m r^2.
+    from . import objects as O
+    obj = O.PhysicalObject("sphere", O.Sphere(0.1), _fixture_material(1000.0))
+    return obj.inertia_about_point((0.1, 0.0, 0.0))[1][1].value
+
+
+def _obj_weight_ice_kg() -> float:
+    # 1 m^3 of ice at standard gravity: weight / g gives the mass in kg; reference 917.
+    from . import objects as O
+    ice = default_database().get("ice")
+    obj = O.PhysicalObject("ice", O.Box((1.0, 1.0, 1.0)), ice)
+    return obj.weight().value / C.STANDARD_GRAVITY
+
+
+def _obj_heat_capacity_water() -> float:
+    # 1 litre of water: heat capacity in J/K from the object model (m c_p).
+    from . import objects as O
+    water = default_database().get("water")
+    obj = O.PhysicalObject("water", O.Box((0.1, 0.1, 0.1)), water)
+    return obj.heat_capacity().value
+
+
 CASES: List[ValidationCase] = [
     # --- classical mechanics
     ValidationCase("MECH-01", "mechanics", "freefall (quadratic drag)", "RK4 speed vs analytic v_t tanh(gt/v_t) at t = 3 s",
@@ -475,6 +536,33 @@ CASES: List[ValidationCase] = [
                    "database", 0.0, "Material.validate() rules", _database_all_valid, 0.0),
     ValidationCase("MAT-02", "materials", "database", "Fracture toughness property carries the Pa*sqrt(m) dimension",
                    "database", 0.0, "Dimensional analysis (units.py)", _database_dimension_binding, 0.0),
+    # --- physical objects (Phase 2)
+    ValidationCase("OBJ-01", "objects", "mass", "Solid sphere mass rho*(4/3)pi r^3 (r = 0.1 m, rho = 1000 kg/m^3)",
+                   "textbook", 1000.0 * 4.0 / 3.0 * math.pi * 0.1 ** 3, "Volume of a sphere; mass = density x volume",
+                   _obj_sphere_mass, 1e-12),
+    ValidationCase("OBJ-02", "objects", "inertia", "Solid sphere moment of inertia 2/5 m r^2 about its centre",
+                   "textbook", 0.4 * (1000.0 * 4.0 / 3.0 * math.pi * 0.1 ** 3) * 0.1 ** 2,
+                   "Beer & Johnston, Vector Mechanics for Engineers (solid sphere, centroidal axis)",
+                   _obj_sphere_inertia, 1e-12),
+    ValidationCase("OBJ-03", "objects", "inertia", "Box moment of inertia m (b^2 + c^2)/12 about the x axis",
+                   "textbook", 2000.0 * 0.2 * 0.4 * 0.6 * (0.4 ** 2 + 0.6 ** 2) / 12.0,
+                   "Beer & Johnston (rectangular parallelepiped, centroidal axes)", _obj_box_inertia, 1e-12),
+    ValidationCase("OBJ-04", "objects", "inertia", "Cylinder transverse inertia m (3 r^2 + h^2)/12 about x",
+                   "textbook", 1500.0 * math.pi * 0.05 ** 2 * 0.3 * (3 * 0.05 ** 2 + 0.3 ** 2) / 12.0,
+                   "Beer & Johnston (circular cylinder, centroidal transverse axis)", _obj_cylinder_transverse, 1e-12),
+    ValidationCase("OBJ-05", "objects", "inertia", "Cylinder axial inertia m r^2 / 2 about z",
+                   "textbook", 1500.0 * math.pi * 0.05 ** 2 * 0.3 * 0.05 ** 2 / 2.0,
+                   "Beer & Johnston (circular cylinder, centroidal axial axis)", _obj_cylinder_axial, 1e-12),
+    ValidationCase("OBJ-06", "objects", "parallel axis", "Sphere inertia about a surface point, I_yy = 7/5 m r^2",
+                   "textbook", 1.4 * (1000.0 * 4.0 / 3.0 * math.pi * 0.1 ** 3) * 0.1 ** 2,
+                   "Parallel-axis theorem I = I_cm + m d^2, applied to a solid sphere",
+                   _obj_parallel_axis_sphere, 1e-12),
+    ValidationCase("OBJ-07", "objects", "weight", "Weight of 1 m^3 ice divided by g equals its density (917 kg)",
+                   "textbook", 917.0, "W = m g with g = 9.80665 m/s^2 (CGPM 1901); ice density 917 kg/m^3 (Petrenko & Whitworth)",
+                   _obj_weight_ice_kg, 1e-12),
+    ValidationCase("OBJ-08", "objects", "heat capacity", "Heat capacity of 1 litre of water, C = rho V c_p (J/K)",
+                   "textbook", 998.2e-3 * 4182.0, "C = m c_p with rho = 998.2 kg/m^3 and c_p = 4182 J/(kg K) (database values)",
+                   _obj_heat_capacity_water, 1e-12),
 ]
 
 

@@ -108,7 +108,7 @@ def main() -> int:
     out = ROOT / "VALIDATION_REPORT.md"
     out.write_text(report, encoding="utf-8")
     results = V.run_all()
-    failed = [c.case_id for c, *_, ok in [(r[0], r[1], r[2], r[3]) for r in results] if not ok]
+    failed = [case.case_id for case, _measured, _err, ok in results if not ok]
     print(f"wrote {out} ({len(results)} cases, {len(failed)} failing)")
     return 1 if failed else 0
 

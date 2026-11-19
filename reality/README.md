@@ -4,8 +4,8 @@ PROJECT REALITY is an effort to build a scientifically grounded simulation layer
 materials and environments follow the physical laws that are computable, and where every number has a unit and a
 source. Visual realism is not the criterion; validation against analytic and measured references is.
 
-**Current state (v0.1.0):** a tested, dependency-free Python physics kernel with 45 validation cases, all passing,
-and an 18-material database. It is **not yet integrated into Blender**, and it does not yet provide an editor,
+**Current state (v0.1.0 plus Phase 1-2 work):** a tested, dependency-free Python physics kernel with 53 validation cases, all passing,
+an 18-material database, and a physical object model (mass, centre of mass, inertia, heat capacity). It is **not yet integrated into Blender**, and it does not yet provide an editor,
 fluids, fire, chemistry, biology, or spectral light. Read [`LIMITATIONS.md`](LIMITATIONS.md) before relying on any result.
 
 ## What is in this folder
