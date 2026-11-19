@@ -165,3 +165,6 @@ The `reality/` folder holds PROJECT REALITY: a tested, dependency-free Python ph
 (SI units, validated materials, gravity, mechanics, rigid-body rotation and contact, heat, 2D conduction, optics, acoustics, fracture, Weibull statistics, beams, hydrostatics, population benchmarks) with 76
 validation cases and research and architecture documents. It is not yet integrated into Blender.
 Start with [`reality/README.md`](reality/README.md) and [`reality/LIMITATIONS.md`](reality/LIMITATIONS.md).
+
+`engine/` is the real-time browser runtime for the same scenes (`npm run dev` inside `engine/`). It is a verified first
+slice, not a finished game engine; see [`engine/README.md`](engine/README.md) for what it does and does not include.

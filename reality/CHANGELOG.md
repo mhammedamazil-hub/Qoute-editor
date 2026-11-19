@@ -6,6 +6,11 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 ## [Unreleased]
 
 ### Added
+- `engine/` (outside the Python package): a browser real-time runtime for `reality.scene` v1. TypeScript port of the
+  sphere-contact stepper, verified against the Python kernel's recorded trajectories (position and velocity identical,
+  spin within 7e-16), three.js viewer, transport and live contact controls. 24 engine tests and a Python sync test
+  (`tests/test_engine_assets.py`). Not a finished game engine; see `engine/README.md` for the scope.
+- `tools/export_engine_assets.py`: generates the engine's material table and reference trajectories from the kernel.
 - Headless AI control layer (`src/reality/control/`): one operation registry (22 operations) behind a CLI
   (`python -m reality.control`), a Python API (`reality.control.api`) and a stdlib MCP stdio adapter. Includes JSON scene
   schema v1 (one sphere, infinite planes, contacts), scene editing, headless runs with checkpoint and resume, friction

@@ -1,0 +1,56 @@
+{
+  "schema": "reality.scene",
+  "schema_version": 1,
+  "name": "Ramp roll (20 deg)",
+  "environment": {
+    "gravity": [
+      0.0,
+      0.0,
+      -9.80665
+    ],
+    "units": "SI"
+  },
+  "bodies": [
+    {
+      "id": "ball",
+      "type": "sphere",
+      "radius": 0.05,
+      "material": "steel",
+      "position": [
+        0.4527453032266708,
+        0.0,
+        0.21799470270212978
+      ],
+      "velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "omega": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "planes": [
+    {
+      "id": "ramp",
+      "normal": [
+        -0.3420201433256687,
+        0.0,
+        0.9396926207859084
+      ],
+      "offset": 0.0
+    }
+  ],
+  "contacts": [
+    {
+      "body": "ball",
+      "plane": "ramp",
+      "friction": 0.5,
+      "restitution": 0.0
+    }
+  ],
+  "random_seed": null
+}

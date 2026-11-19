@@ -1,0 +1,56 @@
+{
+  "schema": "reality.scene",
+  "schema_version": 1,
+  "name": "Bouncing sphere",
+  "environment": {
+    "gravity": [
+      0.0,
+      0.0,
+      -9.80665
+    ],
+    "units": "SI"
+  },
+  "bodies": [
+    {
+      "id": "ball",
+      "type": "sphere",
+      "radius": 0.05,
+      "material": "steel",
+      "position": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "velocity": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "omega": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "planes": [
+    {
+      "id": "floor",
+      "normal": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "offset": 0.0
+    }
+  ],
+  "contacts": [
+    {
+      "body": "ball",
+      "plane": "floor",
+      "friction": 0.2,
+      "restitution": 0.7
+    }
+  ],
+  "random_seed": null
+}
