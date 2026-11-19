@@ -155,3 +155,13 @@ scripts/          headless verification suite
 
 No accounts, no backend, no analytics. Projects and keys live in your browser (IndexedDB / localStorage);
 AI prompts go directly from your browser to `generativelanguage.googleapis.com` with your key.
+
+
+---
+
+## PROJECT REALITY (physics kernel, in progress)
+
+The `reality/` folder holds PROJECT REALITY: a tested, dependency-free Python physics foundation
+(SI units, validated materials, gravity, mechanics, heat, optics, acoustics, fracture, beams) with 45
+validation cases and research and architecture documents. It is not yet integrated into Blender.
+Start with [`reality/README.md`](reality/README.md) and [`reality/LIMITATIONS.md`](reality/LIMITATIONS.md).

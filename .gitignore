@@ -25,6 +25,10 @@ npm-debug.log*
 
 # minicoder python
 minicoder/.venv/
+
+# PROJECT REALITY python kernel
+reality/.venv/
+reality/*.egg-info/
 __pycache__/
 *.pyc
 .pytest_cache/
