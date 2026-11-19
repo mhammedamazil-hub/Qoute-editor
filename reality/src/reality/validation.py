@@ -437,6 +437,148 @@ def _obj_heat_capacity_water() -> float:
     return obj.heat_capacity().value
 
 
+# ------------------------------------------------------------ rigid body cases ---
+@functools.lru_cache(maxsize=None)
+def _symmetric_top_run():
+    """Torque-free cylinder (r = 0.1 m, h = 0.4 m, rho = 1000 kg/m^3) with omega = (1, 0, 2) rad/s.
+
+    Returns (omega_x at T, relative energy drift over 10 periods, relative |L| drift, quaternion |q|^2 - 1).
+    """
+    from . import rigidbody as RB
+    r, h = 0.1, 0.4
+    m = 1000.0 * math.pi * r * r * h
+    i_t = m * (3 * r * r + h * h) / 12.0
+    i_a = m * r * r / 2.0
+    body = RB.RigidBody(m, (i_t, i_t, i_a), omega=(1.0, 0.0, 2.0))
+    omega_3 = 2.0
+    period = 2.0 * math.pi / abs((i_a - i_t) / i_t * omega_3)
+    e0 = body.kinetic_energy()
+    l0 = math.sqrt(sum(c * c for c in body.angular_momentum_body()))
+    RB.integrate(body, 0.0, period, 1e-3)
+    wx = body.omega[0]
+    RB.integrate(body, period, 10.0 * period, 1e-3)
+    e_drift = abs(body.kinetic_energy() - e0) / e0
+    l_now = math.sqrt(sum(c * c for c in body.angular_momentum_body()))
+    l_drift = abs(l_now - l0) / l0
+    qn = abs(sum(c * c for c in body.quaternion) - 1.0)
+    return wx, e_drift, l_drift, qn
+
+
+def _rb_precession_period() -> float:
+    return _symmetric_top_run()[0]
+
+
+def _rb_energy_drift() -> float:
+    return _symmetric_top_run()[1]
+
+
+def _rb_angular_momentum_drift() -> float:
+    return _symmetric_top_run()[2]
+
+
+def _rb_quaternion_norm() -> float:
+    return _symmetric_top_run()[3]
+
+
+def _rb_constant_torque() -> float:
+    from . import rigidbody as RB
+    body = RB.RigidBody(2.0, (0.2, 0.3, 0.4))
+    RB.integrate(body, 0.0, 2.0, 1e-3, torque=lambda t, y: (0.5, 0.0, 0.0))
+    return body.omega[0]  # reference tau T / I_x = 0.5 * 2 / 0.2 = 5 rad/s
+
+
+@functools.lru_cache(maxsize=None)
+def _sphere_on_incline(mu: float, t_end: float = 1.0, dt: float = 1e-4):
+    """Solid sphere (R = 0.1 m, m = 1 kg) released from rest on a 30 degree plane.
+
+    Returns (downslope acceleration, contact-point slip speed at t_end, max penetration).
+    """
+    from . import contact as CT
+    from . import rigidbody as RB
+    radius, theta = 0.1, math.radians(30.0)
+    n = (-math.sin(theta), 0.0, math.cos(theta))           # outward normal of the plane
+    downslope = (-math.cos(theta), 0.0, -math.sin(theta))  # unit vector down the incline
+    i_s = 0.4 * 1.0 * radius * radius
+    body = RB.RigidBody(1.0, (i_s, i_s, i_s), position=tuple(radius * c for c in n))
+    plane = CT.Plane(n, 0.0)
+    gravity = (0.0, 0.0, -C.STANDARD_GRAVITY)
+    steps = int(round(t_end / dt))
+    max_pen = 0.0
+    for _ in range(steps):
+        CT.step_sphere(body, dt, gravity, radius, [plane], restitution=0.0, friction=mu)
+        gap = RB.dot(n, body.position) - radius
+        max_pen = max(max_pen, -gap)
+    accel = RB.dot(body.velocity, downslope) / t_end
+    contact_pt = RB.scale(n, -radius)
+    slip = RB.norm(body.point_velocity(contact_pt))
+    return accel, slip, max_pen
+
+
+def _incline_angle_gravity() -> float:
+    return C.STANDARD_GRAVITY * math.sin(math.radians(30.0))
+
+
+def _rolling_acceleration() -> float:
+    return _sphere_on_incline(0.5)[0]
+
+
+def _frictionless_acceleration() -> float:
+    return _sphere_on_incline(0.0)[0]
+
+
+def _sliding_acceleration() -> float:
+    return _sphere_on_incline(0.1)[0]
+
+
+def _rolling_no_slip_residual() -> float:
+    return _sphere_on_incline(0.5)[1]
+
+
+def _rolling_no_penetration() -> float:
+    return _sphere_on_incline(0.5)[2]
+
+
+def _horizontal_slide_final_speed() -> float:
+    """Sphere sliding on a horizontal floor (v0 = 2 m/s, mu = 0.3) for 1 s; ends rolling."""
+    from . import contact as CT
+    from . import rigidbody as RB
+    radius = 0.1
+    i_s = 0.4 * 1.0 * radius * radius
+    body = RB.RigidBody(1.0, (i_s, i_s, i_s), position=(0.0, 0.0, radius), velocity=(2.0, 0.0, 0.0))
+    plane = CT.Plane((0.0, 0.0, 1.0))
+    for _ in range(10000):
+        CT.step_sphere(body, 1e-4, (0.0, 0.0, -C.STANDARD_GRAVITY), radius, [plane], restitution=0.0, friction=0.3)
+    return body.velocity[0]
+
+
+@functools.lru_cache(maxsize=None)
+def _bounce_apex_ratio(restitution: float, drop_height: float = 1.0, dt: float = 1e-4) -> float:
+    """Apex height after the first bounce divided by the drop height (sphere R = 0.1 m)."""
+    from . import contact as CT
+    from . import rigidbody as RB
+    radius = 0.1
+    i_s = 0.4 * 1.0 * radius * radius
+    body = RB.RigidBody(1.0, (i_s, i_s, i_s), position=(0.0, 0.0, radius + drop_height))
+    plane = CT.Plane((0.0, 0.0, 1.0), 0.0)
+    gravity = (0.0, 0.0, -C.STANDARD_GRAVITY)
+    bounced = False
+    apex = 0.0
+    for _ in range(int(3.0 / dt)):
+        CT.step_sphere(body, dt, gravity, radius, [plane], restitution=restitution, friction=0.0)
+        if not bounced and body.velocity[2] > 0.0:
+            bounced = True
+        if bounced:
+            height = body.position[2] - radius
+            apex = max(apex, height)
+            if body.velocity[2] < 0.0 and height < apex - 1e-3:
+                break
+    return apex / drop_height
+
+
+def _bounce_apex_restitution_half() -> float:
+    return _bounce_apex_ratio(0.5)
+
+
 CASES: List[ValidationCase] = [
     # --- classical mechanics
     ValidationCase("MECH-01", "mechanics", "freefall (quadratic drag)", "RK4 speed vs analytic v_t tanh(gt/v_t) at t = 3 s",
@@ -536,6 +678,47 @@ CASES: List[ValidationCase] = [
                    "database", 0.0, "Material.validate() rules", _database_all_valid, 0.0),
     ValidationCase("MAT-02", "materials", "database", "Fracture toughness property carries the Pa*sqrt(m) dimension",
                    "database", 0.0, "Dimensional analysis (units.py)", _database_dimension_binding, 0.0),
+    # --- rigid body (Phase 3)
+    ValidationCase("CON-07", "contact", "rolling friction", "Solid sphere sliding on a floor (v0 = 2 m/s, mu = 0.3): speed after rolling is established, m/s",
+                   "analytic", 10.0 / 7.0, "Sliding to rolling on a horizontal floor: v_final = 5/7 v0 (momentum and angular-momentum balance)",
+                   _horizontal_slide_final_speed, 1e-8),
+    ValidationCase("RB-01", "rigid body", "torque-free rotation", "Symmetric top: omega_x returns to 1 rad/s after one precession period 2 pi / |Omega|",
+                   "analytic", 1.0, "Euler's equations for a symmetric body: omega_1 = omega_1(0) cos(Omega t), Omega = (I3 - I1) omega_3 / I1",
+                   _rb_precession_period, 1e-9),
+    ValidationCase("RB-02", "rigid body", "torque-free rotation", "Relative kinetic-energy drift over 10 precession periods",
+                   "conservation", 0.0, "Rotational kinetic energy is conserved for torque-free motion",
+                   _rb_energy_drift, 1e-9),
+    ValidationCase("RB-03", "rigid body", "torque-free rotation", "Relative angular-momentum-magnitude drift over 10 precession periods",
+                   "conservation", 0.0, "|L| is conserved for torque-free motion (Euler's equations)",
+                   _rb_angular_momentum_drift, 1e-9),
+    ValidationCase("RB-04", "rigid body", "applied torque", "omega_x after 2 s under tau = 0.5 N m about the principal x axis (I_x = 0.2 kg m^2)",
+                   "analytic", 5.0, "omega = tau t / I for a torque along a principal axis",
+                   _rb_constant_torque, 1e-9),
+    ValidationCase("RB-05", "rigid body", "attitude", "Quaternion norm drift over 10 precession periods",
+                   "conservation", 0.0, "Unit quaternion renormalised after each step",
+                   _rb_quaternion_norm, 1e-12),
+    # --- contact (Phase 3)
+    ValidationCase("CON-01", "contact", "restitution", "Apex height after the first bounce / drop height (e = 0.5, h = 1 m, dt = 1e-4)",
+                   "analytic", 0.25, "Restitution: rebound speed e v, apex e^2 h",
+                   _bounce_apex_restitution_half, 5e-3),
+    ValidationCase("CON-02", "contact", "rolling friction", "Rolling solid sphere on a 30 degree incline: downslope acceleration",
+                   "analytic", 5.0 / 7.0 * C.STANDARD_GRAVITY * math.sin(math.radians(30.0)),
+                   "Rolling without slipping: a = (5/7) g sin(theta) for a solid sphere",
+                   _rolling_acceleration, 1e-6),
+    ValidationCase("CON-03", "contact", "frictionless slide", "Frictionless sphere on a 30 degree incline: downslope acceleration",
+                   "analytic", C.STANDARD_GRAVITY * math.sin(math.radians(30.0)),
+                   "Newton's second law along the incline, a = g sin(theta)",
+                   _frictionless_acceleration, 1e-9),
+    ValidationCase("CON-04", "contact", "kinetic friction", "Sliding sphere (mu = 0.1) on 30 degrees: downslope acceleration",
+                   "analytic", C.STANDARD_GRAVITY * (math.sin(math.radians(30.0)) - 0.1 * math.cos(math.radians(30.0))),
+                   "Coulomb kinetic friction, a = g (sin theta - mu cos theta); slip persists because mu < 2/7 tan theta",
+                   _sliding_acceleration, 1e-9),
+    ValidationCase("CON-05", "contact", "rolling constraint", "Contact-point slip speed when rolling (mu = 0.5), m/s",
+                   "conservation", 0.0, "Rolling without slipping: velocity of the contact point is zero",
+                   _rolling_no_slip_residual, 1e-9),
+    ValidationCase("CON-06", "contact", "penetration", "Maximum penetration depth on the incline, m",
+                   "conservation", 0.0, "No penetration of a rigid plane (projection after each contact step)",
+                   _rolling_no_penetration, 1e-9),
     # --- physical objects (Phase 2)
     ValidationCase("OBJ-01", "objects", "mass", "Solid sphere mass rho*(4/3)pi r^3 (r = 0.1 m, rho = 1000 kg/m^3)",
                    "textbook", 1000.0 * 4.0 / 3.0 * math.pi * 0.1 ** 3, "Volume of a sphere; mass = density x volume",

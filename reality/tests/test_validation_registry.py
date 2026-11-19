@@ -9,7 +9,7 @@ CASES = V.CASES
 
 def test_registry_is_not_empty_and_covers_all_domains():
     domains = {c.domain for c in CASES}
-    assert {"mechanics", "gravity", "thermal", "optics", "acoustics", "fracture", "structures", "materials", "objects"} <= domains
+    assert {"mechanics", "gravity", "thermal", "optics", "acoustics", "fracture", "structures", "materials", "objects", "rigid body", "contact"} <= domains
     assert len(CASES) >= 40
 
 
