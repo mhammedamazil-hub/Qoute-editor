@@ -70,3 +70,12 @@ def test_no_unverified_bsd_claim_for_opensees():
     for line in TEXT.splitlines():
         if "OpenSees" in line and "BSD" in line:
             assert "not" in line.lower() or "non-commercial" in line.lower(), line
+
+
+def test_ledger_row_count_matches_its_numbering():
+    """The ledger is numbered 1..N with no gaps. N must match the count stated in the roadmap."""
+    section = TEXT.split("## 10. Verification ledger", 1)[1].split("### Corrections", 1)[0]
+    numbers = [int(m.group(1)) for m in re.finditer(r"^\| (\d+) \|", section, flags=re.M)]
+    assert numbers == list(range(1, len(numbers) + 1)), "ledger rows are not numbered 1..N without gaps"
+    roadmap = (pathlib.Path(__file__).resolve().parents[1] / "DEVELOPMENT_ROADMAP.md").read_text(encoding="utf-8")
+    assert f"{len(numbers)} entries" in roadmap, f"roadmap must state the ledger count {len(numbers)}"

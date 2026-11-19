@@ -579,6 +579,96 @@ def _bounce_apex_restitution_half() -> float:
     return _bounce_apex_ratio(0.5)
 
 
+# ------------------------------------------------- Phase 4, 7, 8, 9 cases ---
+def _weibull_at_sigma0() -> float:
+    from . import weibull as W
+    return W.failure_probability(1e8, 1e8, 10.0)
+
+
+def _weibull_size_effect() -> float:
+    from . import weibull as W
+    return W.median_strength(1e8, 10.0, 8.0) / W.median_strength(1e8, 10.0, 1.0)
+
+
+def _weibull_fit_modulus() -> float:
+    from . import weibull as W
+    data = [W.stress_at_probability(f, 1e8, 8.0) for f in W.median_ranks(30)]
+    return W.fit_weibull(data)[0]
+
+
+def _weibull_fit_scale() -> float:
+    from . import weibull as W
+    data = [W.stress_at_probability(f, 1e8, 8.0) for f in W.median_ranks(30)]
+    return W.fit_weibull(data)[1]
+
+
+def _weibull_effective_volume() -> float:
+    from . import weibull as W
+    return W.effective_volume([1.0, 2.0, 3.0], [5.0, 5.0, 5.0], 5.0, 10.0)
+
+
+def _hydro_pressure_10m() -> float:
+    from . import hydrostatics as H
+    return H.pressure_at_depth(10.0, 998.2) - C.P_ATM
+
+
+def _hydro_ice_fraction() -> float:
+    from . import hydrostatics as H
+    from .materials import default_database
+    db = default_database()
+    return H.floating_submerged_fraction(db.get("ice").density, db.get("water").density)
+
+
+def _hydro_apparent_weight_fraction() -> float:
+    # Fully submerged steel sphere, R = 0.1 m: apparent weight / true weight.
+    from . import hydrostatics as H
+    from .materials import default_database
+    from .objects import PhysicalObject, Sphere
+    db = default_database()
+    obj = PhysicalObject("steel sphere", Sphere(0.1), db.get("steel"))
+    mass = obj.mass().value
+    return H.apparent_weight(mass, db.get("water").density, obj.volume().value) / (mass * C.STANDARD_GRAVITY)
+
+
+@functools.lru_cache(maxsize=None)
+def _conduction_2d_error() -> float:
+    from . import thermal2d as T
+    n, alpha, length, t_end = 31, 0.01, 1.0, 5.0
+    num = T.solve_square(n, alpha, length, t_end)
+    ana = T.analytic_field(n, alpha, length, t_end)
+    scale = max(abs(v) for row in ana for v in row)
+    return max(abs(num[j][i] - ana[j][i]) for j in range(n) for i in range(n)) / scale
+
+
+def _conduction_2d_relative_error() -> float:
+    return _conduction_2d_error()
+
+
+def _logistic_error() -> float:
+    from . import biology as B
+    return B.logistic_numeric(5.0, 0.5, 1.0, 10.0, 1e-2)
+
+
+def _logistic_reference() -> float:
+    from . import biology as B
+    return B.logistic_analytic(5.0, 0.5, 1.0, 10.0)
+
+
+@functools.lru_cache(maxsize=None)
+def _lotka_volterra_drift() -> float:
+    from . import biology as B
+    from .integrators import integrate_rk4
+    alpha, beta, gamma, delta = 1.0, 0.5, 0.75, 0.25
+    f = B.lotka_volterra_rhs(alpha, beta, gamma, delta)
+    h0 = B.lotka_volterra_invariant(2.0, 1.0, alpha, beta, gamma, delta)
+    y = integrate_rk4(f, 0.0, [2.0, 1.0], 40.0, 1e-3)
+    return abs(B.lotka_volterra_invariant(y[0], y[1], alpha, beta, gamma, delta) - h0) / abs(h0)
+
+
+def _lotka_volterra_drift_value() -> float:
+    return _lotka_volterra_drift()
+
+
 CASES: List[ValidationCase] = [
     # --- classical mechanics
     ValidationCase("MECH-01", "mechanics", "freefall (quadratic drag)", "RK4 speed vs analytic v_t tanh(gt/v_t) at t = 3 s",
@@ -678,6 +768,43 @@ CASES: List[ValidationCase] = [
                    "database", 0.0, "Material.validate() rules", _database_all_valid, 0.0),
     ValidationCase("MAT-02", "materials", "database", "Fracture toughness property carries the Pa*sqrt(m) dimension",
                    "database", 0.0, "Dimensional analysis (units.py)", _database_dimension_binding, 0.0),
+    # --- failure statistics (Phase 4)
+    ValidationCase("WEIB-01", "failure statistics", "Weibull", "P_f at sigma = sigma0 equals 1 - 1/e",
+                   "analytic", 1.0 - math.exp(-1.0), "Weibull (1951): P_f = 1 - exp(-(sigma/sigma0)^m) with V = V0",
+                   _weibull_at_sigma0, 1e-12),
+    ValidationCase("WEIB-02", "failure statistics", "Weibull size effect", "Median strength ratio sigma50(8V)/sigma50(V), m = 10",
+                   "analytic", 8.0 ** -0.1, "Weibull weakest-link size effect: sigma50 proportional to V^(-1/m)",
+                   _weibull_size_effect, 1e-12),
+    ValidationCase("WEIB-03", "failure statistics", "Weibull fit", "Round trip: fitted Weibull modulus from 30 model-generated strengths (m = 8)",
+                   "analytic", 8.0, "Median-rank regression is exact for data generated from the model",
+                   _weibull_fit_modulus, 1e-9),
+    ValidationCase("WEIB-04", "failure statistics", "Weibull fit", "Round trip: fitted scale stress from the same data (sigma0 = 100 MPa)",
+                   "analytic", 1e8, "Median-rank regression is exact for data generated from the model",
+                   _weibull_fit_scale, 1e-9),
+    ValidationCase("WEIB-05", "failure statistics", "effective volume", "Effective volume of a uniform field equals the total volume",
+                   "analytic", 6.0, "V_eff = sum V_i (sigma_i / sigma_ref)^m with sigma_i = sigma_ref",
+                   _weibull_effective_volume, 1e-12),
+    # --- hydrostatics (Phase 7)
+    ValidationCase("HYD-01", "hydrostatics", "pressure", "Gauge pressure at 10 m of fresh water, Pa",
+                   "analytic", 998.2 * C.STANDARD_GRAVITY * 10.0, "p = p0 + rho g h (hydrostatic equilibrium)",
+                   _hydro_pressure_10m, 1e-9),
+    ValidationCase("HYD-02", "hydrostatics", "buoyancy", "Submerged fraction of floating ice: rho_ice / rho_water",
+                   "analytic", 917.0 / 998.2, "Archimedes: floating body displaces its own weight of fluid; densities from the materials database (ice 917, water 998.2 kg/m^3)",
+                   _hydro_ice_fraction, 1e-12),
+    ValidationCase("HYD-03", "hydrostatics", "buoyancy", "Fully submerged steel sphere: apparent weight / true weight = 1 - rho_w / rho_s",
+                   "analytic", 1.0 - 998.2 / 7850.0, "Archimedes' principle (apparent weight = weight - buoyant force)",
+                   _hydro_apparent_weight_fraction, 1e-12),
+    # --- heat conduction, 2D (Phase 8)
+    ValidationCase("THER-06", "thermal", "2D conduction", "Max relative error of explicit 2D FTCS vs analytic sine mode (N = 31, Fo = 0.2, t = 5 s)",
+                   "numerical-vs-analytic", 0.0, "Analytic separable solution T = exp(-2 pi^2 alpha t / L^2) sin sin; second-order in dx",
+                   _conduction_2d_relative_error, 5e-3),
+    # --- population dynamics (Phase 9)
+    ValidationCase("BIO-01", "biology", "logistic growth", "RK4 logistic growth N(5) vs analytic N(t) = K/(1 + ((K-N0)/N0) e^(-rt)), relative",
+                   "analytic", 0.0, "Verhulst logistic equation (closed form)",
+                   lambda: _logistic_error() / _logistic_reference() - 1.0, 1e-9),
+    ValidationCase("BIO-02", "biology", "Lotka-Volterra", "Relative drift of the Lotka-Volterra first integral over 40 time units",
+                   "conservation", 0.0, "H = delta x - gamma ln x + beta y - alpha ln y is constant (verified by differentiation)",
+                   _lotka_volterra_drift_value, 1e-9),
     # --- rigid body (Phase 3)
     ValidationCase("CON-07", "contact", "rolling friction", "Solid sphere sliding on a floor (v0 = 2 m/s, mu = 0.3): speed after rolling is established, m/s",
                    "analytic", 10.0 / 7.0, "Sliding to rolling on a horizontal floor: v_final = 5/7 v0 (momentum and angular-momentum balance)",

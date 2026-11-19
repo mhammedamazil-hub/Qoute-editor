@@ -4,8 +4,8 @@ PROJECT REALITY is an effort to build a scientifically grounded simulation layer
 materials and environments follow the physical laws that are computable, and where every number has a unit and a
 source. Visual realism is not the criterion; validation against analytic and measured references is.
 
-**Current state (v0.1.0 plus Phase 1-2 work):** a tested, dependency-free Python physics kernel with 53 validation cases, all passing,
-an 18-material database, and a physical object model (mass, centre of mass, inertia, heat capacity). It is **not yet integrated into Blender**, and it does not yet provide an editor,
+**Current state (v0.1.0 plus Phases 1-4 and first slices of 7-9):** a tested, dependency-free Python physics kernel with 76 validation cases, all passing,
+an 18-material database, a physical object model (mass, centre of mass, inertia, heat capacity), a 3D rigid body with sphere-plane contact, Weibull failure statistics, hydrostatics, 2D conduction, and population benchmarks. It is **not yet integrated into Blender**, and it does not yet provide an editor,
 fluids, fire, chemistry, biology, or spectral light. Read [`LIMITATIONS.md`](LIMITATIONS.md) before relying on any result.
 
 ## What is in this folder
@@ -29,7 +29,8 @@ fluids, fire, chemistry, biology, or spectral light. Read [`LIMITATIONS.md`](LIM
 ```
 reality/
   src/reality/        physics kernel (units, constants, materials, gravity, integrators, mechanics,
-                      thermal, optics, acoustics, fracture, structures, validation)
+                      rigidbody, contact, objects, weibull, hydrostatics, thermal, thermal2d,
+                      optics, acoustics, fracture, structures, biology, validation)
   tests/              pytest suite (unit tests and a registry test that asserts every validation case)
   tools/              run_validation.py, benchmark.py, export_materials.py (regenerate the reports)
   examples/           material_failure_table.py (glass vs steel under the same stress)

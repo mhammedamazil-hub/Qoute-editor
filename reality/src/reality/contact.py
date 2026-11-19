@@ -1,7 +1,8 @@
 """Rigid contact between a sphere and infinite planes (Phase 3).
 
 Model: impulse-based, one contact point at a time, in the style of sequential-impulse
-solvers (Baraff, SIGGRAPH 1989; Catto, GDC 2006; both standard, see SCIENCE_RESEARCH.md).
+solvers (Baraff, SIGGRAPH 1989; Catto, GDC 2006). Neither source is yet in the SCIENCE_RESEARCH.md
+verification ledger; see LIMITATIONS.md section 8.
 
 Per time step h for a sphere of radius R and a plane {x : n . x = offset}:
   1. predict:  v <- v + g h,  x_pred <- x + v h

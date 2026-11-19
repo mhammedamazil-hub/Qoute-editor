@@ -6,6 +6,21 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 ## [Unreleased]
 
 ### Added
+- Phase 3: `rigidbody.py` (single 3D rigid body: quaternion attitude, body-frame Euler equations, RK4 with
+  renormalisation, kinetic energy, angular momentum) and `contact.py` (sphere on infinite planes: impulse contact with
+  restitution, Coulomb friction with sticking and sliding, penetration projection). Validation RB-01..05 and CON-01..07.
+- Phase 4: `weibull.py` (two-parameter Weibull failure probability, inverse, median strength, size effect, effective
+  volume, median-rank fit). Validation WEIB-01..05.
+- Phase 7 first slice: `hydrostatics.py` (hydrostatic pressure, buoyant force, floating fraction, apparent weight).
+  Validation HYD-01..03.
+- Phase 8: `thermal2d.py` (explicit 2D conduction on a square with Dirichlet walls, with an analytic sine-mode
+  reference). Validation THER-06.
+- Phase 9 benchmarks: `biology.py` (logistic growth; Lotka-Volterra with exact first integral). Validation BIO-01..02.
+  No biological system is modelled.
+- Phase 2 completion: `tests/test_objects.py` (17 tests) covering validation errors, shape dimension errors, weight,
+  kinetic energy, `above_melting_point` (None, True, False), and inertia about a point matching principal inertia.
+- Research gate: `test_ledger_row_count_matches_its_numbering` pins the verification ledger to its stated count.
+- `LIMITATIONS.md` §8: sources used by Phases 2-9 that are not yet in the verification ledger.
 - Phase 1 (scientific research) closed: `SCIENCE_RESEARCH.md` with every `[verify]` item resolved, DOIs added where
   confirmed, a verification ledger (§10), and Weibull statistics for flaw populations. Gate test:
   `tests/test_research_gate.py`.
@@ -18,6 +33,9 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 - `constants.py`: Schott N-BK7 mechanical constants (E, nu, density) stored separately from the soda-lime `glass` row.
 
 ### Corrected
+- Phase 1 was marked Done too early. Its roadmap entry said "37 entries" (the ledger has 38) and "licences checked" (§5.2
+  still has two open items). It is now Partial.
+- `contact.py` docstring claimed Baraff and Catto were in SCIENCE_RESEARCH.md. They are not; the docstring now says so.
 - OpenSees was previously listed as BSD. It is a University of California non-commercial licence.
 - The `glass` material row is soda-lime glass; its source and uncertainty fields now say so, and BK7 is labelled
   as a different glass.

@@ -162,6 +162,6 @@ AI prompts go directly from your browser to `generativelanguage.googleapis.com` 
 ## PROJECT REALITY (physics kernel, in progress)
 
 The `reality/` folder holds PROJECT REALITY: a tested, dependency-free Python physics foundation
-(SI units, validated materials, gravity, mechanics, heat, optics, acoustics, fracture, beams) with 45
+(SI units, validated materials, gravity, mechanics, rigid-body rotation and contact, heat, 2D conduction, optics, acoustics, fracture, Weibull statistics, beams, hydrostatics, population benchmarks) with 76
 validation cases and research and architecture documents. It is not yet integrated into Blender.
 Start with [`reality/README.md`](reality/README.md) and [`reality/LIMITATIONS.md`](reality/LIMITATIONS.md).

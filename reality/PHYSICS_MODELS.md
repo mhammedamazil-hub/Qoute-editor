@@ -175,3 +175,77 @@ translational state. Everything below is in SI units and dimension-checked.
   brittle solids must define K_Ic, ductile metals must define yield strength, and so on).
 - **Validation:** MAT-01 (all built-in materials valid), MAT-02 (fracture toughness dimension bound); unit tests in
   `reality/tests/test_units.py`.
+
+## M10. Rigid-body rotation (`rigidbody.py`, Phase 3)
+
+State: centre of mass position x, velocity v, unit quaternion q (body to world), body angular velocity omega_b,
+principal inertias I = (I1, I2, I3) about the body axes.
+
+- **Equations of motion (body frame):** Euler's equations  I1 omega1' = (I2 - I3) omega2 omega3 + tau1, and cyclic.
+- **Attitude:** q' = (1/2) q (x) (0, omega_b). Integrated by RK4; renormalised after every step.
+- **Exact torque-free increment:** for constant omega, q <- q (x) exp(omega h / 2), with the quaternion exponential.
+- **Invariants checked:** kinetic energy T = (1/2) sum I_i omega_i^2 and |L| with L_i = I_i omega_i are conserved for
+  torque-free motion.
+- **Symmetric top precession:** I1 = I2, torque-free, omega1 = omega1(0) cos(Omega t), Omega = (I3 - I1) omega3 / I1.
+  Validated as RB-01 (period), RB-02..03 (conservation), RB-05 (quaternion norm). RB-04 checks omega = tau t / I
+  under a torque along a principal axis.
+- **Limitation:** one body, no joints. Inertia is input; `PhysicalObject` does not yet carry orientation.
+
+## M11. Sphere-plane contact (`contact.py`, Phase 3)
+
+Per step h, for a solid sphere of radius R on the plane {x : n.x = d}:
+
+1. Predict v <- v + g h; x_pred = x + v h.
+2. Contact if n.x_pred - d - R < 1e-9 m.
+3. Normal impulse J_n = -(1 + e) v_n / K_nn, with K_nn = 1/m for a sphere (isotropic inertia, contact offset along n).
+4. Friction: K_t J_t = -v_t (sticking). If |J_t| > mu J_n, use kinetic friction J_t = -mu J_n v_t/|v_t|.
+5. Move with the post-impulse velocity, project out any normal penetration, then rotate with the post-impulse omega.
+
+Analytic references (standard textbook results for a solid sphere):
+
+- **Restitution:** rebound speed e v, apex height e^2 h (CON-01, relative tolerance 5e-3 at dt = 1e-4 s; measured
+  1.3e-3).
+- **Rolling down a plane at angle theta, no slip:** a = (5/7) g sin theta (CON-02, measured error 5e-15).
+- **Frictionless slide:** a = g sin theta (CON-03).
+- **Kinetic-friction slide:** a = g (sin theta - mu cos theta) (CON-04). Slip persists when mu < (2/7) tan theta.
+- **Slide-to-roll on a horizontal floor:** v_final = (5/7) v0 with zero slip (CON-07).
+- **Rolling constraint:** the contact-point velocity is zero when rolling (CON-05).
+
+Limits: one contact point, planes only, no continuous collision detection, no contact-pair coefficient database.
+Those are in `LIMITATIONS.md` §2.
+
+## M12. Brittle failure statistics (`weibull.py`, Phase 4)
+
+- **Failure probability (Weibull 1951):** P_f = 1 - exp(-(V/V0)(sigma/sigma0)^m). Ledger entry 8.
+- **Median strength:** sigma_50 = sigma0 (ln 2 / (V/V0))^(1/m). Strength falls with volume as V^(-1/m) (size effect;
+  WEIB-02).
+- **Effective volume:** V_eff = sum V_i (sigma_i / sigma_ref)^m. Reduces to total volume for a uniform field (WEIB-05).
+- **Fit:** median ranks F_i = (i - 0.3)/(n + 0.4) (Bernard's approximation, not yet in the ledger), then linear
+  regression of ln(-ln(1 - F)) on ln(sigma). Round trips on model-generated data recover m and sigma0 to 1e-9 (WEIB-03..04).
+
+## M13. Hydrostatics (`hydrostatics.py`, Phase 7)
+
+- **Pressure at depth:** p = p_surface + rho g h (linear in depth; HYD-01 at 10 m of water).
+- **Buoyancy (Archimedes):** F_b = rho_fluid g V_submerged.
+- **Floating fraction:** rho_object / rho_fluid for a body that floats (HYD-02, ice in water: 0.9187). A body that sinks is
+  capped at 1, which is a bound, not an equilibrium.
+- **Apparent weight:** m g - F_b (HYD-03, fully submerged steel sphere: 1 - rho_w/rho_s).
+
+Static only. No flow, no compressibility, no free-surface dynamics.
+
+## M14. Explicit 2D conduction (`thermal2d.py`, Phase 8)
+
+- **Equation:** dT/dt = alpha (T_xx + T_yy) on [0, L]^2, T = 0 on the edges.
+- **Scheme:** FTCS, dt = Fo dx^2 / alpha with Fo <= 1/4 (the 2D explicit stability limit).
+- **Reference:** T = exp(-2 pi^2 alpha t / L^2) sin(pi x/L) sin(pi y/L). The test case uses N = 31 interior nodes,
+  alpha = 0.01 m^2/s, t = 5 s. The max relative error is 1.1e-3 (THER-06, tolerance 5e-3).
+
+## M15. Population benchmarks (`biology.py`, Phase 9)
+
+These are textbook population models. They are numerical benchmarks, not biological models.
+
+- **Logistic (Verhulst):** dN/dt = r N (1 - N/K). Closed form N(t) = K / (1 + ((K - N0)/N0) e^(-rt)). RK4 agrees
+  with it to 1.5e-11 relative (BIO-01).
+- **Lotka-Volterra:** dx/dt = alpha x - beta x y, dy/dt = delta x y - gamma y. First integral
+  H = delta x - gamma ln x + beta y - alpha ln y is constant. Relative drift over 40 time units: 1.6e-15 (BIO-02).
+

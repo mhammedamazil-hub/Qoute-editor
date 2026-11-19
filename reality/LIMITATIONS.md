@@ -5,8 +5,8 @@ be read before relying on any result. The project rule is never to claim realism
 
 ## 1. Scope of the current release (v0.1.0)
 
-- **What exists:** a pure-Python, dependency-free physics kernel (`reality/src/reality/`) with 45 validation cases
-  and a material database of 18 materials.
+- **What exists:** a pure-Python, dependency-free physics kernel (`reality/src/reality/`) with 76 validation cases
+  and a material database of 18 materials. Phases 2-4 and first slices of 7-9 are present (see `DEVELOPMENT_ROADMAP.md`).
 - **What does not exist yet:**
   - No Blender integration. The Blender source was studied, but Blender is **not built or modified** (see `ARCHITECTURE.md` §4-6).
   - No GPU or multithreaded solver. The measured throughput is about 10^5 to 10^7 simple updates/s on a 2-core machine.
@@ -24,22 +24,24 @@ be read before relying on any result. The project rule is never to claim realism
 | Gravity | Newtonian only. No general relativity. No J2 or other non-spherical terms. Spherical bodies only. |
 | Relativity | Not modelled. Negligible at everyday speeds, but not accounted for at relativistic speeds. |
 | Quantum mechanics | Not simulated. Quantum effects enter only through measured material constants. |
-| Mechanics | Point masses and 1D collisions. No rigid-body rotation, no contact manifolds, no friction solver, no restitution in 3D. |
+| Mechanics | Point masses, 1D collisions, and one 3D rigid body's rotation (`rigidbody.py`: torque-free and applied-torque cases). No multi-body dynamics, no joints. |
 | Drag | Constant drag coefficient. No Reynolds-number dependence, no lift, no spin, no added mass. |
 | Projectiles | No drag. |
 | Pendulum | Single rigid pendulum, no damping, no driving. |
-| Physical objects | Uniform-density solids only (sphere, box, cylinder). Centre of mass is the geometric centre. Inertia is given in the body frame, with no orientation state and no 3D rotation dynamics. No composite objects, no temperature-dependent properties, no anisotropy, no contact. |
+| Physical objects | Uniform-density solids only (sphere, box, cylinder). Centre of mass is the geometric centre. `objects.py` has no orientation state; the rigid-body solver (`rigidbody.py`) takes inertia as input and is not yet connected to `PhysicalObject`. No composite objects, no temperature-dependent properties, no anisotropy. |
+| Contact | Sphere on infinite planes only, one contact point per step (`contact.py`), impulse-based with restitution and Coulomb friction. No contact manifolds, no stacking stability, no continuous collision detection (a fast body can tunnel through a thin obstacle), no shapes other than spheres. |
+| Hydrostatics | Static fluids: pressure, buoyancy, floating fraction, apparent weight. No flow, no compressibility, no waves, no atmosphere. |
 | Orbits | Two-body only (N-body superposition exists for gravity but no orbit integrator for many bodies). |
-| Heat | Lumped or 1D. No 2D/3D conduction, convection, or radiation exchange between surfaces (only a single-body emittance). |
+| Heat | Lumped, 1D, and explicit 2D on a uniform square with Dirichlet walls (`thermal2d.py`, Fo <= 1/4). No 3D, no convection correlations, no radiation exchange between surfaces (only a single-body emittance). |
 | Phase change | Lumped energy balance only. No moving-boundary (Stefan) solver. No supercooling, no evaporation, no container heat loss. |
 | Optics | Lossless dielectric interfaces only. No absorption, no scattering, no diffraction, no thin films. Dispersion only for BK7. |
 | Acoustics | Linear, homogeneous media. No propagation solver, no reverberation, no sound generation from impacts yet. |
-| Fracture | Single uniaxial flaw, linear-elastic. No crack growth, no fragmentation, no statistics over flaw populations (Weibull). No dynamic fracture. |
+| Fracture | Single uniaxial flaw, linear-elastic. No crack growth, no fragmentation. Weibull statistics (`weibull.py`: failure probability, size effect, median-rank fit) are implemented, but no flaw-population data is stored or fitted to a real material. No dynamic fracture. |
 | Ductile failure | First yield only. No hardening, plasticity, necking or fatigue. |
 | Structures | Euler-Bernoulli beams and closed-form cantilever results. No plates, shells, torsion or buckling. |
 | Elastomers | No hyperelastic model. Rubber uses a small-strain modulus only and is flagged as invalid beyond ~10 % strain. |
 | Granular media | Sand and soil have bulk density and thermal properties only. No Mohr-Coulomb, no DEM. |
-| Biology | Cortical bone is a population-average material. No growth, no tissue remodelling, no physiology. |
+| Biology | Cortical bone is a population-average material. `biology.py` has only the logistic and Lotka-Volterra textbook models, used as numerical benchmarks. No organism, tissue, growth, or physiology model. |
 
 ## 3. Data limitations
 
@@ -53,13 +55,13 @@ be read before relying on any result. The project rule is never to claim realism
 - **Anisotropy:** wood and bone are orthotropic or anisotropic in reality. The database stores isotropic approximations.
 - **Temperature dependence:** all properties are room-temperature values unless otherwise stated. Temperature-dependent
   properties are not yet supported in the solvers.
-- **Friction and restitution** are not material properties in this model. They depend on the contact pair and are not
-  yet modelled.
+- **Friction and restitution** are not material properties in this model. They are coefficients of a contact pair,
+  supplied by the caller to `contact.py`. No database of contact-pair coefficients exists yet.
 
 ## 4. Validation limitations
 
-- **No experimental validation yet.** All 45 cases compare with analytic solutions, textbook constants or conservation
-  laws. Comparisons with laboratory data (drop tests, Hertz contact, glass fracture specimens, acoustic chambers) are
+- **No experimental validation yet.** All 76 cases compare with analytic solutions, textbook constants, numerical
+  references or conservation laws. Comparisons with laboratory data (drop tests, Hertz contact, glass fracture specimens, acoustic chambers) are
   planned but not done.
 - **Some checks are identities.** A few `analytic` cases verify algebra (for example R + T = 1). They confirm the
   implementation of a formula, not that the formula describes a real system.
@@ -73,6 +75,11 @@ be read before relying on any result. The project rule is never to claim realism
 - Verlet and RK4 use fixed steps. Close approaches in orbits and stiff contacts need smaller steps than are used here.
 - Pure-Python floats; no extended precision. Results are double precision and deterministic for identical inputs.
 - Performance is limited to small scenes (see `PERFORMANCE_REPORT.md`).
+- Contact (`contact.py`) is a first-order predict-detect-resolve step. At dt = 1e-4 s the bounce apex is 1.3e-3 relative
+  high (CON-01, tolerance 5e-3). The resting gap is O(g dt^2), about 1e-8 m. Both are discretisation errors, not
+  penetration.
+- Explicit 2D conduction (`thermal2d.py`) is second-order in space and first-order in time. Its error at N = 31 is
+  1.1e-3 (THER-06).
 
 ## 6. Safety and use
 
@@ -87,3 +94,22 @@ be read before relying on any result. The project rule is never to claim realism
 - `gravity.py` defaults the uniform field to standard gravity. This is a convenience value, not a claim that
   every lab has 9.80665 m/s^2 (the local value varies by about 0.5 % over Earth's surface).
 - The Mars validation tolerance is 1 % because the model uses the mean radius, not the equatorial radius.
+- The `CON-01` bounce tolerance (5e-3) is set by the discretisation error above. It is not a claim of model exactness.
+
+## 8. Sources used in Phases 2-9 that are not yet in the verification ledger
+
+The Phase 1 ledger (`SCIENCE_RESEARCH.md` §10) covers the sources cited there. The following are used by code in this
+release but have **not** been checked against a primary source in this project. They must be added to the ledger, or
+replaced, before the phase they support can be called Done:
+
+- Bernard's median-rank approximation F = (i - 0.3)/(n + 0.4) (`weibull.py`).
+- Baraff, "Analytical methods for dynamic simulation of non-penetrating rigid bodies", SIGGRAPH 1989, and Catto,
+  "Iterative Dynamics with Temporal Coherence", GDC 2006 (`contact.py` impulse model).
+- Rigid-body Euler equations and quaternion attitude update, standard mechanics textbooks (`rigidbody.py`).
+- Hydrostatic pressure and Archimedes' principle, standard fluid-mechanics textbooks (`hydrostatics.py`).
+- Explicit FTCS stability limit Fo <= 1/4 in 2D (von Neumann analysis; `thermal2d.py`).
+- Verhulst logistic equation and Lotka-Volterra first integral (`biology.py`).
+
+The formulas are standard. The citations, however, are not yet checked in this project, so they are not claimed as
+verified.
+

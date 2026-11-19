@@ -134,7 +134,7 @@ Phase 1 is complete when the gate test in `reality/tests/test_research_gate.py` 
 | PDEs | Heat, waves, elasticity | FTCS [T]; implicit schemes [T]; FEM [T]; FVM [T] | Explicit FTCS implemented |
 | Numerical analysis | Error control, stability | Von Neumann stability; Lax equivalence [T] | Fo <= 1/2 check implemented |
 | Tensor mathematics | Stress, strain, inertia tensor | Voigt notation, rotations [T] | Not yet |
-| Probability and statistics | Flaw populations, Weibull, Monte Carlo | Weibull (1951) [V] | Not yet |
+| Probability and statistics | Flaw populations, Weibull, Monte Carlo | Weibull (1951) [V] | Weibull distribution, size effect and median-rank fit implemented (`weibull.py`); no measured flaw data fitted; Monte Carlo not implemented |
 | Optimization | Calibration to data | Levenberg-Marquardt, gradient descent [T] | Not yet |
 | Numerical integration | Quadrature, time integration | Trapezoid, Gauss, RK [T] | Trapezoid used in beams |
 | Computational geometry | Collision, BVH, convex hulls | GJK, EPA, sweep-and-prune, BVH [T] | Blender BVH reuse planned |

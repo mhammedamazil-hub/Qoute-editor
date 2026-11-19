@@ -115,7 +115,13 @@ is independent; see `THIRD_PARTY_LICENSES.md`.
 | `acoustics.py` | Acoustics | Wave speed, impedance, reflection and transmission, Doppler, resonances, SPL |
 | `fracture.py` | Failure | LEFM (K_I, critical flaw, Griffith energy) for brittle solids, yield for ductile metals, `assess()` |
 | `structures.py` | Structures | Euler-Bernoulli cantilever: deflection, root stress, first natural frequency |
-| `validation.py` | Validation | 45 cases with references, tolerances and sources |
+| `rigidbody.py` | Mechanics | Single 3D rigid body: quaternion attitude, body-frame Euler equations, RK4 stepping, energy and angular momentum |
+| `contact.py` | Mechanics | Sphere on planes: impulse contact with restitution and Coulomb friction, position projection |
+| `weibull.py` | Failure | Weibull failure probability, size effect, effective volume, median-rank fit |
+| `hydrostatics.py` | Fluids | Hydrostatic pressure, buoyant force, floating fraction, apparent weight (static only) |
+| `thermal2d.py` | Thermal | Explicit 2D conduction on a square with Dirichlet walls, analytic sine-mode reference |
+| `biology.py` | Biology (benchmark) | Logistic growth and Lotka-Volterra with an exact first integral; no organism model |
+| `validation.py` | Validation | 76 cases with references, tolerances and sources |
 
 ### 3.2 Interfaces between layers
 
