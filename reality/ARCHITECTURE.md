@@ -12,7 +12,7 @@ integration is designed here, with real Blender source paths, but **not yet buil
 | Upstream | `blender/blender` on GitHub (the official mirror of `projects.blender.org/blender/blender`) |
 | Commit inspected | `69f2f845e71836859f7e050095f10a4e6b8d5985` (`Fix #166213 : glTF Fix no UVMap export`) |
 | Clone | `git clone --depth 1 --single-branch https://github.com/blender/blender.git` |
-| Size | 446 MB working tree, 20,968 files (shallow, no history) |
+| Size | 446 MB on disk including an 87 MB shallow `.git`; 20,962 files outside `.git` (measured in Phase 1 at this commit) |
 | Location | `/tmp/blender-src` (outside this repository, deliberately) |
 
 Notes:
@@ -63,7 +63,7 @@ is independent; see `THIRD_PARTY_LICENSES.md`.
 | Threads / tasks | `source/blender/blenlib/BLI_task.hh` | Task-parallel loops | Target for CPU multithreading |
 | Python API | `source/blender/python/` (`bpy*.cc`), `scripts/startup/bl_ui/properties_physics_*.py` | `bpy` module and physics UI panels (rigid body, cloth, soft body, fluid, dynamic paint, geometry-nodes physics) | Host for the editor UI and inspectors (Phase 12) |
 | DNA / RNA | `source/blender/makesdna/`, `source/blender/makesrna/` | Data model and Python property generation | Add `PhysicalMaterial` and solver settings through DNA/RNA |
-| Tests | `tests/python/` (144 files), `source/blender/blenkernel/intern/*_test.cc`, `intern/cycles/test/` | Python and C++ regression tests | Model for `reality/tests` and in-Blender tests |
+| Tests | `tests/python/` (337 files), `source/blender/blenkernel/intern/*_test.cc`, `intern/cycles/test/` | Python and C++ regression tests | Model for `reality/tests` and in-Blender tests |
 | Animation | `source/blender/animrig/`, `source/blender/blenkernel/intern/anim_sys.cc`, `action.cc`, `nla.cc` | Keyframes, drivers, NLA | Reuse for scripted environmental changes |
 
 ### 2.2 Architectural facts that drive the design

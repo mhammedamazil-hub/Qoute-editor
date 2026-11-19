@@ -40,3 +40,15 @@ N_AIR_550NM = 1.000293
 # n^2(lambda) - 1 = sum_i B_i lambda^2 / (lambda^2 - C_i), lambda in micrometres.
 BK7_B = (1.03961212, 0.231792344, 1.01046945)
 BK7_C = (0.00600069867, 0.0200179144, 103.560653)  # um^2
+
+# --- Schott N-BK7 mechanical and optical catalogue values -----------------------
+# This is BK7, a borosilicate optical crown glass. It is NOT the soda-lime glass
+# in materials.py (the "glass" row). Values from the Schott N-BK7 datasheet as
+# listed by AbbeTrex (https://abbetrex.com/glass/schott/schott-n-bk7/):
+# density 2.51 g/cm^3, E = 82.0 GPa, nu = 0.21, n_d = 1.5168, V_d = 64.17.
+# Specific heat and thermal conductivity were not verified, so they are not stored.
+BK7_DENSITY = 2510.0       # kg/m^3
+BK7_YOUNGS_MODULUS = 82.0e9  # Pa
+BK7_POISSON_RATIO = 0.21
+BK7_N_D = 1.5168           # refractive index at 587.56 nm
+BK7_ABBE_V_D = 64.17

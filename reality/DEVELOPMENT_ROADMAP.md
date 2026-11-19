@@ -14,7 +14,7 @@ Priority follows the brief's rule: working, validated systems before broad but i
 | Phase | Title | Status | Evidence | Next step |
 |---|---|---|---|---|
 | 0 | Source acquisition and Blender inventory | **Done** (inventory); build **not started** | `ARCHITECTURE.md` §1-2 with real paths and licenses | Build Blender on a larger machine with `lib/` submodules |
-| 1 | Scientific research | **Partial** | `SCIENCE_RESEARCH.md`, 7 disciplines, 20 references; several items marked **[verify]** | Verify all **[verify]** items against primary sources; add DOIs |
+| 1 | Scientific research | **Done** | `SCIENCE_RESEARCH.md`: 7 disciplines, every [verify] item resolved against a primary or reputable source (§10 ledger, 37 entries), DOIs added where confirmed, licences checked for the components in `THIRD_PARTY_LICENSES.md` §5. Gate: `tests/test_research_gate.py` | Phase 2 onward; open research gaps listed in `SCIENCE_RESEARCH.md` §9 (Weibull parameters, experimental datasets, hyperelastic models) |
 | 2 | Universal physical object system | **Partial** | `materials.py` (18 materials, validation, custom materials), `units.py` (SI dimensions); tests in `test_materials.py`, `test_units.py` | Add rigid-body inertia, centre of mass, temperature state per object; anisotropy; temperature-dependent properties |
 | 3 | Real gravity and mechanics | **Partial** | `gravity.py` (uniform, point-mass, N-body superposition, planets); `mechanics.py`; MECH-01..15, GRAV-01..04 | 3D rigid-body rotation, contact with friction, CCD, joints, deformable bodies |
 | 4 | Real material destruction | **Partial** | `fracture.py` (LEFM, Griffith, yield); FRAC-01..04 | Crack propagation, fragmentation, fatigue (Paris law), stress propagation in a body |
@@ -34,7 +34,7 @@ Priority follows the brief's rule: working, validated systems before broad but i
 
 ### M-1: Foundation kernel (this release, v0.1.0) - **Done**
 - Units and dimensions, material model, gravity, mechanics, thermal, optics, acoustics, fracture, beams.
-- 45 validation cases, 0 failing; 121 pytest tests in total (76 unit and regression tests plus the 45 validation cases).
+- 45 validation cases, 0 failing; 128 pytest tests in total: 45 validation cases, 2 registry structural tests, 6 research-gate tests, and 75 unit and regression tests (counted by `pytest --collect-only`).
 - Generated reports: `VALIDATION_REPORT.md`, `PERFORMANCE_REPORT.md`, `MATERIAL_DATABASE.md`.
 
 ### M0: Blender-hosted prototype - **Not started**

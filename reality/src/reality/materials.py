@@ -259,9 +259,11 @@ def _builtin_materials() -> List[Material]:
             fracture_toughness=0.75e6, tensile_strength=45e6,
             specific_heat=840.0, thermal_conductivity=1.0,
             refractive_index=1.52,
-            source="Soda-lime glass: K_Ic 0.75 MPa*sqrt(m) and nu 0.20 (DTIC ARL-TR-8187 as cited by Saiwei Glass); "
-                   "E 70-73 GPa (fabdigit.com, Saiwei Glass); n 1.51-1.52",
-            uncertainty="practical annealed tensile strength 30-50 MPa is flaw-limited; K_Ic 0.7-0.8 MPa*sqrt(m)",
+            source="SODA-LIME glass (not BK7). K_Ic 0.75 MPa*sqrt(m) and nu 0.20 (DTIC ARL-TR-8187 as cited by Saiwei Glass); "
+                   "E 70-73 GPa (fabdigit.com ~72, Saiwei Glass 73, industrialengineeringstudio 70); density 2500 kg/m^3 "
+                   "(industrialengineeringstudio); n ~1.52 is a textbook value, not checked in Phase 1",
+            uncertainty="practical annealed tensile strength 30-50 MPa is flaw-limited; K_Ic 0.7-0.8 MPa*sqrt(m). "
+                        "Schott N-BK7 (E 82 GPa, nu 0.21, density 2510 kg/m^3) is a different glass and is not used here",
             notes="Glass has no sharp melting point; softening occurs over ~700-730 C.",
         ),
         Material(

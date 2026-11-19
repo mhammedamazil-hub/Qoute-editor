@@ -28,7 +28,7 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 - `validation.py`: 45 validation cases (mechanics, gravity, thermal, optics, acoustics, fracture, structures,
   materials), each with a reference, source, tolerance and kind.
 - Tests: units, materials, mechanics, gravity and thermal, optics/acoustics/fracture/structures, and a parametrised
-  registry test that asserts every validation case (121 tests: 76 unit and regression tests plus 45 parametrised validation cases).
+  registry test that asserts every validation case. The 121 tests at v0.1.0 were 45 parametrised validation cases, 2 registry structural tests and 74 unit and regression tests (corrected in Phase 1; the earlier split of 76 unit tests counted the 2 structural tests twice).
 - Tools: `tools/run_validation.py` (writes `VALIDATION_REPORT.md`), `tools/benchmark.py` (writes
   `PERFORMANCE_REPORT.md`), `tools/export_materials.py` (writes `MATERIAL_DATABASE.md`).
 - Example: `examples/material_failure_table.py` (the same stress gives different outcomes for glass and steel).

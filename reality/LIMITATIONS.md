@@ -45,8 +45,10 @@ be read before relying on any result. The project rule is never to claim realism
 - **Material values are representative handbook figures**, not certified measurements. Each material has a
   `source` and an `uncertainty` note. Several values (gold and silver yield strength, rubber modulus, sand and soil
   properties, wood as an isotropic approximation, ice fracture toughness) are indicative only.
-- **Glass:** K_Ic (0.75 MPa sqrt(m)) and E (72 GPa) are sourced from web references checked in this session
-  (see `SCIENCE_RESEARCH.md`). Tensile strength is flaw-limited, so the database value is a nominal practical figure.
+- **Glass:** the `glass` row is **soda-lime** glass. Its K_Ic (0.75 MPa sqrt(m)), nu (0.20) and E (70-73 GPa, 72 used) are
+  quoted from web references (see `SCIENCE_RESEARCH.md` §10). Tensile strength is flaw-limited, so the database value is a nominal
+  practical figure. **Schott N-BK7** (E 82 GPa, nu 0.21) is a different glass. Its catalogue constants are kept in `constants.py`
+  and are not used by the `glass` row.
 - **Anisotropy:** wood and bone are orthotropic or anisotropic in reality. The database stores isotropic approximations.
 - **Temperature dependence:** all properties are room-temperature values unless otherwise stated. Temperature-dependent
   properties are not yet supported in the solvers.

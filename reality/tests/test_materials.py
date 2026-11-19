@@ -91,3 +91,15 @@ def test_unknown_material_lookup_lists_known_names():
     with pytest.raises(KeyError) as exc:
         default_database().get("unobtainium")
     assert "glass" in str(exc.value)
+
+
+def test_glass_row_is_soda_lime_and_not_bk7():
+    # Phase 1 reconciliation: the `glass` row is soda-lime; BK7 has different constants.
+    from reality import constants as C
+
+    glass = default_database().get("glass")
+    assert "SODA-LIME" in glass.source
+    assert glass.youngs_modulus != pytest.approx(C.BK7_YOUNGS_MODULUS)
+    assert glass.poisson_ratio != pytest.approx(C.BK7_POISSON_RATIO)
+    assert glass.density != pytest.approx(C.BK7_DENSITY)
+    assert 70e9 <= glass.youngs_modulus <= 73e9

@@ -23,9 +23,9 @@ The license facts below were checked in the clone at commit `69f2f845e71836859f7
 |---|---|---|---|
 | Blender (core: rigid body, soft body, cloth, fluid wrapper, implicit solver, depsgraph, Python API) | `source/blender/**` | GPL-2.0-or-later (SPDX headers in `rigidbody.cc`, `softbody.cc`, `fluid.cc`, `implicit_eigen.cc`) | Host application for the Phase B integration. Any code that is linked into or derived from Blender's core must be GPL-2.0-or-later. |
 | Bullet Physics 3 | `extern/bullet2/` (`README.blender`: "License: SPDX:Zlib") | Zlib | Blender's rigid-body backend, reused. |
-| Mantaflow | `extern/mantaflow/LICENSE` (Apache License 2.0, "Copyright 2018, the mantaflow team"); `intern/mantaflow/CMakeLists.txt` (Blender wrapper, `GPL-2.0-or-later`) | Apache-2.0 (upstream), GPL-2.0-or-later (Blender wrapper) | Smoke and fire prototypes (Phase 7). |
+| Mantaflow | `extern/mantaflow/LICENSE` (Apache License 2.0, "Copyright 2018, the mantaflow team"); the Blender wrapper `intern/mantaflow/CMakeLists.txt` carries `SPDX-License-Identifier: GPL-2.0-or-later` | Apache-2.0 (upstream core); GPL-2.0-or-later (Blender wrapper) | Smoke and fire prototypes (Phase 7). |
 | Cycles renderer kernels | `intern/cycles/kernel/types.h` | Apache-2.0 | Light transport reuse (Phase 5). |
-| Taichi MPM (MLS-MPM reference, `yuanming-hu/taichi_mpm`) | web reference only, not cloned | MIT (per the project's README, cited in `SCIENCE_RESEARCH.md`) | Reference for the material-point method (Phase 4 / Phase 7). Not copied. |
+| Taichi MPM (MLS-MPM reference, `yuanming-hu/taichi_mpm`) | web reference only, not cloned | MIT (LICENSE file in the repository, checked in Phase 1) | Reference for the material-point method (Phase 4 / Phase 7). Not copied. |
 
 ## 4. Scientific data sources (cited, not copied)
 
@@ -35,13 +35,40 @@ recorded in the code so it can be audited. Where a web page was used, it is list
 
 ## 5. Components considered but not yet used
 
-These were identified in the research and are **not** included. Each must be checked before inclusion.
+These were identified in the research (`SCIENCE_RESEARCH.md`) and are **not** included in this repository. Licenses were checked against the sources listed in `SCIENCE_RESEARCH.md` §10 during Phase 1. A component may only be added after its licence is compatible with the project's licence (§6), and the addition is recorded here.
 
-| Component | Candidate use | License status |
-|---|---|---|
-| Eigen (linear algebra) | implicit solvers | Blender vendors Eigen through `intern/eigen`; upstream Eigen is MPL-2.0. Not checked in the clone. |
-| OpenVDB | sparse volumes | Blender vendors it through `intern/openvdb`. Not checked in the clone. |
-| Cantera, RDKit, OpenFOAM, Meep, OpenSees, Pinocchio, Pyroomacoustics, COPASI, OpenSim | references and possible back-ends | Not checked. Each is marked **[verify]** in `SCIENCE_RESEARCH.md`. |
+### 5.1 Verified licences
+
+| Component | Candidate use | Licence (verified) | Source checked | Compatibility note |
+|---|---|---|---|---|
+| Meep | FDTD electromagnetics and optics reference | GPL-2.0 | github.com/NanoComp/meep | Copyleft; linking would make the combined work GPL-2.0 |
+| OpenFOAM | CFD and conjugate heat transfer | GPL-3.0 | openfoam.org; github.com/openfoam/openfoam-dev | Copyleft; use only as an external process |
+| FEniCS dolfinx | FEM for heat, phase change, fracture | LGPL-3.0 with GPL-3.0 components (COPYING.LESSER, COPYING) | github.com/FEniCS/dolfinx | LGPL allows linking; GPL components apply to some files. Check per file before use |
+| pyroomacoustics | Room acoustics and beamforming reference | MIT | github.com/LCAV/pyroomacoustics | Permissive |
+| Cantera | Thermochemistry and kinetics | BSD-3-Clause | github.com/Cantera/cantera; anaconda.org/Cantera/cantera | Permissive |
+| RDKit | Cheminformatics | BSD-3-Clause | github.com/rdkit/rdkit | Permissive |
+| COPASI | Biochemical network simulation | Artistic-2.0 (copasi.org). The Fedora package metadata lists Artistic-2.0 AND GPL-3.0-or-later AND BSD-3-Clause | copasi.org; packages.fedoraproject.org | Licence depends on packaging; read each release's own licence |
+| NEURON | Biophysical neuron models | BSD-3-Clause | github.com/neuronsimulator/nrn | Permissive |
+| OpenSim | Musculoskeletal dynamics reference | Apache-2.0 | github.com/opensim-org/opensim-core | Permissive |
+| Project Chrono | Multibody and deformable dynamics | BSD-3-Clause | github.com/projectchrono/chrono | Permissive |
+| OpenSees | Structural and geotechnical FEM | University of California licence: non-commercial educational, research and non-profit use; commercial use needs permission | casrai.org/guides/opensees; opensees.berkeley.edu | **Not open source.** Must not be bundled in a commercial product |
+| MuJoCo | Articulated-body physics reference | Apache-2.0 | github.com/google-deepmind/mujoco | Permissive |
+| Pinocchio | Rigid-body algorithms with analytic derivatives | BSD-2-Clause | github.com/stack-of-tasks/pinocchio | Permissive |
+| Box2D | 2D physics engine reference | MIT | github.com/erincatto/box2d | Permissive |
+| ngspice | Circuit simulation | BSD-3-Clause | ngspice.sourceforge.io; en.wikipedia.org/wiki/Ngspice | Permissive |
+| SU2 | CFD and multiphysics | LGPL-2.1 | github.com/su2code/su2 | LGPL; linking allowed under its terms |
+| Palabos | Lattice Boltzmann CFD | AGPL-3.0 | github.com/omalaspinas/palabos; cfdflow.com | **Network copyleft.** A hosted service using it must offer source |
+| pbrt-v4 | Spectral physically based rendering reference | Apache-2.0 | github.com/mmp/pbrt-v4 | Permissive |
+| Taichi MPM (MLS-MPM reference solver) | Material point method | MIT | github.com/yuanming-hu/taichi_mpm (LICENSE file) | Permissive |
+| Eigen | Linear algebra for implicit solvers | MPL-2.0. Some third-party files are BSD or LGPL; `EIGEN_MPL2_ONLY` excludes LGPL code at build time | gitlab.com/libeigen/eigen (COPYING.README) | MPL-2.0 is file-level copyleft. Define `EIGEN_MPL2_ONLY` if LGPL code must be excluded |
+| OpenVDB | Sparse volumes | Apache-2.0 from v12.0 (2024); MPL-2.0 before that | github.com/AcademySoftwareFoundation/openvdb; phoronix.com (relicensing news) | **Depends on version.** The version vendored in Blender was not checked |
+
+### 5.2 Still unchecked
+
+| Component | Status |
+|---|---|
+| Blender-vendored OpenVDB (`intern/openvdb`) | Version not identified. Read its licence from the vendored source before reuse |
+| Blender-vendored Eigen (`intern/eigen`) | Upstream licence is MPL-2.0. The vendored copy's files were not checked |
 
 ## 6. Project license
 
