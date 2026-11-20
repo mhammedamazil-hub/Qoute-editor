@@ -92,7 +92,7 @@ def fibonacci_sphere(n):
     return pts
 
 
-_DIRS = fibonacci_sphere(5000)
+_DIRS = fibonacci_sphere(20000)
 
 
 def ref_dense_min(cA, RA, hA, cB, RB, hB):
