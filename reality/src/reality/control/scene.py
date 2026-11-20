@@ -219,6 +219,10 @@ def validate(scene: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(scene, dict):
         return {"valid": False, "errors": ["scene must be a JSON object"], "warnings": []}
     if scene.get("schema_version") == 2:  # multi-body scenes: see multibody_scene.py
+        from .collision_scene import is_v2_with_meshes, validate_v3
+        if is_v2_with_meshes(scene):  # v2 with meshes runs on the collision solver: see collision_scene.py
+            r = validate_v3(scene)
+            return {"valid": r["valid"], "errors": r["errors"], "warnings": r["warnings"]}
         from .multibody_scene import validate_v2
         return validate_v2(scene)
     if scene.get("schema_version") == 3:  # collision scenes: see collision_scene.py

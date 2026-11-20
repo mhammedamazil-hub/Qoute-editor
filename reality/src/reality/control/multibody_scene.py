@@ -60,6 +60,10 @@ def validate_v2(scene: Any) -> Dict[str, Any]:
         errors.append(f"schema must be {SCHEMA!r}")
     if scene.get("schema_version") != SCHEMA_VERSION:
         errors.append(f"schema_version must be {SCHEMA_VERSION} for multi-body scenes")
+    if isinstance(scene.get("meshes"), list) and scene["meshes"]:
+        # refused here so the sphere solver never ignores meshes; the collision solver validates them
+        errors.append("meshes are not handled by the sphere solver; a schema v2 scene with meshes runs through "
+                      "simulate.multibody on the collision solver (collision_scene)")
     if not isinstance(scene.get("name"), str) or not scene.get("name"):
         errors.append("name must be a non-empty string")
     env = scene.get("environment")

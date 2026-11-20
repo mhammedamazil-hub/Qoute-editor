@@ -1,6 +1,8 @@
 """Scene schema v3: sphere and box bodies, planes, static triangle meshes, and explicit contact pairs.
 
-Versions 1 and 2 are unchanged (``scene.py``, ``multibody_scene.py``). A v3 document has ``"schema_version": 3``.
+Versions 1 and 2 keep their behaviour (``scene.py``, ``multibody_scene.py``). A v3 document has ``"schema_version": 3``.
+A v2 document with a non-empty ``meshes`` list is also validated and run here, under the v2 rules (spheres only, no
+``static`` flag); see ``is_v2_with_meshes``.
 Lists:
 
 - ``bodies``: ``{id, type: "sphere"|"box", ...}``.
@@ -70,16 +72,28 @@ def _quat_ok(q: Any) -> bool:
         and abs(math.sqrt(sum(float(x) * float(x) for x in q)) - 1.0) <= 1e-9
 
 
+def is_v2_with_meshes(scene: Any) -> bool:
+    """True for a schema v2 document that lists at least one mesh.
+
+    Such a document runs on this module's collision solver (not on the sphere solver of ``multibody_scene``), under
+    the v2 rules: sphere bodies only, no ``static`` flag. Documents without meshes keep the v2 sphere path unchanged.
+    """
+    return (isinstance(scene, dict) and scene.get("schema_version") == 2
+            and isinstance(scene.get("meshes"), list) and len(scene["meshes"]) > 0)
+
+
 def validate_v3(scene: Any) -> Dict[str, Any]:
-    """Return {"valid", "errors", "warnings", "counts"} for a v3 scene. Never raises."""
+    """Return {"valid", "errors", "warnings", "counts"} for a v3 scene, or a v2 scene with meshes. Never raises."""
     errors: List[str] = []
     warnings: List[str] = []
     if not isinstance(scene, dict):
         return {"valid": False, "errors": ["scene must be a JSON object"], "warnings": [], "counts": {}}
     if scene.get("schema") != SCHEMA:
         errors.append(f"schema must be {SCHEMA!r}")
-    if scene.get("schema_version") != SCHEMA_VERSION:
-        errors.append(f"schema_version must be {SCHEMA_VERSION} for collision scenes")
+    v2_mesh = is_v2_with_meshes(scene)
+    if scene.get("schema_version") != SCHEMA_VERSION and not v2_mesh:
+        errors.append(f"schema_version must be {SCHEMA_VERSION} for collision scenes "
+                      f"(or 2 when the scene lists meshes)")
     if not isinstance(scene.get("name"), str) or not scene.get("name"):
         errors.append("name must be a non-empty string")
     env = scene.get("environment")
@@ -128,6 +142,11 @@ def validate_v3(scene: Any) -> Dict[str, Any]:
             errors.append(f"{where} ({bid!r}): type must be 'sphere' or 'box'")
             continue
         kinds[bid] = kind
+        if v2_mesh and kind != "sphere":
+            errors.append(f"{where} ({bid!r}): a schema v2 scene with meshes allows sphere bodies only; "
+                          f"use schema_version 3 for boxes")
+        if v2_mesh and "static" in b:
+            errors.append(f"{where} ({bid!r}): schema v2 has no static flag; use schema_version 3")
         if kind == "sphere":
             if not (_is_num(b.get("radius")) and b["radius"] > 0):
                 errors.append(f"{where} ({bid!r}): radius must be a finite number > 0")

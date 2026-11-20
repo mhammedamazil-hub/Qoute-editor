@@ -176,7 +176,8 @@ def _simulate_run(scene, duration, dt=1e-4, record_interval=0.01, checkpoint=Non
 
 
 @_op("simulate.multibody",
-     "Run a multi-body scene headless: schema v2 (spheres, planes; returns reality.multibody_run) or schema v3 "
+     "Run a multi-body scene headless: schema v2 (spheres, planes; returns reality.multibody_run; with a non-empty "
+     "meshes list, sphere bodies and static meshes on the collision solver, returns reality.collision_run) or schema v3 "
      "(spheres and boxes, planes, static triangle meshes; returns reality.collision_run). Dispatch is by schema_version. "
      "Checkpoints and sweeps are not available for v2 or v3.",
      {"scene": {"type": "object", "description": "reality.scene document with schema_version 2"},
@@ -186,7 +187,7 @@ def _simulate_run(scene, duration, dt=1e-4, record_interval=0.01, checkpoint=Non
       "limits": LIMITS},
      ["scene", "duration"])
 def _simulate_multibody(scene, duration, dt=1e-4, record_interval=0.01, limits=None):
-    if isinstance(scene, dict) and scene.get("schema_version") == 3:
+    if isinstance(scene, dict) and (scene.get("schema_version") == 3 or CS.is_v2_with_meshes(scene)):
         return CS.run(scene, duration, dt=dt, record_interval=record_interval, limits=limits)
     return MBS.run(scene, duration, dt=dt, record_interval=record_interval, limits=limits)
 
