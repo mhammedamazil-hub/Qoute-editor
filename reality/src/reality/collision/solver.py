@@ -13,9 +13,10 @@ Per step (time step h, gravity g):
                approach velocity to -e v_n0 (or 0). Friction is the 2x2 tangential system, clamped to mu * lambda_n.
                Effective masses use the world inverse inertia tensor I^-1 = R diag(I_body^-1) R^T.
   4. move      x <- x + v h (dynamic bodies)
-  5. project   narrow phase at the new positions; for each listed pair, the deepest point is pushed out along its
-               normal (split by inverse mass for body-body pairs). Two passes.
-  6. rotate    exact rotation for the post-impulse body-frame angular velocity.
+  5. rotate    exact rotation for the post-impulse body-frame angular velocity.
+  6. project   narrow phase at the new positions; for each listed pair, the deepest point is pushed out along its
+               normal (split by inverse mass for body-body pairs). Passes repeat while some pair is deeper than
+               PROJECTION_TOL, at most PROJECTION_PASSES (40, measured; was 10 before the three-box fix).
 
 Box-box pairs (Phase 7, ``box_box.py``) use the same constraint and projection machinery: their contact points are
 ordinary contacts, and the solver does not treat them differently.
@@ -40,12 +41,15 @@ from .mesh import TriangleMesh
 from .narrow import TOUCH_TOL, Contact, box_corners_plane, sphere_box, sphere_plane, sphere_sphere
 
 DEFAULT_ITERATIONS = 8
-BOX_MANIFOLD_ITERATIONS = 64   # minimum sweeps for a step with a box-plane or box-box pair. Measured (dt 1e-4..2e-4):
-#                               8 sweeps leave ~0.2 rad/s of spurious spin on a landing; 16 leave 3e-2 rad/s at worst;
-#                               32 leave 2e-7 rad/s at worst but lose a stack contact on 38 of 500 resting steps (the
-#                               1 nm reporting threshold flickers); 64 reach 1e-16 and keep every contact. The cost is
-#                               ~2 ms per box-plane step (16 sweeps: ~0.9 ms). See BOX_BOX_RESEARCH.md.
-PROJECTION_PASSES = 10     # cap on position-projection passes per step (stacks converge in a few)
+BOX_MANIFOLD_ITERATIONS = 128  # minimum sweeps for a step with a box-plane or box-box pair. Measured (dt 2e-4,
+#                               BOX_BOX_STUDY.md section 1): 64 sweeps leave a two-box friction stack spinning at
+#                               5.3e-3 rad/s (128: 1.0e-8); a frictionless four-box stack at 4.9e-2 rad/s (128: 1.6e-11,
+#                               256: 5e-18). Earlier: 8 sweeps leave ~0.2 rad/s on a landing; 32 lose a stack contact on
+#                               38 of 500 resting steps. A four-box stack WITH friction does not converge with sweeps
+#                               (2.0e-2 rad/s at 256): that is a separate open defect, not fixed by this constant.
+PROJECTION_PASSES = 40     # cap on position-projection passes per step. Measured: a three-box impact at dt 1/1008 s
+#                            (24 fps bake) converges linearly, about 0.75 contraction per pass: 10 passes leave 1.3e-6 m
+#                            (refused by the 1e-6 m check), 16 leave 5.9e-7, 24 leave 5.8e-8, 40 leave 5.9e-10 m.
 PROJECTION_TOL = 1e-12      # m; depths below this are float rounding of positions of order 1 m (metres)
 PAIR_KINDS = ("sphere_sphere", "sphere_box", "sphere_plane", "box_plane", "sphere_mesh", "box_box")
 
@@ -308,7 +312,7 @@ def step(bodies: Sequence[Body], specs: Sequence[PairSpec], h: float, gravity: V
             active.append((si, cts))
 
     # 3. solve. Multi-point box manifolds couple their normal constraints through the body's rotation; Gauss-Seidel
-    #    needs about 64 sweeps to converge there (see BOX_MANIFOLD_ITERATIONS). Sphere-only steps keep ``iterations``.
+    #    needs about 128 sweeps to converge there (see BOX_MANIFOLD_ITERATIONS). Sphere-only steps keep ``iterations``.
     if any(s.kind in ("box_plane", "box_box") for s in specs):
         iterations = max(iterations, BOX_MANIFOLD_ITERATIONS)
     iw = [b.inv_inertia_world() for b in bodies]

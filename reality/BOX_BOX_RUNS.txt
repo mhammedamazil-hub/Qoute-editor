@@ -1,0 +1,102 @@
+# Raw output of the Phase 7 runs cited in BOX_BOX_STUDY.md (copied verbatim from the run logs; not regenerated here).
+# Each block states the code state it was run on. Re-run the named script to reproduce.
+
+## A. Stack factors (cap 40; sweeps set explicitly by the script; BOX_MANIFOLD default was 64 at the time, not used)
+# script: /tmp/stack2_factors.py (sweep_bench.run, sweeps = 64 as written). Ran before the 128 change.
+mu0.5 64 sweeps (ref)              pen 1.00e-12 persist 1.000 tail_spin 5.35e-03 up_w_world=(-2.7e-07,+7.0e-07,+2.4e-07) xy_up=(+2.3e-07,-3.8e-07)
+mu0 64 sweeps                      pen 5.67e-13 persist 1.000 tail_spin 1.19e-18 up_w_world=(+3.1e-19,+6.6e-19,+3.2e-34) xy_up=(-3.5e-18,-8.3e-19)
+mu0.5 64, projection off           pen 4.10e-07 persist 1.000 tail_spin 1.73e-03 up_w_world=(-2.6e-07,-1.4e-06,+4.0e-11) xy_up=(-7.4e-07,+2.3e-07)
+mu0 64, projection off             pen 7.43e-08 persist 1.000 tail_spin 1.19e-18 up_w_world=(+3.1e-19,+6.6e-19,+3.2e-34) xy_up=(-3.5e-18,-8.3e-19)
+
+## B. Stack4 at mu 0 / 0.5 (cap 40; sweeps set explicitly by the script). script: /tmp/stack4_mu0.py SWEEPS MU [PASSES]
+# (64 sweeps, projection on, mu 0)
+stack4 sweeps 64 mu 0.0: pen 1.41e-08 persist [0.999, 0.998, 0.984, 1.0] tail_spin 4.89e-02 lateral 6.20e-05
+# (64 sweeps, projection off, mu 0)
+stack4 sweeps 64 mu 0.0: pen 6.54e-07 persist [1.0, 1.0, 1.0, 1.0] tail_spin 1.90e-05 lateral 2.66e-05
+# (64 sweeps, mu 0.5)
+stack4 sweeps 64 mu 0.5: pen 1.08e-08 persist [0.87, 0.862, 0.98, 1.0] tail_spin 2.74e-02 lateral 8.89e-05
+# (128 sweeps, mu 0)
+stack4 sweeps 128 mu 0.0: pen 1.13e-10 persist [1.0, 1.0, 1.0, 1.0] tail_spin 1.56e-11 lateral 2.77e-09
+# (256 sweeps, mu 0)
+stack4 sweeps 256 mu 0.0: pen 1.13e-10 persist [1.0, 1.0, 1.0, 1.0] tail_spin 5.32e-18 lateral 3.69e-16
+# (256 sweeps, mu 0.5)
+stack4 sweeps 256 mu 0.5: pen 9.13e-09 persist [0.865, 0.958, 0.965, 1.0] tail_spin 2.04e-02 lateral 4.64e-05
+
+## C. Sweep study (cap 40; the script sets BOX_MANIFOLD_ITERATIONS per run)
+flat           sweeps   8: max_pen 0.000e+00  z_err 1.970e-07  persist 1.000  tail_spin 1.269e-02  wall 3.5s
+rot_land       sweeps   8: max_pen 8.911e-13  z_err 1.935e-07  persist 1.000  tail_spin 1.436e-02  wall 3.4s
+stack2         sweeps   8: max_pen 9.995e-13  z_err 3.112e-07  persist 0.850  tail_spin 9.854e-03  wall 16.7s
+stack4         sweeps   8: max_pen 4.201e-08  z_err 1.066e-06  persist 0.643  tail_spin 2.445e-02  wall 95.5s
+slide          sweeps   8: max_pen 0.000e+00  z_err 9.996e-05  persist 1.000  tail_spin 4.109e-04  wall 1.7s
+mixed_sphere   sweeps   8: max_pen 9.976e-13  z_err 1.965e-07  persist 1.000  tail_spin 1.037e-02  wall 6.6s
+flat           sweeps  16: max_pen 0.000e+00  z_err 2.370e-07  persist 1.000  tail_spin 2.200e-07  wall 5.1s
+rot_land       sweeps  16: max_pen 0.000e+00  z_err 1.667e-07  persist 1.000  tail_spin 2.936e-04  wall 5.6s
+stack2         sweeps  16: max_pen 1.000e-12  z_err 2.990e-07  persist 0.915  tail_spin 9.443e-03  wall 21.3s
+stack4         sweeps  16: max_pen 1.820e-08  z_err 1.796e-06  persist 0.693  tail_spin 2.587e-02  wall 105.0s
+slide          sweeps  16: max_pen 9.992e-13  z_err 9.998e-05  persist 1.000  tail_spin 2.200e-07  wall 2.6s
+mixed_sphere   sweeps  16: max_pen 9.377e-13  z_err 1.957e-07  persist 1.000  tail_spin 4.912e-04  wall 9.4s
+flat           sweeps  32: max_pen 0.000e+00  z_err 6.265e-08  persist 1.000  tail_spin 8.117e-11  wall 8.6s
+rot_land       sweeps  32: max_pen 0.000e+00  z_err 8.350e-08  persist 1.000  tail_spin 3.113e-10  wall 8.3s
+stack2         sweeps  32: max_pen 1.000e-12  z_err 3.417e-07  persist 0.952  tail_spin 6.673e-03  wall 31.9s
+stack4         sweeps  32: max_pen 1.079e-08  z_err 1.294e-06  persist 0.799  tail_spin 2.419e-02  wall 124.4s
+slide          sweeps  32: max_pen 9.992e-13  z_err 9.998e-05  persist 1.000  tail_spin 8.117e-11  wall 4.2s
+mixed_sphere   sweeps  32: max_pen 9.570e-13  z_err 8.482e-10  persist 1.000  tail_spin 1.043e-07  wall 15.2s
+flat           sweeps  64: max_pen 0.000e+00  z_err 6.266e-08  persist 1.000  tail_spin 1.123e-17  wall 15.3s
+rot_land       sweeps  64: max_pen 0.000e+00  z_err 8.354e-08  persist 1.000  tail_spin 6.562e-17  wall 14.8s
+stack2         sweeps  64: max_pen 1.000e-12  z_err 1.767e-07  persist 1.000  tail_spin 5.345e-03  wall 47.6s
+stack4         sweeps  64: max_pen 1.082e-08  z_err 4.882e-07  persist 0.862  tail_spin 2.736e-02  wall 161.7s
+slide          sweeps  64: max_pen 0.000e+00  z_err 9.998e-05  persist 1.000  tail_spin 1.062e-15  wall 7.1s
+mixed_sphere   sweeps  64: max_pen 6.203e-13  z_err 6.199e-13  persist 1.000  tail_spin 3.997e-14  wall 28.6s
+flat           sweeps 128: max_pen 0.000e+00  z_err 6.266e-08  persist 1.000  tail_spin 2.956e-19  wall 22.9s
+rot_land       sweeps 128: max_pen 0.000e+00  z_err 8.354e-08  persist 1.000  tail_spin 1.238e-18  wall 21.7s
+stack2         sweeps 128: max_pen 9.926e-13  z_err 4.154e-09  persist 1.000  tail_spin 1.002e-08  wall 89.8s
+stack4         sweeps 128: max_pen 1.075e-08  z_err 1.151e-06  persist 0.811  tail_spin 2.304e-02  wall 259.8s
+slide          sweeps 128: max_pen 0.000e+00  z_err 9.998e-05  persist 1.000  tail_spin 1.062e-15  wall 10.1s
+mixed_sphere   sweeps 128: max_pen 6.202e-13  z_err 6.202e-13  persist 1.000  tail_spin 1.488e-16  wall 44.8s
+SWEEP_DONE exit=0
+
+## D. Angular residual (tools/angular_residual_study.py; identical values to the earlier run)
+oblique_asym_impact  dt 1.00e-04 contact_steps    2  dL@x_pred 1.29e-13  dL@x_start 1.29e-05  max|dP| 2.22e-16
+oblique_asym_impact  dt 5.00e-05 contact_steps    2  dL@x_pred 1.61e-14  dL@x_start 6.43e-06  max|dP| 2.22e-16
+oblique_asym_impact  dt 2.50e-05 contact_steps    2  dL@x_pred 2.00e-15  dL@x_start 3.21e-06  max|dP| 2.22e-16
+face_offset_impact   dt 1.00e-04 contact_steps    1  dL@x_pred 1.16e-17  dL@x_start 1.08e-05  max|dP| 0.00e+00
+face_offset_impact   dt 5.00e-05 contact_steps    1  dL@x_pred 6.94e-18  dL@x_start 5.42e-06  max|dP| 5.55e-17
+face_offset_impact   dt 2.50e-05 contact_steps    1  dL@x_pred 1.23e-17  dL@x_start 2.71e-06  max|dP| 0.00e+00
+frictional_pass      dt 1.00e-04 contact_steps   74  dL@x_pred 2.08e-17  dL@x_start 1.57e-05  max|dP| 0.00e+00
+frictional_pass      dt 5.00e-05 contact_steps    3  dL@x_pred 4.86e-17  dL@x_start 7.87e-06  max|dP| 0.00e+00
+frictional_pass      dt 2.50e-05 contact_steps  197  dL@x_pred 1.42e-17  dL@x_start 3.94e-06  max|dP| 0.00e+00
+
+## E. Column10 projection probe (cap 40, BOX_MANIFOLD 64 at the time; 0.6 s run, 6000 steps; script /tmp/col_probe.py)
+steps 6000 wall 312.2 worst (2.6025050194194987e-06, 322)
+steps above 1e-6: 2
+(322, 2.6025050194194987e-06, [0.100002, 0.300004, 0.500003, 0.700006], 0.0709)
+(325, 1.3184303113700224e-06, [0.100001, 0.3, 0.5, 0.7], 0.0605)
+PROBE_DONE 0
+
+## F. Column10 spec-order and cap comparison (first 400 steps, dt 1e-4; script /tmp/col_order.py MODE CAP STEPS; BOX_MANIFOLD 64)
+mode current     cap  40 steps 400 worst 2.603e-06 at 322  steps>1e-6 [322, 325]  wall 7.1s
+mode floor_first cap  40 steps 400 worst 7.244e-07 at 322  steps>1e-6 []  wall 7.2s
+mode current     cap  80 steps 400 worst 9.598e-07 at 322  steps>1e-6 []  wall 8.2s
+
+## G. Wall10 speed trace (cap 40, BOX_MANIFOLD 64; script /tmp/wall_probe.py, magnitude of velocity)
+peak speed 11.0077 at step 9999 body b0 t 0.9999
+first step with speed > 10.5: (9415, 'b0', 10.5007, [-5.0, 0.0, -9.234], [-3.935, -0.057, -4.148], ())
+# check: sqrt(5^2 + 9.80665^2) = 11.007742 (free fall plus the e = 0.5 reflection of 10 m/s)
+
+## H. N = 500 timing (2 steps each; box_stress.timing). BOX_MANIFOLD_ITERATIONS was 64 for these runs (before the change to 128).
+# cap 10 vs cap 40 on the same code, same scene (script: inline call to box_stress.timing(500, 2)):
+cap 10 s_per_step 37.92
+cap 40 s_per_step 64.4
+# cap 40, two separate runs:
+rep 0 63.61083161830902
+rep 1 63.93984234333038
+# Stress run at the shipped setting (128 sweeps, cap 40) is in BOX_BOX_STRESS numbers in BOX_BOX_STUDY.md section 4.
+
+## I. pile100 (100 boxes, dt 1e-4, 0.25 s, 128 sweeps, cap 40; tools/box_stress.py pile100)
+# I.1 First version: boxes released with zero velocity on a 10x10 grid. FREE FALL, no relative velocity: the boxes fall
+# together, so no contact impulse is applied. This run tests the contact detection overhead only, not impulses.
+{"name": "pile100", "bodies": 100, "pairs_listed": 5050, "dt": 0.0001, "steps": 2500, "wall_s": 813.679482222, "steps_per_s": 3.072462873, "max_penetration_all_m": 0.0, "max_penetration_tail_m": 0.0, "mean_active_pairs_per_step": 34.0008, "nonfinite_steps": 0, "max_speed_final_m_s": 2.4516625, "max_spin_final_rad_s": 0.0, "energy_start_J": 991.737089738, "energy_end_J": 991.616924843, "energy_end_over_start": 0.999878834}
+# Check: max speed 2.4517 = g * 0.25 s (free fall). Probe (/tmp/p100_probe.py, 300 steps): 36 touching pairs at step 0,
+# max |omega| over 300 steps = 0.0, max |v| 0.294 m/s, min z 0.4990 (the touching pairs are position-level and separating).
+# I.2 Final version: same grid and heights, with random initial velocities (each component uniform in [-1, 1] m/s). Impacts occur.
+{"name": "pile100", "bodies": 100, "pairs_listed": 5050, "dt": 0.0001, "steps": 2500, "wall_s": 1409.002803802, "steps_per_s": 1.774304489, "max_penetration_all_m": 0.0, "max_penetration_tail_m": 0.0, "mean_active_pairs_per_step": 4.3072, "nonfinite_steps": 0, "max_speed_final_m_s": 3.387178551, "max_spin_final_rad_s": 10.826527492, "energy_start_J": 1050.356259499, "energy_end_J": 1008.169867139, "energy_end_over_start": 0.959836111}

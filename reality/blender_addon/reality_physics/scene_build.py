@@ -14,8 +14,8 @@ meshes are marked). Scenes with boxes or static bodies are written as schema v3.
 headless kernel through ``simulate.multibody`` (the same entry point as the CLI and the API), never by Blender.
 
 Colliders (Phase 6). Spheres and boxes can be dynamic or static; triangle meshes are static only. Static bodies and
-meshes are not keyed: they do not move. Box-box and box-mesh contacts are not implemented in the kernel, so a bake
-that needs one is refused with the kernel's reason.
+meshes are not keyed: they do not move. Box-box contacts are implemented in the kernel. Box-mesh contacts are not
+implemented, so a bake that needs one is refused with the kernel's reason.
 
 Contact coefficients. Each Blender object carries its own friction and restitution. A contact between two objects
 uses the smaller of their two values. This is a modelling choice made for the add-on, not a physical law, and it is

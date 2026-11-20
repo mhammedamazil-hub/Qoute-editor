@@ -47,6 +47,11 @@ Priority follows the brief's rule: working, validated systems before broad but i
 - **76 validation cases, 0 failing.** Pytest: 248 tests, which are the 76 validation cases, 2 registry structural tests,
   7 research-gate tests, and 163 unit and regression tests (counted by `pytest --collect-only`).
 
+### M-1.3: Box-box collision (Phase 7 of the collision geometry milestone) - **Done with stated limits**
+- Kernel, solver wiring, 36 tests (`tests/test_collision_box_box*.py`), 13 Blender checks, and measurements in
+  `BOX_BOX_STUDY.md`. Open: box-mesh (not started), broad phase (not started), multi-box stack spin (not isolated).
+- Next candidates, in order of measured need: a broad phase (500 boxes at 37 s per step); the stack spin; box-mesh.
+
 ### M-1.2: Headless AI control layer (unreleased) - **Partial**
 - `control/`: operation registry shared by CLI, Python API and MCP; scene schema v1; headless run, checkpoint, sweep;
   inspection; CPU PNG preview; export; limits and error codes. Status per item: `AI_CAPABILITY_MATRIX.md`.

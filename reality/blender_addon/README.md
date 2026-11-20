@@ -52,8 +52,8 @@ the `reality` package. Enable it under Edit > Preferences > Add-ons (name "Reali
 - A mirrored object (negative scale) or a sheared transform: apply the transform first (Ctrl+A).
 - A parented marked object: unparent it first.
 - A triangle mesh with modifiers: apply them first.
-- A dynamic box touching a triangle mesh, or two dynamic boxes: box-mesh and box-box contacts are not implemented in
-  the kernel.
+- A dynamic box touching a triangle mesh: box-mesh contacts are not implemented in the kernel. Two dynamic boxes are
+  supported (box-box, Phase 7).
 - A static body with a non-zero velocity or omega, a dynamic body with no material, and invalid meshes (the kernel's
   mesh rules apply).
 

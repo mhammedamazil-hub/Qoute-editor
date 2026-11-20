@@ -91,8 +91,9 @@ geometry is in `src/reality/collision/` (see `COLLISION_GEOMETRY.md`).
   not colliding. A pair may be listed once only, and a body cannot contact itself. Two static bodies cannot form a
   contact.
 
-Supported pairs: sphere-sphere, sphere-box, sphere-plane, box-plane, sphere-mesh. Box-box and box-mesh are rejected with
-`unsupported` and the pair named in the message. They are not ignored.
+Supported pairs: sphere-sphere, sphere-box, sphere-plane, box-plane, box-box, sphere-mesh. Box-mesh is rejected with
+`unsupported` and the pair named in the message. It is not ignored. Box-box contacts are SAT with clipping (up to 8
+contact points per pair, not reduced); see `COLLISION_GEOMETRY.md` and `BOX_BOX_STUDY.md`.
 
 Limits: 256 bodies, 64 planes, 2,048 contacts, the mesh limits above. Exceeding a limit is a `schema_error` with the
 count and the limit in the message.

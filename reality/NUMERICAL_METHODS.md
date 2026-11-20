@@ -96,8 +96,10 @@ enforced in code. The principle is: accuracy and performance trade-offs are expl
 ## 10. Collision and contact (general solver)
 
 - Predict, detect at predicted positions, then sequential impulses with Coulomb friction (per-contact 2x2 tangential
-  block), then position projection (two passes), then the quaternion update. The order matches the existing sphere
-  solver, so the two agree (section 5 of `COLLISION_GEOMETRY.md`: below 1e-11 for single bodies and pairs, 2.6e-10 m for a
+  block), then the exact rotation, then position projection (repeated to `PROJECTION_TOL` 1e-12 m, at most 40 passes;
+  the cap was 10 until a three-box impact at the bake step needed more, see `BOX_BOX_STUDY.md` §5). Box-containing steps
+  use at least 128 sweeps (`BOX_MANIFOLD_ITERATIONS`, measured in `BOX_BOX_STUDY.md` §1). The order matches the existing
+  sphere solver, so the two agree (section 5 of `COLLISION_GEOMETRY.md`: below 1e-11 for single bodies and pairs, 2.6e-10 m for a
   two-sphere stack).
 - Contact normals point from `a` to `b`. Edge and vertex contacts dominated by a strictly closer face contact are removed
   (internal-edge handling). Normals within cos > 0.999 are merged per contact cluster. The threshold is a modelling
@@ -108,4 +110,7 @@ enforced in code. The principle is: accuracy and performance trade-offs are expl
   test meshes (section 7 of `COLLISION_GEOMETRY.md`).
 - First-order accuracy: the first-rebound apex error of an elastic bounce is about 4.4 dt metres (4.43e-3 m at dt 1e-3,
   4.43e-4 m at 1e-4, 4.43e-5 m at 1e-5).
-- No continuous collision detection, no warm starting. Tunnelling is not detected.
+- No continuous collision detection, no warm starting (tried; not adopted, `BOX_BOX_STUDY.md` §1.1). Tunnelling is not detected.
+- Quaternion update: rotation is exact for the post-impulse body-frame angular velocity, including the gyroscopic
+  term. A missing gyroscopic term was found and fixed in Phase 7 (free-flight error 1.04 rad/s before, 3e-13 after,
+  `BOX_BOX_STUDY.md` §2). `rigidbody.norm` and `rigidbody.dot` sum three components only; use `rigidbody.quat_norm` for quaternions.

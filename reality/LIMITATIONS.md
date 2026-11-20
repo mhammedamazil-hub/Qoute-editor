@@ -24,7 +24,7 @@ be read before relying on any result. The project rule is never to claim realism
 | Gravity | Newtonian only. No general relativity. No J2 or other non-spherical terms. Spherical bodies only. |
 | Relativity | Not modelled. Negligible at everyday speeds, but not accounted for at relativistic speeds. |
 | Quantum mechanics | Not simulated. Quantum effects enter only through measured material constants. |
-| Mechanics | Point masses, 1D collisions, and one 3D rigid body's rotation (`rigidbody.py`: torque-free and applied-torque cases). Multi-body: spheres only, sphere-sphere and sphere-plane contacts with one contact point each (`multibody.py`). No joints, no contact manifolds, no continuous collision detection (fast spheres can tunnel), no warm starting, so tall stacks drift. Schema v3 adds boxes (box-plane by corner contacts, sphere-box) and static triangle meshes; box-box and box-mesh contacts are not implemented (see section 5b). |
+| Mechanics | Point masses, 1D collisions, and one 3D rigid body's rotation (`rigidbody.py`: torque-free and applied-torque cases). Multi-body: spheres only, sphere-sphere and sphere-plane contacts with one contact point each (`multibody.py`). No joints, no contact manifolds, no continuous collision detection (fast spheres can tunnel), no warm starting, so tall stacks drift. Schema v3 adds boxes (box-plane by corner contacts, sphere-box), box-box contacts (Phase 7, see section 5b) and static triangle meshes; box-mesh contacts are not implemented. |
 | Drag | Constant drag coefficient. No Reynolds-number dependence, no lift, no spin, no added mass. |
 | Projectiles | No drag. |
 | Pendulum | Single rigid pendulum, no damping, no driving. |
@@ -83,10 +83,10 @@ be read before relying on any result. The project rule is never to claim realism
 
 ### 5a. Blender add-on limits
 
-- Blender 5.0.1 only, tested headlessly with the `bpy` module (`tools/blender_smoke.py`, 32 checks). The viewport panel
+- Blender 5.0.1 only, tested headlessly with the `bpy` module (`tools/blender_smoke.py`, 47 checks). The viewport panel
   and GL paths are not verified.
-- Dynamic bodies: spheres and boxes. Triangle mesh colliders: static only. Box-box and box-mesh contacts are not
-  implemented in the kernel; a bake that needs one is refused with that reason.
+- Dynamic bodies: spheres and boxes. Triangle mesh colliders: static only. Box-box contacts are implemented in the
+  kernel; box-mesh contacts are not, and a bake that needs one is refused with that reason.
 - Sphere and box bodies must have their origin at the geometric centre (the keyframes move the origin). Mirrored
   (negative scale), sheared, parented and modified (unapplied modifiers on a mesh collider) objects are refused.
 - Baking overwrites existing location and rotation keys of dynamic bodies. Static bodies and meshes are not keyed.
@@ -97,7 +97,25 @@ be read before relying on any result. The project rule is never to claim realism
 
 ### 5b. Collision geometry limits (schema v3)
 
-- Box-box and box-mesh contacts are not implemented. Validation refuses them with `unsupported`.
+- Box-mesh contacts are not implemented. Validation refuses them with `unsupported`.
+- Box-box contacts are implemented. Their limits (measured, `BOX_BOX_STUDY.md`; section 5b):
+  - Stacks, sweeps and spin (measured, `BOX_BOX_STUDY.md` §1.2): a frictionless four-box stack spins at 4.9e-2 rad/s
+    with 64 sweeps and converges with 128 (1.6e-11) and 256 (5e-18). A four-box stack WITH friction still spins at about
+    2e-2 rad/s at 256 sweeps. The cause of the frictional spin is not isolated. Open.
+  - Sweeps: the solver uses 128 sweeps (`BOX_MANIFOLD_ITERATIONS`), the smallest tested count that converges the two-box
+    friction stack (5.3e-3 rad/s at 64; 1.0e-8 at 128) and the frictionless four-box stack. Cost: pile10 runs at 33
+    steps/s instead of 59 at 64 sweeps.
+  - Projection order: position projection is Gauss–Seidel over listed pairs, so the result depends on the order of
+    contacts. In a 10-box tower impact (64 sweeps) the peak was 2.6e-6 m as listed and 7.2e-7 m with the floor pair
+    first. At 128 sweeps the same scene peaks at 7.1e-7 m. Open (`BOX_BOX_STUDY.md` §5.2).
+  - pile10 (3 spheres, 7 random boxes) is not settled after 3 s: spin 8.5 rad/s, speed 0.57 m/s, zero penetration (§4).
+  - Contact points are not reduced: a box pair gives up to 8 points (measured maximum over 20,000 random pairs).
+  - Angular momentum of internal contacts is conserved at the predicted positions to rounding. At the start-of-step
+    centres the residual is first order in dt (§2).
+  - No broad phase: every pair is tested every step. N = 100 costs 0.32 s per step and N = 500 costs about 62 s per step
+    (128 sweeps, cap 40; §4). The N = 500 scene was timed for two steps, not simulated for a long run.
+  - No continuous collision detection: a box can pass through a thinner box within one step at high speed.
+  - Warm starting was tried; the results were mixed and it is not in the solver (§1.1).
 - Box-plane uses corner contacts only (no face patch). A box on a face is less accurate than a clipped manifold.
 - No continuous collision detection: fast bodies can pass through thin meshes or boxes.
 - No warm starting. Tall stacks drift; the existing two-sphere stack test reports 4e-8 m penetration.

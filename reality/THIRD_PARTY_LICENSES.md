@@ -41,7 +41,7 @@ These were identified in the research (`SCIENCE_RESEARCH.md`) and are **not** in
 
 | Component | Candidate use | Licence (verified) | Source checked | Compatibility note |
 |---|---|---|---|---|
-| Blender Python module `bpy` 5.0.1 (PyPI wheel) | Headless smoke test only (`tools/blender_smoke.py`); not bundled | GPL-3.0 (wheel `METADATA`); Blender core source headers say GPL-2.0-or-later (§5.2). The two differ. | pypi.org wheel METADATA | Copyleft. Check before distributing any add-on that imports `bpy`. |
+| Blender Python module `bpy` 5.0.1 (PyPI wheel) | Headless smoke test only (`tools/blender_smoke.py`). Not bundled, not imported by the kernel or the add-on's core. Not distributed by this project. | The wheel's own `METADATA` says `License: GPL-3.0`, and the wheel ships no licence file (checked in Phase 7). An earlier note cites GPL-2.0-or-later source headers; that was not re-checked (no Blender source tree is in this workspace). Unresolved: GPL-3.0 per the wheel, GPL-2.0-or-later per the earlier note. | pypi.org wheel `bpy-5.0.1.dist-info/METADATA` | Copyleft. Do not bundle `bpy` without resolving this. The add-on itself runs inside Blender; its own licence is not stated here. |
 | Meep | FDTD electromagnetics and optics reference | GPL-2.0 | github.com/NanoComp/meep | Copyleft; linking would make the combined work GPL-2.0 |
 | OpenFOAM | CFD and conjugate heat transfer | GPL-3.0 | openfoam.org; github.com/openfoam/openfoam-dev | Copyleft; use only as an external process |
 | FEniCS dolfinx | FEM for heat, phase change, fracture | LGPL-3.0 with GPL-3.0 components (COPYING.LESSER, COPYING) | github.com/FEniCS/dolfinx | LGPL allows linking; GPL components apply to some files. Check per file before use |

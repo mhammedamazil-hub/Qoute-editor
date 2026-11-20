@@ -12,11 +12,14 @@ Phase 6 (colliders), after the checks above:
 - an OBJ import through the add-on's own operator, then "Mark as collider" with the triangle-mesh shape (static);
 - a sphere bakes onto the mesh floor and rests at its radius; a static box and the mesh are not keyed;
 - a dynamic box bakes onto a plane and rests at its half height; a rotated sphere bakes (float32 rotation);
-- refusals: a mirrored object, an off-centre origin, and a dynamic box with a mesh floor (box-mesh is not implemented).
+- refusals: a mirrored object, an off-centre origin, and a dynamic box with a mesh floor (box-mesh is not implemented);
+- Phase 7 box-box in Blender objects: a box rotated 30 deg rests on its face with a unit quaternion; boxes of different
+  size; a three-box stack; a dynamic box on a static box (static box not keyed).
 Exit code 0 means all checks passed. The script prints every check.
 """
 
 import os
+import math
 import sys
 import tempfile
 from pathlib import Path
@@ -279,6 +282,100 @@ try:
 except ValueError as err:
     refused = "box-mesh" in str(err)
 check("dynamic box with a mesh floor is refused with the box-mesh reason", refused)
+
+# ---------------------------------------------------------------- Phase 7: box-box in real Blender objects
+_clear()
+bpy.ops.mesh.primitive_plane_add(size=10.0, location=(0.0, 0.0, 0.0))
+_select(bpy.context.active_object)
+bpy.ops.reality.mark_plane()
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(0.0, 0.0, 0.5))
+rbox = bpy.context.active_object
+rbox.name = "RotBox"
+rbox.rotation_euler = (0.0, 0.0, math.radians(30.0))
+bpy.context.view_layer.update()
+_select(rbox)
+bpy.ops.reality.mark_collider(shape="BOX", static=False)
+r = bpy.ops.reality.bake()
+check("rotated box (30 deg about z) bakes", r == {"FINISHED"}, str(r))
+scn.frame_set(49)
+z_rb = rbox.matrix_world.translation.z
+check("rotated box rests on its face at the half height (0.1 m)", abs(z_rb - 0.1) < 1e-4, f"z = {z_rb:.6f}")
+qn = rbox.matrix_world.to_quaternion().magnitude
+check("rotated box quaternion after bake is unit length (float32 tolerance 1e-6)", abs(qn - 1.0) < 1e-6, f"|q| = {qn:.9f}")
+scn.frame_set(1)
+
+_clear()
+bpy.ops.mesh.primitive_plane_add(size=10.0, location=(0.0, 0.0, 0.0))
+_select(bpy.context.active_object)
+bpy.ops.reality.mark_plane()
+bpy.ops.mesh.primitive_cube_add(size=0.4, location=(0.0, 0.0, 0.2))
+big = bpy.context.active_object
+big.name = "BigBox"
+bpy.context.view_layer.update()
+_select(big)
+bpy.ops.reality.mark_collider(shape="BOX", static=False)
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(0.0, 0.0, 0.8))
+small = bpy.context.active_object
+small.name = "SmallBox"
+bpy.context.view_layer.update()
+_select(small)
+bpy.ops.reality.mark_collider(shape="BOX", static=False)
+r = bpy.ops.reality.bake()
+check("two boxes of different size bake", r == {"FINISHED"}, str(r))
+check("both boxes are keyed", _keyed(big) and _keyed(small))
+scn.frame_set(49)
+zb, zs = big.matrix_world.translation.z, small.matrix_world.translation.z
+check("big box rests on the plane at 0.2 m", abs(zb - 0.2) < 1e-4, f"z = {zb:.6f}")
+check("small box rests on the big box at 0.4 + 0.1 = 0.5 m", abs(zs - 0.5) < 1e-3, f"z = {zs:.6f}")
+scn.frame_set(1)
+
+_clear()
+bpy.ops.mesh.primitive_plane_add(size=10.0, location=(0.0, 0.0, 0.0))
+_select(bpy.context.active_object)
+bpy.ops.reality.mark_plane()
+stack = []
+# the bottom box rests on the plane; two boxes start above it and fall onto the stack
+for i, zz in enumerate((0.1, 0.65, 0.85)):
+    bpy.ops.mesh.primitive_cube_add(size=0.2, location=(0.0, 0.0, zz))
+    o = bpy.context.active_object
+    o.name = f"Stack{i}"
+    bpy.context.view_layer.update()
+    _select(o)
+    bpy.ops.reality.mark_collider(shape="BOX", static=False)
+    stack.append(o)
+r = bpy.ops.reality.bake()
+check("three-box stack bakes", r == {"FINISHED"}, str(r))
+scn.frame_set(49)
+zs3 = [o.matrix_world.translation.z for o in stack]
+check("three-box stack (two boxes dropped onto a box) rests at 0.1, 0.3, 0.5 m (tolerance 1e-3)",
+      all(abs(z - t) < 1e-3 for z, t in zip(zs3, (0.1, 0.3, 0.5))), f"z = {[round(z, 6) for z in zs3]}")
+scn.frame_set(1)
+
+_clear()
+bpy.ops.mesh.primitive_plane_add(size=10.0, location=(0.0, 0.0, 0.0))
+_select(bpy.context.active_object)
+bpy.ops.reality.mark_plane()
+bpy.ops.mesh.primitive_cube_add(size=0.4, location=(0.0, 0.0, 0.2))
+platform = bpy.context.active_object
+platform.name = "Platform"
+bpy.context.view_layer.update()
+_select(platform)
+bpy.ops.reality.mark_collider(shape="BOX", static=True)
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(0.0, 0.0, 0.8))
+falling = bpy.context.active_object
+falling.name = "Falling"
+bpy.context.view_layer.update()
+_select(falling)
+bpy.ops.reality.mark_collider(shape="BOX", static=False)
+r = bpy.ops.reality.bake()
+check("dynamic box on a static box bakes", r == {"FINISHED"}, str(r))
+check("static box is not keyed, dynamic box is", (not _keyed(platform)) and _keyed(falling))
+scn.frame_set(49)
+check("static box does not move", abs(platform.matrix_world.translation.z - 0.2) < 1e-6,
+      f"z = {platform.matrix_world.translation.z:.6f}")
+check("dynamic box rests on the static box top (0.4 + 0.1 m)",
+      abs(falling.matrix_world.translation.z - 0.5) < 1e-3, f"z = {falling.matrix_world.translation.z:.6f}")
+scn.frame_set(1)
 
 reality_physics.unregister()
 print("RESULT:", "ALL PASSED" if not failures else f"{len(failures)} FAILED: {failures}")

@@ -1,6 +1,7 @@
 # Collision geometry (PROJECT REALITY, milestone "collision geometry foundation")
 
-Status: all phases implemented. Box-box and box-mesh contacts are not implemented; they are refused by validation with a
+Status: all phases implemented. Box-box contacts are implemented (SAT with clipping; Phase 7, see `BOX_BOX_STUDY.md`,
+`BOX_BOX_MATHEMATICS.md`, `BOX_BOX_RESEARCH.md`). Box-mesh contacts are not implemented; they are refused by validation with a
 stated reason. Phase 6 (Blender) is headless-tested and checked under `bpy` 5.0.1 (section 11); the viewport is not checked.
 
 ## 0. Audit (before implementation)
@@ -84,7 +85,7 @@ without edits, except the registry count (section 6).
 | sphere-box | Implemented, sphere inside and outside the box | `test_collision_narrow.py` (outside checked against an exact clamp reference; inside case) |
 | box-plane | Implemented, corner contacts only | `test_collision_narrow.py`; `test_collision_solver.py` (rest, friction) |
 | sphere-mesh (static) | Implemented with validation, BVH, reduction and the dominance rule | `test_collision_mesh.py`; `test_collision_solver.py` (no seam drift, bounce, rest) |
-| box-box | **Not implemented.** Refused by validation: "unsupported pair box-box". No axis-aligned-only shortcut exists. SAT with clipping is the expected candidate for a later milestone. | `test_collision_scene.py` |
+| box-box | **Implemented** (Phase 7). 15-axis SAT over the two faces and nine edge pairs, face contacts by Sutherland–Hodgman clipping of the incident face (up to 8 points, not reduced), edge–edge by closest points. Rotated boxes are supported; no axis-aligned shortcut. Checked against a dense 20,000-direction separation search, a MuJoCo 4.0.1 probe, and physics tests (free flight, rest, stacks, impacts). | `test_collision_box_box.py` (14), `test_collision_box_box_physics.py` (14), `test_collision_box_box_edge_cases.py` (8) |
 | box-mesh | **Not implemented.** Refused by validation. | `test_collision_scene.py` |
 
 Box-plane is a corner model. A box resting edge-on or tilted is represented by its corners below the plane. It has no
@@ -182,7 +183,7 @@ triangles in total. They are resource caps chosen from the figures above (two me
 
 ## 8. Known bugs and limitations
 
-- Box-box and box-mesh contacts are not implemented.
+- Box-mesh contacts are not implemented. Box-box limits are in `BOX_BOX_STUDY.md` §7 and `LIMITATIONS.md` §5b.
 - An earlier smoke run (not saved, so its mesh and start state are unknown) reported a sphere-on-mesh minimum height of
   0.136 m against the expected 0.100 m. It was not reproduced: per-step sampling of a sphere dropped on a flat
   two-triangle floor (dt 1e-4, three runs including restitution 0.5) gives a minimum of 0.1000000 m (penetration
@@ -218,8 +219,9 @@ triangles in total. They are resource caps chosen from the figures above (two me
 
 ## 10. Next milestone (not started)
 
-- Box-box and box-mesh: a general method (SAT with clipping for box-box), only if it can be verified against a reference.
-  Not started.
+- Box-box: implemented in Phase 7 (SAT with clipping), verified as described in `BOX_BOX_STUDY.md`.
+- Box-mesh: not started. Needs a clipping or sampling method verified against a reference, and a broad phase (see
+  `BOX_BOX_STUDY.md` §7).
 - Dynamic meshes, continuous collision detection and warm starting, if the tests show they are needed. Not started.
 - Continuous collision detection and warm starting, if the tests show they are needed.
 
@@ -247,7 +249,7 @@ The resting offset falls roughly with the step. At 1e-4 s it is about g dt^2 (9.
 step-wise contact model, not a measured error against an exact answer, so it is recorded as a limit.
 
 Refusals (tested with reasons): mirrored object, off-centre origin, sheared transform, parented object, unapplied
-modifiers on a mesh collider, box-mesh, box-box, static body with velocity, dynamic body without a material.
+modifiers on a mesh collider, box-mesh, static body with velocity, dynamic body without a material.
 
 Counts: 15 Blender-free tests (`test_blender_colliders.py`), 14 existing (`test_blender_scene_build.py`), 11 v2-mesh
 tests (`test_v2_meshes.py`); 34 checks in `tools/blender_smoke.py` under `bpy` 5.0.1, all passing.

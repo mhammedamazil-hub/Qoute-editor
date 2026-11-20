@@ -52,7 +52,7 @@ are rejected before the operation runs.
 | `collision.validate_mesh` | check raw triangle-mesh data against the mesh rules and limits |
 | `inspect.body`, `inspect.scene`, `inspect.series` | read a run at a record or over time |
 | `inspect.rolling_onset`, `inspect.summary` | slide-to-roll time (schema v1 only); final state and checks. v2 and v3 results work; the rolling estimate reports `available: false` for them |
-| `preview.frame` | PNG and numerical description of one frame. Draws every sphere (up to 32) and planes; box and mesh scenes are refused with `unsupported` |
+| `preview.frame` | PNG and numerical description of one frame. Draws every sphere (up to 32) and planes; box and mesh scenes are refused with `unsupported`. This is a preview limit only: box-box dynamics run through the simulation path (`collision_scene`, schema v3) |
 | `experiment.compare` | difference between two runs |
 | `export.bundle` | scene, run, report and preview in a directory, with hashes |
 | `validate.run` | validation cases from the registry |

@@ -260,10 +260,12 @@ Only the Bullet copy of the ODE-derived detector was read. The original ODE lice
   residual 1.8e-13 at dt 1e-4, 2e-14 at 5e-5). Measured at the start-of-step centres, the residual is first order:
   1.26e-5 and 6.3e-6 per contact step (ratio 2.00). It comes from the semi-implicit position update, which moves the
   centres by `h dv` after the impulse. This is a stated first-order error, not a bug, and it is in the limitations.
-- **Gauss–Seidel sweeps for box manifolds.** `BOX_MANIFOLD_ITERATIONS` = 64. Measured landing and rest spin (dt 2e-4, 30°
+- **Update (Phase 7, final).** The value below is superseded: `BOX_MANIFOLD_ITERATIONS` = 128. Stacks need more than the
+  landings tested here (`BOX_BOX_STUDY.md` §1). The text below is kept as the record of the first measurement.
+- **Gauss–Seidel sweeps for box manifolds (first measurement).** `BOX_MANIFOLD_ITERATIONS` = 64. Measured landing and rest spin (dt 2e-4, 30°
   about z): 8 sweeps leave ~0.2 rad/s; 16 leave 3e-2 rad/s at worst; 32 leave 2e-7 rad/s at worst but lose a stack contact
   on 38 of 500 resting steps (the 1 nm reporting threshold flickers); 64 reach 1e-16 and keep every contact. Cost: about
-  2.1 ms per box-plane step at 64 sweeps, 0.9 ms at 16 (measured). 64 is kept.
+  2.1 ms per box-plane step at 64 sweeps, 0.9 ms at 16 (measured). 64 was kept at that stage.
 
 ---
 
@@ -323,8 +325,11 @@ This is the first independent value for the Phase 7 tests. It is not a test yet.
 
 - Phase 0 audit: done (§1), with baseline recorded.
 - Phase 1 research: done for the sources listed in `BOX_BOX_REFERENCES.md`. Anything not verified is labelled there.
-- Phase 5 (partial): physics and geometry tests run (`tests/test_collision_box_box*.py`, 14 + 14 pass; full suite 536 passed).
-  Not yet written: falls-on-box, degenerate axes, thin, large and tiny, identical, containment, `quat_norm` regression,
-  energy and restitution beyond the current cases.
-- Next: write `BOX_BOX_MATHEMATICS.md` (derivations for §2 and §3), then implement (P2–P4), then tests (P5), then stress (P6),
-  Blender (P7), regression (P8), docs (P9), delivery (P10).
+- Phase 2–4 (kernel, solver wiring, schema): done. Commits `90ae28d`, `9e30550`.
+- Phase 5 (edge cases and numerics): done for the listed cases. `tests/test_collision_box_box_edge_cases.py` (8).
+- Phase 6 (stress, 10 / 100 / 500 boxes): see `BOX_BOX_STUDY.md` §4 and the stress outputs. 500 boxes exceed a practical
+  per-step budget without a broad phase (37 s per step), so the largest reproducible configuration is reported.
+- Phase 7 (Blender): 13 new checks, 47 in total, pass under bpy 5.0.1 (`tools/blender_smoke.py`).
+- Phase 8–10 (regression workflow, documentation, delivery): see `BOX_BOX_STUDY.md` and the final report.
+- Open: the stack spin (§1.2 of `BOX_BOX_STUDY.md`), the two-box stack sweep count (§1), box-mesh, and the broad phase.
+  Records of the status of each item are in `BOX_BOX_STUDY.md` §7.

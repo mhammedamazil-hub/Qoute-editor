@@ -19,7 +19,7 @@ Limits (checked before baking, with a message):
   because the keyframes move the origin. Mirrored objects (negative scale) and sheared transforms are refused; apply
   the transform first. Parented bodies are refused. Modifiers must be applied before a mesh collider is marked.
 - Triangle mesh colliders are static only.
-- Box-box and box-mesh contacts are not implemented in the kernel; a bake that needs one is refused.
+- Box-box contacts are implemented in the kernel. Box-mesh contacts are not; a bake that needs one is refused.
 - Baking overwrites existing location and rotation keyframes of dynamic bodies at the frames it writes.
 - There are no gameplay systems in this version.
 """

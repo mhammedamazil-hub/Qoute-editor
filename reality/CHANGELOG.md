@@ -5,6 +5,53 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 
 ## [Unreleased]
 
+### Added (Phase 7: box-box contacts)
+- Box-box contacts in the kernel (`src/reality/collision/box_box.py`): 15-axis separating-axis test (two face sets and
+  nine edge pairs), contact manifolds by Sutherland–Hodgman clipping of the incident face, edge–edge contacts by closest
+  points, and a canonical sign for the normal. Rotated boxes are supported. Up to 8 contact points per pair (not reduced).
+  Schema v3 accepts box-box; box-mesh is still refused with `unsupported`.
+- Solver wiring (`collision/solver.py`): box-box pairs in `PairSpec`, friction and restitution at each contact point, and
+  at least 128 sweeps for steps containing a box pair (`BOX_MANIFOLD_ITERATIONS`, measured; 64 was too few for the
+  two-box friction stack and the frictionless four-box stack, `BOX_BOX_STUDY.md` §1).
+- Tests: `tests/test_collision_box_box.py` (14, geometry against a dense 20,000-direction reference),
+  `tests/test_collision_box_box_physics.py` (14, free flight, rest, stacks, impacts), and
+  `tests/test_collision_box_box_edge_cases.py` (8, nearly parallel, grazing, mass ratio 1000:1, falling, 20 m/s impact,
+  quaternion over 20,000 steps, identical boxes, three-box impact at the bake step).
+- Blender add-on: 13 new headless checks in `tools/blender_smoke.py` (rotated box, two sizes, three-box stack, dynamic on
+  static). 47 checks in total, all passing under bpy 5.0.1.
+- `tools/box_sweep_study.py`, `tools/angular_residual_study.py`, `tools/box_stress.py`: the measurement scripts behind
+  `BOX_BOX_STUDY.md`.
+- `BOX_BOX_STUDY.md`, `BOX_BOX_MATHEMATICS.md`, `BOX_BOX_RESEARCH.md`, `BOX_BOX_REFERENCES.md`: research, derivations,
+  measured results and limits.
+
+### Fixed (Phase 7)
+- Free rotation of a box dropped the gyroscopic term. A box with ω_body (2, −1, 3) over 0.2 s differed from the
+  Euler-equation reference by 1.04 rad/s. Now 3e-13 rad/s (`_free_rotation_rates`).
+- Projection cap: `PROJECTION_PASSES` was 10. A three-box impact at the 24 fps bake timestep left 1.3e-6 m of
+  penetration and was refused by the 1e-6 m check. The cap is now 40 (measured: 16 passes → 5.9e-7 m, 40 → 5.9e-10 m).
+  Passes repeat only while a pair is deeper than `PROJECTION_TOL`, so converged steps are unchanged. Sphere regression
+  tests and the CLI sphere run are unchanged.
+- Solver docstring: the step order (rotate before project) and the pass description now match the code.
+- Sweep count: `BOX_MANIFOLD_ITERATIONS` raised from 64 to 128. At 64 sweeps the two-box friction stack still spins at
+  5.3e-3 rad/s (1.0e-8 at 128), and a frictionless four-box stack at 4.9e-2 rad/s (1.6e-11 at 128). Cost: the pile10
+  scene runs at 33 steps/s instead of 59 at 64 sweeps (`BOX_BOX_STUDY.md` §1, §4).
+
+### Changed (Phase 7)
+- `rigidbody.quat_norm` is the quaternion norm. `rigidbody.norm` and `rigidbody.dot` still sum three components only; do
+  not use them on quaternions. They were not changed in this phase; their other callers were not audited.
+
+### Known limits (Phase 7; measured, see `BOX_BOX_STUDY.md` §7 and `LIMITATIONS.md` §5b)
+- Frictionless four-box stack: its spin decays with sweeps (4.9e-2 rad/s at 64, 1.6e-11 at 128, 5e-18 at 256). A
+  four-box stack WITH friction still spins at about 2e-2 rad/s at 256 sweeps. Open.
+- Projection depends on the order in which contacts are listed, and can stall near 1e-6 m in a 10-box tower (measured at
+  64 sweeps). Open. The 128-sweep setting brings the column10 peak under the limit (7.06e-7 m).
+- pile10 (3 spheres, 7 random boxes) is not settled after 3 s (spin 8.5 rad/s). Open.
+- No broad phase: N = 500 takes about 62 s per step (128 sweeps, cap 40); N = 100 takes 0.32 s per step. These were
+  timed for a few steps, not simulated for long runs.
+- Angular momentum of internal contacts is conserved at the predicted positions to rounding; at the start-of-step centres
+  the residual is first order in dt.
+- Warm starting was tried, gave mixed results and was not adopted.
+
 ### Added
 - Schema v2 accepts a `meshes` list (approved change): static triangle meshes with sphere-mesh contacts, run on the
   collision solver and returning `reality.collision_run`. v2 without meshes is unchanged. The sphere solver refuses
