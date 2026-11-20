@@ -35,7 +35,7 @@ from ..collision import mesh as MSH
 from ..collision import solver as SV
 from ..contact import Plane
 from ..materials import default_database
-from ..rigidbody import dot, norm
+from ..rigidbody import dot, quat_norm
 from . import scene as S
 from .errors import OperationError
 from .resources import Deadline, ResourceLimits, peak_memory_mb
@@ -54,7 +54,6 @@ LIMITS = {
 }
 
 _UNSUPPORTED = {
-    ("box", "box"): "box-box contacts are not implemented in this version",
     ("box", "mesh"): "box-mesh contacts are not implemented in this version",
 }
 
@@ -329,6 +328,8 @@ def _build(scene: Dict[str, Any]):
             ta, tb = body_list[index[a_id]]["type"], body_list[index[b_id]]["type"]
             if ta == "sphere" and tb == "sphere":
                 specs.append(SV.PairSpec("sphere_sphere", index[a_id], index[b_id], f, e))
+            elif ta == "box" and tb == "box":  # Phase 7: normal A -> B, as listed in the scene
+                specs.append(SV.PairSpec("box_box", index[a_id], index[b_id], f, e))
             else:  # exactly one box: the box is the first side (normal box -> sphere)
                 box_id, sph_id = (a_id, b_id) if ta == "box" else (b_id, a_id)
                 specs.append(SV.PairSpec("sphere_box", index[box_id], index[sph_id], f, e))
@@ -414,7 +415,7 @@ def run(scene: Dict[str, Any], duration: float, dt: float = 1e-4, record_interva
                 raise OperationError("invalid_state", f"non-finite state at step {k}, t = {k * dt_eff:.6g} s",
                                      {"step": k, "time": k * dt_eff})
             if not b.static:
-                max_quat_err = max(max_quat_err, abs(norm(b.quaternion) - 1.0))
+                max_quat_err = max(max_quat_err, abs(quat_norm(b.quaternion) - 1.0))
         max_pen = max(max_pen, info.max_penetration)
         if max_pen > PENETRATION_TOLERANCE_M:
             raise OperationError("invalid_state",

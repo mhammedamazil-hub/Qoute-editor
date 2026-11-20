@@ -109,10 +109,17 @@ def test_box_on_a_mesh_is_refused_with_the_kernel_reason():
         SB.bake_scene([_box()], [], frames=24, fps=24.0, meshes=[FLOOR_MESH])
 
 
-def test_box_on_box_is_refused_with_the_kernel_reason():
-    other = _box(id="box2", position=[0.5, 0.0, 0.5])
-    with pytest.raises(ValueError, match="box-box"):
-        SB.bake_scene([_box(), other], [GROUND], frames=24, fps=24.0)
+def test_box_on_box_bakes_with_a_box_box_manifold_and_no_penetration():
+    # Phase 7: box-box pairs are integrated (box_box.py). Two boxes, the upper one dropped onto the lower.
+    lower = _box(id="lower", position=[0.0, 0.0, 0.1])
+    upper = _box(id="upper", position=[0.0, 0.0, 0.35])
+    out = SB.bake_scene([lower, upper], [GROUND], frames=24, fps=24.0)
+    assert out["keyed"] == ["lower", "upper"]
+    assert out["result"]["checks"]["max_penetration_m"] <= 1e-6
+    final = out["result"]["final_state"]["bodies"]
+    # the stack comes to rest: lower on the ground (centre 0.1), upper on the lower one (centre 0.3)
+    assert final["lower"]["position"][2] == pytest.approx(0.1, abs=1e-3)
+    assert final["upper"]["position"][2] == pytest.approx(0.3, abs=1e-3)
 
 
 def test_dynamic_body_without_material_is_refused():

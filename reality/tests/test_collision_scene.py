@@ -124,11 +124,10 @@ def test_self_contact_and_static_static_are_rejected():
     assert any("two static bodies cannot form a contact" in e for e in _errors(static_pair))
 
 
-def test_box_box_is_refused_explicitly_not_ignored():
+def test_box_box_is_accepted_by_the_v3_validator():
     doc = _doc([_box("a"), _box("b", z=1.0)],
                contacts=[{"a": "a", "b": "b", "friction": 0.1, "restitution": 0.0}])
-    errors = _errors(doc)
-    assert any("unsupported pair box-box" in e and "not implemented" in e for e in errors), errors
+    assert _errors(doc) == []
 
 
 def test_box_mesh_is_refused_explicitly():
@@ -176,10 +175,11 @@ def test_material_gives_mass_from_the_database_density():
 # ---------------------------------------------------------------- dispatch
 def test_scene_validate_routes_version_3_to_the_collision_schema():
     assert S.validate(_doc([_box()], [FLOOR]))["valid"]
-    # a box-box pair is only refused by the v3 validator, so this proves the v3 path ran
-    boxes = _doc([_box("a"), _box("b", z=1.0)], contacts=[{"a": "a", "b": "b", "friction": 0.1, "restitution": 0.0}])
-    v = S.validate(boxes)
-    assert v["valid"] is False and any("unsupported pair box-box" in e for e in v["errors"])
+    # a box-mesh pair is still refused only by the v3 validator, so this proves the v3 path ran
+    mesh_pair = _doc([_box()], meshes=[TWO_TRI], contacts=[{"a": "box", "b": "floor_mesh", "friction": 0.1,
+                                                            "restitution": 0.0}])
+    v = S.validate(mesh_pair)
+    assert v["valid"] is False and any("unsupported pair box-mesh" in e for e in v["errors"])
 
 
 # ---------------------------------------------------------------- runs
@@ -249,7 +249,8 @@ def test_static_body_is_reported_static_and_never_moves():
 
 
 def test_unsupported_pair_is_not_run():
-    doc = _doc([_box("a"), _box("b", z=1.0)], contacts=[{"a": "a", "b": "b", "friction": 0.1, "restitution": 0.0}])
+    doc = _doc([_box()], meshes=[TWO_TRI], contacts=[{"a": "box", "b": "floor_mesh", "friction": 0.1,
+                                                      "restitution": 0.0}])
     with pytest.raises(OperationError) as info:
         C.run(doc, 0.1)
     assert info.value.code == "schema_error"
