@@ -8,6 +8,11 @@ What it checks:
 - objects are marked (sphere body, horizontal plane), the bake writes location and rotation keyframes;
 - the keyframed positions equal the Python reference (``reality_physics.scene_build.bake_scene``) at the final frame;
 - an OBJ export and re-import keeps the mesh.
+Phase 6 (colliders), after the checks above:
+- an OBJ import through the add-on's own operator, then "Mark as collider" with the triangle-mesh shape (static);
+- a sphere bakes onto the mesh floor and rests at its radius; a static box and the mesh are not keyed;
+- a dynamic box bakes onto a plane and rests at its half height; a rotated sphere bakes (float32 rotation);
+- refusals: a mirrored object, an off-centre origin, and a dynamic box with a mesh floor (box-mesh is not implemented).
 Exit code 0 means all checks passed. The script prints every check.
 """
 
@@ -21,6 +26,7 @@ sys.path.insert(0, str(HERE / "src"))
 sys.path.insert(0, str(HERE / "blender_addon"))
 
 import bpy  # noqa: E402
+from mathutils import Matrix  # noqa: E402
 
 import reality_physics  # noqa: E402
 from reality_physics import scene_build as SB  # noqa: E402
@@ -118,6 +124,161 @@ check("OBJ re-imported as a mesh", len(imported) == 1)
 if imported:
     check("OBJ vertex count kept", len(imported[0].data.vertices) == verts_before,
           f"{len(imported[0].data.vertices)} vs {verts_before}")
+
+
+# ---------------------------------------------------------------- Phase 6: colliders (boxes, static meshes, static bodies)
+def _clear():
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.delete()
+
+
+def _select(obj):
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+
+def _operator_refused(call, needle):
+    """A Blender operator that reports ERROR raises RuntimeError when called from Python. The check passes only
+    when the refusal carries the expected reason; any other outcome fails."""
+    try:
+        result = call()
+    except RuntimeError as err:
+        return needle in str(err)
+    return result == {"CANCELLED"} and False  # a refusal must raise with its reason, not just cancel
+
+
+def _keyed(obj):
+    """True when the object has location and rotation F-curves in its action."""
+    if obj.animation_data is None or obj.animation_data.action is None:
+        return False
+    curves = _fcurves(obj)
+    return (any(c.data_path == "location" for c in curves)
+            and any(c.data_path == "rotation_quaternion" for c in curves))
+
+
+_clear()
+tmp6 = tempfile.mkdtemp(prefix="reality_colliders_")
+bpy.ops.mesh.primitive_plane_add(size=4.0, location=(0.0, 0.0, 0.0))
+ground_src = bpy.context.active_object
+ground_src.name = "GroundSrc"
+ground_path = os.path.join(tmp6, "ground.obj")
+_select(ground_src)
+bpy.ops.wm.obj_export(filepath=ground_path, export_selected_objects=True)
+_clear()
+r = bpy.ops.reality.import_obj(filepath=ground_path)
+check("add-on OBJ import operator returns FINISHED", r == {"FINISHED"}, str(r))
+imported = [o for o in scn.objects if o.type == "MESH"]
+check("OBJ import gives one mesh", len(imported) == 1, str(len(imported)))
+ground = imported[0]
+_select(ground)
+r = bpy.ops.reality.mark_collider(shape="MESH")
+check("mark_collider MESH returns FINISHED", r == {"FINISHED"}, str(r))
+check("mesh flags set (static)", bool(ground.get("reality_mesh")) and bool(ground.get("reality_static")))
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, location=(0.0, 0.0, 0.5))
+ball = bpy.context.active_object
+ball.name = "Ball"
+_select(ball)
+r = bpy.ops.reality.mark_body()
+check("mark_body on the ball returns FINISHED", r == {"FINISHED"}, str(r))
+
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(1.0, 0.0, 0.1))
+pillar = bpy.context.active_object
+pillar.name = "Pillar"
+_select(pillar)
+r = bpy.ops.reality.mark_collider(shape="BOX", static=True)
+check("mark_collider BOX static returns FINISHED", r == {"FINISHED"}, str(r))
+
+summary = reality_physics.bake(bpy.context)
+check("mesh bake: 1 dynamic body, 1 static body, 1 mesh, schema v3",
+      (summary["keyed"], summary["static"], summary["meshes"], summary["schema_version"]) == (1, 1, 1, 3),
+      str(summary))
+check("mesh bake: ball keyed, static pillar and mesh not keyed",
+      _keyed(ball) and not _keyed(pillar) and not _keyed(ground))
+scn.frame_set(49)
+z_ball = ball.matrix_world.translation.z
+check("ball rests on the mesh at its radius (0.05 m)", abs(z_ball - 0.05) < 1e-4, f"z = {z_ball:.6f}")
+check("max penetration within the kernel tolerance", summary["max_penetration_m"] <= 1e-6,
+      f"{summary['max_penetration_m']:.2e} m")
+scn.frame_set(1)
+
+_clear()
+bpy.ops.mesh.primitive_plane_add(size=10.0, location=(0.0, 0.0, 0.0))
+floor6 = bpy.context.active_object
+floor6.name = "Floor"
+_select(floor6)
+check("mark_plane returns FINISHED", bpy.ops.reality.mark_plane() == {"FINISHED"})
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(0.0, 0.0, 0.5))
+crate = bpy.context.active_object
+crate.name = "Crate"
+_select(crate)
+check("mark_collider BOX dynamic returns FINISHED",
+      bpy.ops.reality.mark_collider(shape="BOX", static=False) == {"FINISHED"})
+r = bpy.ops.reality.bake()
+check("box bake returns FINISHED", r == {"FINISHED"}, str(r))
+check("box is keyed", _keyed(crate))
+scn.frame_set(49)
+z_crate = crate.matrix_world.translation.z
+check("box rests on the plane at its half height (0.1 m)", abs(z_crate - 0.1) < 1e-4, f"z = {z_crate:.6f}")
+scn.frame_set(1)
+
+_clear()
+bpy.ops.mesh.primitive_plane_add(size=10.0, location=(0.0, 0.0, 0.0))
+_select(bpy.context.active_object)
+bpy.ops.reality.mark_plane()
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, location=(0.0, 0.0, 0.5))
+rotated = bpy.context.active_object
+rotated.name = "Rotated"
+rotated.rotation_euler = (0.3, 0.5, 0.2)  # float32 rotation: the case that the unit-quaternion fix covers
+bpy.context.view_layer.update()
+_select(rotated)
+bpy.ops.reality.mark_body()
+r = bpy.ops.reality.bake()
+check("rotated sphere bakes (float32 quaternion normalised)", r == {"FINISHED"}, str(r))
+scn.frame_set(49)
+check("rotated sphere rests on the plane at its radius", abs(rotated.matrix_world.translation.z - 0.05) < 1e-4,
+      f"z = {rotated.matrix_world.translation.z:.6f}")
+scn.frame_set(1)
+
+_clear()
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(0.0, 0.0, 0.5))
+mirror = bpy.context.active_object
+mirror.name = "Mirror"
+mirror.scale = (-1.0, 1.0, 1.0)
+bpy.context.view_layer.update()
+_select(mirror)
+check("mirrored box is refused with the mirror reason", _operator_refused(
+    lambda: bpy.ops.reality.mark_collider(shape="BOX", static=False), "mirrored"))
+
+_clear()
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(0.0, 0.0, 0.5))
+off = bpy.context.active_object
+off.name = "OffCentre"
+off.data.transform(Matrix.Translation((0.3, 0.0, 0.0)))
+off.data.update()
+bpy.context.view_layer.update()
+_select(off)
+check("off-centre origin is refused with the origin reason", _operator_refused(
+    lambda: bpy.ops.reality.mark_collider(shape="BOX", static=False), "geometric centre"))
+
+_clear()
+bpy.ops.mesh.primitive_plane_add(size=4.0, location=(0.0, 0.0, 0.0))
+mfloor = bpy.context.active_object
+mfloor.name = "MeshFloor"
+_select(mfloor)
+bpy.ops.reality.mark_collider(shape="MESH")
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(0.0, 0.0, 0.5))
+bx = bpy.context.active_object
+bx.name = "BoxOnMesh"
+_select(bx)
+bpy.ops.reality.mark_collider(shape="BOX", static=False)
+refused = False
+try:
+    reality_physics.bake(bpy.context)
+except ValueError as err:
+    refused = "box-mesh" in str(err)
+check("dynamic box with a mesh floor is refused with the box-mesh reason", refused)
 
 reality_physics.unregister()
 print("RESULT:", "ALL PASSED" if not failures else f"{len(failures)} FAILED: {failures}")
