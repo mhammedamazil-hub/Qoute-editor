@@ -4,7 +4,9 @@ Pure functions, no solver state. Every result is a ``Contact``:
 
 - ``normal``: unit vector pointing from the *first* shape towards the second (for a sphere against a static shape,
   from the static shape towards the sphere). The same convention as ``multibody``.
-- ``point``: a point on the surface of the first shape where the contact is (world coordinates).
+- ``point``: a point on the surface of the first shape where the contact is (world coordinates). Exception: box-box
+  contacts (``box_box.py``) use the midpoint of the overlap along the normal, because the solver uses one point for
+  both bodies and the midpoint is the symmetric choice.
 - ``depth``: overlap along ``normal`` in metres. Positive = penetrating; ``depth > -tolerance`` counts as touching.
 - ``feature``: "face", "edge" or "vertex" (triangles and boxes), or "sphere" (sphere-sphere, sphere-plane).
 

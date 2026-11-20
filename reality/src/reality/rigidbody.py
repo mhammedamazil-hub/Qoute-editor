@@ -85,6 +85,12 @@ def quat_mul(a: Sequence[float], b: Sequence[float]) -> Quat:
     )
 
 
+def quat_norm(q: Sequence[float]) -> float:
+    """Euclidean norm of a quaternion (all four components). ``norm`` above is the 3-vector norm and must not be
+    used on a quaternion: it ignores the scalar part."""
+    return math.sqrt(sum(c * c for c in q))
+
+
 def quat_normalize(q: Sequence[float]) -> Quat:
     n = math.sqrt(sum(c * c for c in q))
     if n == 0.0 or not math.isfinite(n):

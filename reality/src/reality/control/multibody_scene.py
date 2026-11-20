@@ -281,7 +281,7 @@ def run(scene: Dict[str, Any], duration: float, dt: float = 1e-4, record_interva
                     and _finite_list(s.quaternion)):
                 raise OperationError("invalid_state", f"non-finite state at step {k}, t = {k * dt_eff:.6g} s",
                                      {"step": k, "time": k * dt_eff})
-            max_quat_error = max(max_quat_error, abs(RB.norm(s.quaternion) - 1.0))
+            max_quat_error = max(max_quat_error, abs(RB.quat_norm(s.quaternion) - 1.0))
         for c in labels:
             if c["kind"] == "plane":
                 pl = planes[plane_names.index(c["b"])]

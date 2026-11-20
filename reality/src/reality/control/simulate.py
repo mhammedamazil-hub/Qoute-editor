@@ -148,7 +148,7 @@ def run(scene: Dict[str, Any], duration: float, dt: float = 1e-4, record_interva
             gap = RB.dot(pl.normal, rb.position) - pl.offset - radius
             if gap < 0.0:
                 max_penetration = max(max_penetration, -gap)
-        qn = abs(RB.norm(rb.quaternion) - 1.0)
+        qn = abs(RB.quat_norm(rb.quaternion) - 1.0)
         max_quat_error = max(max_quat_error, qn)
         if k % rec_every == 0 or k == steps:
             records.append(sample(k, touching))
