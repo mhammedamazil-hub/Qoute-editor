@@ -1,7 +1,7 @@
 # Collision geometry (PROJECT REALITY, milestone "collision geometry foundation")
 
-Status: implemented except Phase 6 (Blender OBJ import and collider marking), which is not started in this milestone.
-Box-box and box-mesh contacts are not implemented; they are refused by validation with a stated reason.
+Status: all phases implemented. Box-box and box-mesh contacts are not implemented; they are refused by validation with a
+stated reason. Phase 6 (Blender) is headless-tested and checked under `bpy` 5.0.1 (section 11); the viewport is not checked.
 
 ## 0. Audit (before implementation)
 
@@ -16,7 +16,7 @@ Checked on 2026-11-20 (sandbox clock, UTC; the session date given was 2026-11-19
 | Contact generation | Hard-coded per type in `multibody._build` (plane and pair contacts), with detection at predicted positions and projection by sphere-specific formulas. One contact point per pair or plane. |
 | Solver assumptions | Sequential impulses (`multibody.step_bodies`). Scalar inertia per sphere, so no tensor inertia. No warm starting. No continuous collision detection. |
 | Scene schemas | v1: one sphere, planes. v2: several spheres, planes, per-contact coefficients; `type` must be `"sphere"`; optional unit quaternion. |
-| Blender add-on | Marks spheres only. Bakes location and rotation keyframes from `reality.multibody_scene`. No collider types, no meshes, no static/dynamic flag. Tested headless under `bpy` 5.0.1. |
+| Blender add-on | Marks spheres and planes only; bakes from the v2 solver. No box or mesh colliders, no static flag. Tested headless under `bpy` 5.0.1. (Phase 6 extends this; see section 11.) |
 | Known defect found in audit | `preview.frame` and `inspect.*` raise a bare `KeyError: 'bodies'` on v2 results. Fixed in this milestone (section 6). |
 | Speed baseline (pure Python, dt 1e-4, 0.2 s) | 1 sphere: 22,120 steps/s. 4 spheres: 5,742. 8 spheres: 3,098. This was measured in the audit with its own workload and is not directly comparable with the benchmark in section 7. |
 
@@ -203,8 +203,9 @@ triangles in total. They are resource caps chosen from the figures above (two me
 - The mesh build is a Python loop. Its measured time grows roughly as n log n (0.66 s at 40,044 triangles, 4.28 s at
   199,712). It is measured, not optimised.
 - Schema v3 accepts static meshes only. Dynamic meshes are not supported.
-- Blender: no OBJ collider import, no collider marking, no static/dynamic marking for meshes or boxes. The v2 add-on
-  still applies to spheres only.
+- Blender: the box and mesh colliders are checked under `bpy` 5.0.1 only. Dynamic meshes are not supported (a mesh
+  collider is always static). A dynamic box cannot be baked with a mesh floor (box-mesh is not implemented).
+- The v2 path with meshes is spheres only, one contact point per pair; boxes and static flags need schema v3.
 
 ## 9. Research references used
 
@@ -217,7 +218,39 @@ triangles in total. They are resource caps chosen from the figures above (two me
 
 ## 10. Next milestone (not started)
 
-- Phase 6: Blender OBJ import, collider marking (static/dynamic, box and mesh), and bake. Blender remains optional for
-  the core. Not started.
-- Box-box: a general method (SAT with clipping), only if it can be verified against a reference. Not started.
+- Box-box and box-mesh: a general method (SAT with clipping for box-box), only if it can be verified against a reference.
+  Not started.
+- Dynamic meshes, continuous collision detection and warm starting, if the tests show they are needed. Not started.
 - Continuous collision detection and warm starting, if the tests show they are needed.
+
+## 11. Phase 6: Blender (headless core and `bpy` checks)
+
+Scope as built: OBJ import through the add-on's operator; "Mark as collider" with sphere, box (dynamic or static) and
+static triangle-mesh shapes; bake through the headless kernel; static bodies and meshes are not keyed. Blender's rigid
+body world is not used. Blender remains optional for the core: the kernel and `scene_build.py` import no `bpy`.
+
+Schema change (approved): a schema v2 document with a non-empty `meshes` list runs on the collision solver under the
+v2 rules (spheres only, no `static` flag). Documents without meshes are unchanged. See `SCENE_SCHEMA.md`.
+
+Results, measured in this milestone:
+
+| Check | Value | Tolerance |
+|---|---|---|
+| Sphere rests on a mesh floor (bake, Blender step 9.9e-4 s) | centre z = 0.050003 m (radius 0.05) | 1e-4 m |
+| Box rests on a plane (bake) | z = 0.100005 m (half height 0.1) | 1e-4 m |
+| Rotated sphere (float32 rotation of 0.3, 0.5, 0.2 rad) | bake accepted after double-precision normalisation | 1e-9 unit tolerance |
+| Float32 quaternion norm error for that rotation (Blender) | -3.0e-8 (fails 1e-9 without normalisation) | - |
+| Resting offset vs step (headless, mesh floor, sphere radius 0.05) | 3.5e-6 m at 9.9e-4 s; 9.4e-8 m at 1e-4 s; 8.2e-10 m at 1e-5 s | - |
+| Kernel penetration in these bakes | 0 (no positive penetration reported) | 1e-6 m |
+
+The resting offset falls roughly with the step. At 1e-4 s it is about g dt^2 (9.8e-8 m). It is a property of the
+step-wise contact model, not a measured error against an exact answer, so it is recorded as a limit.
+
+Refusals (tested with reasons): mirrored object, off-centre origin, sheared transform, parented object, unapplied
+modifiers on a mesh collider, box-mesh, box-box, static body with velocity, dynamic body without a material.
+
+Counts: 15 Blender-free tests (`test_blender_colliders.py`), 14 existing (`test_blender_scene_build.py`), 11 v2-mesh
+tests (`test_v2_meshes.py`); 34 checks in `tools/blender_smoke.py` under `bpy` 5.0.1, all passing.
+
+Defect found and fixed in this phase: the committed add-on (`71ca683`) sent a float32 quaternion for a rotated sphere,
+which the kernel rejected. Recorded in `CHANGELOG.md` (Fixed).

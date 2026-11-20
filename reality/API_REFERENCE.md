@@ -47,7 +47,7 @@ are rejected before the operation runs.
 | `scene.materials` | material names for `scene.add_sphere` |
 | `simulate.run` | run from t = 0 or from a checkpoint |
 | `simulate.sweep_friction` | one summary per friction value |
-| `simulate.multibody` | run a schema v2 multi-body scene (`reality.multibody_run`) or a schema v3 collision scene (`reality.collision_run`); dispatch by `schema_version` |
+| `simulate.multibody` | run a schema v2 multi-body scene (`reality.multibody_run`), a schema v2 scene with a `meshes` list or a schema v3 collision scene (`reality.collision_run`); dispatch by `schema_version` and the presence of meshes |
 | `collision.query` | contacts of a schema v3 scene at its initial state, no time step |
 | `collision.validate_mesh` | check raw triangle-mesh data against the mesh rules and limits |
 | `inspect.body`, `inspect.scene`, `inspect.series` | read a run at a record or over time |

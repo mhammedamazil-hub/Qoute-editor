@@ -83,9 +83,17 @@ be read before relying on any result. The project rule is never to claim realism
 
 ### 5a. Blender add-on limits
 
-- Blender 5.0.1 only, tested headlessly with the `bpy` module. The viewport panel and GL paths are not verified.
-- Spheres only; no parenting of marked bodies; baking overwrites existing location and rotation keys of those bodies.
+- Blender 5.0.1 only, tested headlessly with the `bpy` module (`tools/blender_smoke.py`, 32 checks). The viewport panel
+  and GL paths are not verified.
+- Dynamic bodies: spheres and boxes. Triangle mesh colliders: static only. Box-box and box-mesh contacts are not
+  implemented in the kernel; a bake that needs one is refused with that reason.
+- Sphere and box bodies must have their origin at the geometric centre (the keyframes move the origin). Mirrored
+  (negative scale), sheared, parented and modified (unapplied modifiers on a mesh collider) objects are refused.
+- Baking overwrites existing location and rotation keys of dynamic bodies. Static bodies and meshes are not keyed.
 - Physics only. No gameplay systems. Blender's own rigid body world is not coordinated with the add-on.
+- Resting contact: a body at rest sits a small distance from the surface, of the order of g dt^2 for the step used
+  (measured: 3.5e-6 m at the Blender step of 9.9e-4 s; 9.4e-8 m at 1e-4 s; 8.2e-10 m at 1e-5 s). The kernel reports no
+  penetration in these runs.
 
 ### 5b. Collision geometry limits (schema v3)
 
@@ -99,7 +107,7 @@ be read before relying on any result. The project rule is never to claim realism
 - Throughput is pure Python: the general solver runs at about 36,000 steps/s for one sphere on a plane and about 2,400
   steps/s for one box on a plane (measured, `COLLISION_BENCHMARK.json`).
 - Preview draws spheres and planes only, up to 32 spheres per frame. Boxes and meshes are refused, not drawn.
-- Blender OBJ import and collider marking for boxes and meshes are not implemented (Phase 6 of the collision milestone).
+- Blender: the box and mesh colliders are checked in `bpy` 5.0.1 only; the viewport panel is not checked on screen.
 
 ## 6. Safety and use
 

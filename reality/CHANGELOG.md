@@ -6,6 +6,14 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 ## [Unreleased]
 
 ### Added
+- Schema v2 accepts a `meshes` list (approved change): static triangle meshes with sphere-mesh contacts, run on the
+  collision solver and returning `reality.collision_run`. v2 without meshes is unchanged. The sphere solver refuses
+  meshes explicitly. 11 tests in `tests/test_v2_meshes.py`.
+- Blender add-on Phase 6 (version 0.3.0): "Mark as collider" with sphere, box (dynamic or static) and static triangle-mesh
+  shapes; OBJ import through the add-on's operator; bake through the headless kernel (`scene_build.build_any`,
+  `run_scene`), with static bodies and meshes not keyed. Refusals with reasons: mirrored or sheared objects, off-centre
+  origins, unapplied modifiers, box-box and box-mesh. 15 Blender-free tests in `tests/test_blender_colliders.py`
+  (includes the float32-to-double quaternion fix) and 18 new checks in `tools/blender_smoke.py` (32 in total under bpy 5.0.1).
 - Collision geometry (`src/reality/collision/`, `COLLISION_GEOMETRY.md`): sphere-triangle (Voronoi closest point, edge,
   vertex and degenerate cases), sphere-box, box-plane (corner contacts), sphere-plane, sphere-sphere. Static triangle
   meshes with validation, a median-split BVH (checked against brute force), and per-cluster contact reduction.
@@ -74,6 +82,12 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 - `constants.py`: Schott N-BK7 mechanical constants (E, nu, density) stored separately from the soda-lime `glass` row.
 
 ### Fixed
+- Blender, present in the committed add-on (`71ca683`) and found in this milestone: a marked sphere with a non-identity
+  rotation sent a float32 quaternion. Its norm error (2.8e-9 for a rotation of 0.3 rad about (1, 2, 0.5)) is above the
+  kernel's 1e-9 tolerance, so the bake was refused with "quaternion must be a unit quaternion". Quaternions are now
+  normalised in double precision (`scene_build.unit_quaternion`). The smoke test used no rotation, so it did not catch this.
+- Blender: a sphere whose origin is off its geometric centre would be simulated from the origin while its visible geometry
+  sat elsewhere, with no warning. It is now refused, with the reason given.
 - Ghost contacts on internal edges: a sphere over the seam of a flat mesh received a sideways contact. Edge and vertex
   contacts dominated by a strictly closer face contact are now dropped (`mesh.drop_dominated_features`).
 - `preview.frame` and `inspect.*` no longer fail with `KeyError: 'bodies'` on v2 results. They accept v2 and v3

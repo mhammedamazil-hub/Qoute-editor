@@ -62,7 +62,15 @@ scenes and points to `simulate.multibody`. Run documents are `reality.multibody_
 body's state, energies, `momentum_total` and touching `contacts`; `checks` report the largest penetration
 (tolerance 1e-6 m) and the quaternion norm error; `diagnostics` holds wall time and memory and is not reproducible.
 
-v2 limits: no checkpoint, no sweep, no non-sphere shapes, no meshes, one contact point per pair or plane.
+v2 limits: no checkpoint, no sweep, no non-sphere shapes, one contact point per pair or plane.
+
+**Meshes in v2 (approved change, Phase 6).** A v2 document with a non-empty `meshes` list is a collision scene with the
+v2 rules: `bodies` are spheres only, with no `static` flag; `planes` as above; `meshes` are static triangle meshes
+(`id`, `vertices`, `triangles`, optional `position` and `quaternion`, exactly as in v3); `contacts` may name a mesh as
+`b` (sphere-mesh). Such a document runs on the collision solver (`control/collision_scene.py`) and returns
+`reality.collision_run`. The sphere solver is not used for it: `multibody_scene.validate_v2` refuses `meshes`
+explicitly. A v2 document with no `meshes` key, or an empty list, is unchanged and runs on the sphere solver
+(`reality.multibody_run`).
 
 ## Schema v3: spheres, boxes, planes, static meshes (`"schema_version": 3`)
 
