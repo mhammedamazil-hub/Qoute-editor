@@ -1,0 +1,107 @@
+{
+  "machine": {
+    "python": "3.11.2",
+    "platform": "Linux-6.1.158+-x86_64-with-glibc2.36",
+    "cpu_count": 2
+  },
+  "repeats": 3,
+  "method": "best of repeats; fixed workloads; see tools/collision_benchmark.py",
+  "mesh": [
+    {
+      "triangles": 264,
+      "vertices": 134,
+      "validate_errors": [],
+      "validate_s": 0.0012,
+      "build_s": 0.003,
+      "build_peak_python_mb": 0.1,
+      "bvh_nodes": 143,
+      "queries": 200,
+      "bvh_query_ms": 0.0205,
+      "brute_queries": 200,
+      "brute_query_ms": 0.649,
+      "bvh_query_ms_same_subset": 0.0205,
+      "speedup_same_subset": 31.7
+    },
+    {
+      "triangles": 4140,
+      "vertices": 2072,
+      "validate_errors": [],
+      "validate_s": 0.0138,
+      "build_s": 0.0546,
+      "build_peak_python_mb": 2.2,
+      "bvh_nodes": 2135,
+      "queries": 200,
+      "bvh_query_ms": 0.0359,
+      "brute_queries": 200,
+      "brute_query_ms": 9.7539,
+      "bvh_query_ms_same_subset": 0.0371,
+      "speedup_same_subset": 263.1
+    },
+    {
+      "triangles": 40044,
+      "vertices": 20024,
+      "validate_errors": [],
+      "validate_s": 0.132,
+      "build_s": 0.6621,
+      "build_peak_python_mb": 24.0,
+      "bvh_nodes": 30935,
+      "queries": 200,
+      "bvh_query_ms": 0.1306,
+      "brute_queries": 40,
+      "brute_query_ms": 95.0941,
+      "bvh_query_ms_same_subset": 0.168,
+      "speedup_same_subset": 565.9
+    },
+    {
+      "triangles": 199712,
+      "vertices": 99858,
+      "validate_errors": [],
+      "validate_s": 0.6779,
+      "build_s": 4.2815,
+      "build_peak_python_mb": 113.6,
+      "bvh_nodes": 131071,
+      "queries": 200,
+      "bvh_query_ms": 0.4729
+    }
+  ],
+  "solver": {
+    "sphere_plane": {
+      "general_solver": {
+        "steps": 5000,
+        "seconds": 0.1397,
+        "steps_per_second": 35796.0
+      },
+      "existing_sphere_solver": {
+        "steps": 5000,
+        "seconds": 0.1068,
+        "steps_per_second": 46833.0
+      }
+    },
+    "box_plane": {
+      "general_solver": {
+        "steps": 5000,
+        "seconds": 2.1248,
+        "steps_per_second": 2353.0
+      }
+    },
+    "sphere_mesh_2_triangles": {
+      "general_solver": {
+        "steps": 5000,
+        "seconds": 0.7257,
+        "steps_per_second": 6890.0
+      }
+    },
+    "eight_spheres_plane_and_chain": {
+      "general_solver": {
+        "steps": 1000,
+        "seconds": 2.1799,
+        "steps_per_second": 459.0
+      },
+      "existing_sphere_solver": {
+        "steps": 1000,
+        "seconds": 1.6097,
+        "steps_per_second": 621.0
+      }
+    }
+  }
+}
