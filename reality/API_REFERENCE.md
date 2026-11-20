@@ -35,7 +35,7 @@ listed in `RESOURCE_LIMITS.md` (section "Error codes"). Codes are part of the in
 
 ## Operations
 
-23 operations. Each has an input schema (JSON Schema subset, see `control/schema.py`); unknown or mistyped arguments
+25 operations. Each has an input schema (JSON Schema subset, see `control/schema.py`); unknown or mistyped arguments
 are rejected before the operation runs.
 
 | operation | purpose |
@@ -47,10 +47,12 @@ are rejected before the operation runs.
 | `scene.materials` | material names for `scene.add_sphere` |
 | `simulate.run` | run from t = 0 or from a checkpoint |
 | `simulate.sweep_friction` | one summary per friction value |
-| `simulate.multibody` | run a schema v2 multi-body scene (`reality.multibody_run`) |
+| `simulate.multibody` | run a schema v2 multi-body scene (`reality.multibody_run`) or a schema v3 collision scene (`reality.collision_run`); dispatch by `schema_version` |
+| `collision.query` | contacts of a schema v3 scene at its initial state, no time step |
+| `collision.validate_mesh` | check raw triangle-mesh data against the mesh rules and limits |
 | `inspect.body`, `inspect.scene`, `inspect.series` | read a run at a record or over time |
-| `inspect.rolling_onset`, `inspect.summary` | slide-to-roll time; final state and checks |
-| `preview.frame` | PNG and numerical description of one frame |
+| `inspect.rolling_onset`, `inspect.summary` | slide-to-roll time (schema v1 only); final state and checks. v2 and v3 results work; the rolling estimate reports `available: false` for them |
+| `preview.frame` | PNG and numerical description of one frame. Draws every sphere (up to 32) and planes; box and mesh scenes are refused with `unsupported` |
 | `experiment.compare` | difference between two runs |
 | `export.bundle` | scene, run, report and preview in a directory, with hashes |
 | `validate.run` | validation cases from the registry |

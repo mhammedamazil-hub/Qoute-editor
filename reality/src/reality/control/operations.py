@@ -21,6 +21,9 @@ from . import inspection as I
 from . import preview as P
 from . import scene as S
 from . import multibody_scene as MBS
+from . import collision_scene as CS
+from ..collision import mesh as MSH
+from ..collision import solver as SVN
 from . import simulate as SIM
 from .errors import OperationError
 from .resources import DEFAULTS
@@ -173,8 +176,9 @@ def _simulate_run(scene, duration, dt=1e-4, record_interval=0.01, checkpoint=Non
 
 
 @_op("simulate.multibody",
-     "Run a schema v2 scene (several sphere bodies, planes and per-contact friction and restitution) headless. "
-     "Returns a reality.multibody_run document. Checkpoints and sweeps are not available for v2.",
+     "Run a multi-body scene headless: schema v2 (spheres, planes; returns reality.multibody_run) or schema v3 "
+     "(spheres and boxes, planes, static triangle meshes; returns reality.collision_run). Dispatch is by schema_version. "
+     "Checkpoints and sweeps are not available for v2 or v3.",
      {"scene": {"type": "object", "description": "reality.scene document with schema_version 2"},
       "duration": {"type": "number", "minimum": 0, "description": "seconds"},
       "dt": {"type": "number", "minimum": 0, "description": "requested step, seconds (default 1e-4)"},
@@ -182,7 +186,43 @@ def _simulate_run(scene, duration, dt=1e-4, record_interval=0.01, checkpoint=Non
       "limits": LIMITS},
      ["scene", "duration"])
 def _simulate_multibody(scene, duration, dt=1e-4, record_interval=0.01, limits=None):
+    if isinstance(scene, dict) and scene.get("schema_version") == 3:
+        return CS.run(scene, duration, dt=dt, record_interval=record_interval, limits=limits)
     return MBS.run(scene, duration, dt=dt, record_interval=record_interval, limits=limits)
+
+
+@_op("collision.validate_mesh",
+     "Check raw triangle-mesh data (vertices, triangles) against the mesh rules and limits. Returns errors, "
+     "warnings, the number of zero-area triangles, and BVH statistics when the data is valid.",
+     {"vertices": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}},
+      "triangles": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}}},
+     ["vertices", "triangles"])
+def _collision_validate_mesh(vertices, triangles):
+    errors, warnings, degenerate = MSH.validate_mesh_data(vertices, triangles)
+    out = {"valid": not errors, "errors": errors, "warnings": warnings, "degenerate_triangles": degenerate,
+           "limits": dict(MSH.MESH_LIMITS)}
+    if not errors:
+        mesh = MSH.TriangleMesh("probe", tuple(tuple(float(x) for x in v) for v in vertices),
+                                tuple(tuple(int(k) for k in t) for t in triangles))
+        out["bvh"] = {"nodes": mesh.bvh.node_count, "leaf_size": MSH.LEAF_SIZE}
+    return out
+
+
+@_op("collision.query",
+     "List the contacts of a schema v3 scene at its initial state (no time step): every listed pair with at least one "
+     "touching contact, with normal, point, depth and feature (face, edge, vertex, sphere).",
+     {"scene": {"type": "object", "description": "reality.scene document with schema_version 3"}},
+     ["scene"])
+def _collision_query(scene):
+    CS.require_valid_v3(scene)
+    bodies, specs, labels, index, meshes = CS._build(scene)
+    out = []
+    for si, cts in SVN.contacts_now(bodies, specs):
+        for ct in cts:
+            out.append({"a": labels[si]["body"], "b": labels[si]["other"], "kind": labels[si]["kind"],
+                        "normal": list(ct.normal), "point": list(ct.point), "depth": ct.depth,
+                        "feature": ct.feature})
+    return {"contacts": out, "count": len(out), "scene_sha256": S.scene_hash(scene)}
 
 
 @_op("simulate.sweep_friction",

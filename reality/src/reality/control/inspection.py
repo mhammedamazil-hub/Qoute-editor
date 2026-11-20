@@ -13,6 +13,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Optional
 
+from ..materials import default_database
 from . import scene as S
 from .errors import OperationError
 
@@ -38,12 +39,73 @@ def _record(result: Dict[str, Any], index: int) -> Dict[str, Any]:
     return recs[index] if index >= 0 else recs[n + index]
 
 
+def body_ids(result: Dict[str, Any]) -> List[str]:
+    """Body ids of a result, in scene order. v1 results list them at the top level; v2 and v3 do not."""
+    if "bodies" in result:
+        return list(result["bodies"])
+    return [b["id"] for b in result["scene"]["bodies"]]
+
+
+def is_single_body_result(result: Dict[str, Any]) -> bool:
+    """True for schema v1 results (one sphere on planes). The rolling-onset estimate is defined only for these."""
+    return "bodies" in result
+
+
+def body_properties(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Mass properties of a scene body of any supported shape (derived; not stored in the scene).
+
+    Spheres use the v1 function unchanged. Boxes use the solid-box formulas of objects.Box. A static body has no
+    mass, so its mass fields are None rather than invented.
+    """
+    if body.get("static"):
+        if body.get("type") == "box":
+            hx, hy, hz = (float(x) for x in body["half_extents"])
+            volume = 8.0 * hx * hy * hz
+        else:
+            volume = 4.0 / 3.0 * math.pi * float(body["radius"]) ** 3
+        return {"mass": None, "volume": volume, "density": None, "density_source": "static: no mass",
+                "inertia_principal_body": None}
+    if body.get("type") != "box":
+        return S.mass_properties(body)
+    hx, hy, hz = (float(x) for x in body["half_extents"])
+    volume = 8.0 * hx * hy * hz
+    if "material" in body:
+        material = default_database().get(body["material"])
+        density, mass, source = material.density, material.density * volume, f"material:{material.name}"
+    elif "density" in body:
+        density = float(body["density"])
+        mass, source = density * volume, "density"
+    else:
+        mass = float(body["mass"])
+        density, source = mass / volume, "mass"
+    inertia = [mass * (hy * hy + hz * hz) / 3.0, mass * (hx * hx + hz * hz) / 3.0, mass * (hx * hx + hy * hy) / 3.0]
+    return {"mass": mass, "volume": volume, "density": density, "density_source": source,
+            "inertia_principal_body": inertia}
+
+
+def plane_of_contact(result: Dict[str, Any], entries: List[str]) -> Optional[Dict[str, Any]]:
+    """The first plane in a body's contact list, or None. Accepts v1 bare plane ids and v2/v3 'plane:<id>' entries;
+    'body:<id>' and 'mesh:<id>' entries are not planes and are skipped."""
+    planes = result["scene"].get("planes", [])
+    for e in entries:
+        if e.startswith("plane:"):
+            pid = e[len("plane:"):]
+        elif ":" in e:
+            continue
+        else:
+            pid = e
+        pl = next((p for p in planes if p["id"] == pid), None)
+        if pl is not None:
+            return pl
+    return None
+
+
 def _body_props(result: Dict[str, Any], body_id: str) -> Dict[str, Any]:
     body = next((b for b in result["scene"]["bodies"] if b["id"] == body_id), None)
     if body is None:
         raise OperationError("not_found", f"no body {body_id!r} in this result",
-                             {"bodies": result.get("bodies", [])})
-    return {"body": body, "props": S.mass_properties(body)}
+                             {"bodies": body_ids(result)})
+    return {"body": body, "props": body_properties(body)}
 
 
 def _cross(a, b):
@@ -100,15 +162,15 @@ def body_state(result: Dict[str, Any], body_id: str, index: int = -1) -> Dict[st
         "density_kg_m3": props["density"],
         "density_source": props["density_source"],
         "inertia_principal_body_kg_m2": props["inertia_principal_body"],
-        "gravity_force_N": [m * g[i] for i in range(3)],
+        "gravity_force_N": None if m is None else [m * g[i] for i in range(3)],
         "kinetic_energy_translational_J": st["kinetic_energy_translational"],
         "kinetic_energy_rotational_J": st["kinetic_energy_rotational"],
         "potential_energy_gravity_J": st["potential_energy_gravity"],
         "contact_planes": st["contacts"],
         "in_contact": bool(st["contacts"]),
     }
-    if st["contacts"]:
-        plane = next(p for p in result["scene"]["planes"] if p["id"] == st["contacts"][0])
+    plane = plane_of_contact(result, st["contacts"])
+    if plane is not None and body.get("type", "sphere") == "sphere":
         n_hat = _unit(plane["normal"])
         vc = _contact_point_velocity(st, n_hat, body["radius"])
         values["contact_point_velocity_m_s"] = list(vc)
@@ -141,8 +203,8 @@ def scene_state(result: Dict[str, Any], index: int = -1) -> Dict[str, Any]:
     rec = _record(result, index)
     return {
         "time_s": rec["t"],
-        "bodies": {bid: body_state(result, bid, index)["values"] for bid in result["bodies"]},
-        "planes": [dict(p) for p in result["scene"]["planes"]],
+        "bodies": {bid: body_state(result, bid, index)["values"] for bid in body_ids(result)},
+        "planes": [dict(p) for p in result["scene"].get("planes", [])],
         "gravity_m_s2": result["scene"]["environment"]["gravity"],
         "energy_total_J": rec["energy_total"],
         "checks": result["checks"],
@@ -171,7 +233,7 @@ def series(result: Dict[str, Any], body_id: str, fields: Optional[List[str]] = N
     if unknown:
         raise OperationError("invalid_argument", f"unknown series fields {unknown}",
                              {"allowed": sorted(SERIES_FIELDS)})
-    if body_id not in result.get("bodies", []):
+    if body_id not in body_ids(result):
         raise OperationError("not_found", f"no body {body_id!r} in this result")
     out: Dict[str, Any] = {"body_id": body_id, "t": [r["t"] for r in result["records"]]}
     for f in fields:
@@ -184,8 +246,11 @@ def rolling_onset(result: Dict[str, Any], body_id: str) -> Dict[str, Any]:
 
     With constant Coulomb friction the slip speed falls linearly in time until rolling starts (exact for the
     continuum model). The onset is the zero of a least-squares line fitted to the slip samples between 10 % and 90 %
-    of the initial slip. This is an estimate from recorded states, not a solver output.
+    of the initial slip. This is an estimate from recorded states, not a solver output. It is defined only for
+    schema v1 results (one sphere on planes); other results report that explicitly.
     """
+    if not is_single_body_result(result):
+        return {"available": False, "reason": "rolling onset is defined for single-sphere scenes (schema v1) only"}
     info = _body_props(result, body_id)
     radius = info["body"]["radius"]
     contacts = S.contacts_for(result["scene"], body_id)
@@ -232,7 +297,7 @@ def rolling_onset(result: Dict[str, Any], body_id: str) -> Dict[str, Any]:
 
 
 def summary(result: Dict[str, Any]) -> Dict[str, Any]:
-    body_id = result["bodies"][0]
+    body_id = body_ids(result)[0]
     last = body_state(result, body_id, -1)["values"]
     return {
         "final_time_s": last["time_s"],

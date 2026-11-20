@@ -19,8 +19,8 @@ import math
 import os
 from typing import Any, Dict, List, Optional
 
-from . import scene as S
 from .errors import OperationError
+from .inspection import body_properties, plane_of_contact
 from .raster import Color, draw_line, encode_png, fill_disc, new_buffer
 from .resources import ResourceLimits
 
@@ -32,6 +32,9 @@ TILE_B = (120, 120, 115)
 VELOCITY_COLOR: Color = (255, 200, 0)
 GRAVITY_COLOR: Color = (255, 80, 80)
 CONTACT_COLOR: Color = (0, 220, 220)
+# Design limit (not a measured performance figure): the ray caster tests every sphere for every pixel, so the number
+# of spheres drawn in one frame is capped. Larger scenes are refused with resource_limit.
+MAX_RENDER_SPHERES = 32
 ARROW_FRACTION = 0.3  # arrow length as a fraction of the view half-height, at the run's reference magnitude
 
 
@@ -101,12 +104,25 @@ def render_frame(result: Dict[str, Any], index: int = -1, width: int = 480, heig
     if not 0 <= idx < n:
         raise OperationError("invalid_argument", f"index {index} is outside 0..{n - 1}")
     rec = recs[idx]
-    body_ids = list(result["bodies"])
-    body = result["scene"]["bodies"][0]
-    radius = body["radius"]
-    planes = result["scene"]["planes"]
+    scene_bodies = result["scene"]["bodies"]
+    if result["scene"].get("meshes"):
+        raise OperationError("unsupported", "preview draws spheres and planes; this scene has triangle meshes, "
+                             "which are not rendered in this release")
+    boxes = [b["id"] for b in scene_bodies if b.get("type", "sphere") != "sphere"]
+    if boxes:
+        raise OperationError("unsupported", f"preview draws spheres and planes; box bodies {boxes} are not rendered "
+                             "in this release")
+    if len(scene_bodies) > MAX_RENDER_SPHERES:
+        raise OperationError("resource_limit", f"{len(scene_bodies)} spheres exceed the preview limit "
+                             f"{MAX_RENDER_SPHERES}", {"limit": "MAX_RENDER_SPHERES", "value": MAX_RENDER_SPHERES})
+    body_ids = [b["id"] for b in scene_bodies]
+    radii = {b["id"]: float(b["radius"]) for b in scene_bodies}
+    # the view extent covers the largest sphere; the overlays refer to the first sphere (named in the description)
+    radius = max(radii.values())
+    body = scene_bodies[0]
+    planes = result["scene"].get("planes", [])
     body_id = body_ids[0]
-    props = S.mass_properties(body)
+    props = body_properties(body)
 
     # View extent is fixed by the whole run so that frames of one run are directly comparable.
     lo, hi = _run_bounds(result, body_ids)
@@ -124,6 +140,7 @@ def render_frame(result: Dict[str, Any], index: int = -1, width: int = 480, heig
     origin_back = 4.0 * view_r
 
     sphere_c = tuple(rec["bodies"][body_id]["position"])
+    sphere_data = [(bid, tuple(rec["bodies"][bid]["position"]), radii[bid]) for bid in body_ids]
     buf = new_buffer(width, height)
     plane_data = []
     for p in planes:
@@ -149,19 +166,19 @@ def render_frame(result: Dict[str, Any], index: int = -1, width: int = 480, heig
                  c[2] + sx * right[2] + sy * up[2] - origin_back * forward[2])
             best_t = math.inf
             colour = bg
-            # sphere
-            oc = (o[0] - sphere_c[0], o[1] - sphere_c[1], o[2] - sphere_c[2])
-            b = oc[0] * forward[0] + oc[1] * forward[1] + oc[2] * forward[2]
-            disc = b * b - (oc[0] ** 2 + oc[1] ** 2 + oc[2] ** 2 - radius * radius)
-            if disc >= 0.0:
-                t = -b - math.sqrt(disc)
-                if t > 0.0 and t < best_t:
-                    best_t = t
-                    hit = (o[0] + t * forward[0], o[1] + t * forward[1], o[2] + t * forward[2])
-                    nrm_s = ((hit[0] - sphere_c[0]) / radius, (hit[1] - sphere_c[1]) / radius,
-                             (hit[2] - sphere_c[2]) / radius)
-                    lam = 0.3 + 0.7 * max(0.0, _dot(nrm_s, light))
-                    colour = (int(SPHERE_BASE[0] * lam), int(SPHERE_BASE[1] * lam), int(SPHERE_BASE[2] * lam))
+            # spheres: nearest hit over every sphere body
+            for _sid, sc, sr in sphere_data:
+                oc = (o[0] - sc[0], o[1] - sc[1], o[2] - sc[2])
+                b = oc[0] * forward[0] + oc[1] * forward[1] + oc[2] * forward[2]
+                disc = b * b - (oc[0] ** 2 + oc[1] ** 2 + oc[2] ** 2 - sr * sr)
+                if disc >= 0.0:
+                    t = -b - math.sqrt(disc)
+                    if t > 0.0 and t < best_t:
+                        best_t = t
+                        hit = (o[0] + t * forward[0], o[1] + t * forward[1], o[2] + t * forward[2])
+                        nrm_s = ((hit[0] - sc[0]) / sr, (hit[1] - sc[1]) / sr, (hit[2] - sc[2]) / sr)
+                        lam = 0.3 + 0.7 * max(0.0, _dot(nrm_s, light))
+                        colour = (int(SPHERE_BASE[0] * lam), int(SPHERE_BASE[1] * lam), int(SPHERE_BASE[2] * lam))
             # planes
             for nrm, off, e1, e2 in plane_data:
                 denom = _dot(nrm, forward)
@@ -196,7 +213,8 @@ def render_frame(result: Dict[str, Any], index: int = -1, width: int = 480, heig
     speed = math.sqrt(_dot(v, v))
     max_speed = max(math.sqrt(_dot(r["bodies"][body_id]["velocity"], r["bodies"][body_id]["velocity"]))
                     for r in recs)
-    weight = props["mass"] * math.sqrt(sum(x * x for x in result["scene"]["environment"]["gravity"]))
+    mass0 = props["mass"] or 0.0   # a static body has no mass: no gravity arrow
+    weight = mass0 * math.sqrt(sum(x * x for x in result["scene"]["environment"]["gravity"]))
     v_scale = (ARROW_FRACTION * half_h / max_speed) if max_speed > 0 else 0.0
     g_scale = (ARROW_FRACTION * half_h / weight) if weight > 0 else 0.0
     g_vec = result["scene"]["environment"]["gravity"]
@@ -206,7 +224,7 @@ def render_frame(result: Dict[str, Any], index: int = -1, width: int = 480, heig
         tip = tuple(sphere_c[i] + v[i] * v_scale for i in range(3))
         arrows.append(("velocity", VELOCITY_COLOR, project(tip)))
     if show_gravity and weight > 0.0:
-        tip = tuple(sphere_c[i] + g_vec[i] * props["mass"] * g_scale for i in range(3))
+        tip = tuple(sphere_c[i] + g_vec[i] * mass0 * g_scale for i in range(3))
         arrows.append(("gravity_force", GRAVITY_COLOR, project(tip)))
     for _, col, (x1, y1) in arrows:
         draw_line(buf, width, height, x0, y0, x1, y1, col, thickness=2)
@@ -215,13 +233,16 @@ def render_frame(result: Dict[str, Any], index: int = -1, width: int = 480, heig
             draw_line(buf, width, height, x1, y1, x1 + 7 * math.cos(ang + da), y1 + 7 * math.sin(ang + da),
                       col, thickness=2)
     contact_px = None
-    if show_contacts and st["contacts"]:
-        pl = next(p for p in planes if p["id"] == st["contacts"][0])
+    pl = plane_of_contact(result, st["contacts"]) if show_contacts else None
+    if pl is not None and scene_bodies[0].get("type", "sphere") == "sphere":
         nh = _unit(pl["normal"])
-        cp = tuple(sphere_c[i] - radius * nh[i] for i in range(3))
+        cp = tuple(sphere_c[i] - radii[body_id] * nh[i] for i in range(3))
         contact_px = project(cp)
         fill_disc(buf, width, height, contact_px[0], contact_px[1], 4.0, CONTACT_COLOR)
-    sphere_px_radius = radius / (2.0 * half_h) * height
+    projected = {}
+    for sid, sc, sr in sphere_data:
+        px, py = project(sc)
+        projected[sid] = {"centre_px": [px, py], "radius_px": sr / (2.0 * half_h) * height}
 
     png = encode_png(width, height, buf)
     digest = hashlib.sha256(png).hexdigest()
@@ -243,7 +264,8 @@ def render_frame(result: Dict[str, Any], index: int = -1, width: int = 480, heig
                   "projection": "orthographic", "azimuth_deg": azimuth_deg, "elevation_deg": elevation_deg,
                   "view_forward": list(forward), "view_right": list(right), "view_up": list(up),
                   "view_centre_m": list(c), "view_half_height_m": half_h},
-        "projected": {body_id: {"centre_px": [x0, y0], "radius_px": sphere_px_radius}},
+        "projected": projected,
+        "overlay_body": body_id,
         "planes": [{"id": p["id"], "normal": p["normal"], "offset": p["offset"]} for p in planes],
         "overlays": {
             "velocity_arrow": {"colour_rgb": list(VELOCITY_COLOR), "shown": bool(arrows) and any(a[0] == "velocity" for a in arrows),

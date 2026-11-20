@@ -221,6 +221,10 @@ def validate(scene: Dict[str, Any]) -> Dict[str, Any]:
     if scene.get("schema_version") == 2:  # multi-body scenes: see multibody_scene.py
         from .multibody_scene import validate_v2
         return validate_v2(scene)
+    if scene.get("schema_version") == 3:  # collision scenes: see collision_scene.py
+        from .collision_scene import validate_v3
+        r = validate_v3(scene)
+        return {"valid": r["valid"], "errors": r["errors"], "warnings": r["warnings"]}
     if scene.get("schema") != SCHEMA:
         errors.append(f"schema must be {SCHEMA!r}")
     if scene.get("schema_version") != SCHEMA_VERSION:

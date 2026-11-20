@@ -37,7 +37,7 @@ def sphere_plane(friction=0.1, restitution=0.0, v0=2.0):
 def test_registry_names_are_unique_and_documented():
     names = [o["name"] for o in ops.list_operations()]
     assert len(names) == len(set(names))
-    assert len(names) == 23
+    assert len(names) == 25  # 23 before the collision milestone; + collision.query and collision.validate_mesh
     for o in ops.list_operations():
         assert o["description"]
         assert o["input_schema"]["type"] == "object"
