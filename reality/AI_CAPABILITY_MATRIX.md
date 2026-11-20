@@ -15,6 +15,10 @@ Status values: **Implemented** (code, tests and validation evidence), **Partial*
 | Parameter sweep (friction) | Implemented | `simulate.sweep_friction`; tests |
 | Blender add-on: mark spheres and planes, bake physics to keyframes (Blender 5.0.1) | Implemented, headless-tested | `blender_addon/`; `tools/blender_smoke.py`; `test_blender_scene_build.py`; viewport not checked |
 | Multi-body spheres, sphere-sphere and sphere-plane contacts (schema v2) | Implemented, limited | `multibody.py`, `control/multibody_scene.py`; `test_multibody.py`, `test_multibody_scene.py`; spheres only, one contact point per pair |
+| Collision geometry: sphere-triangle, sphere-box, box-plane, static triangle mesh (BVH), with tests | Implemented, limited | `src/reality/collision/`, `COLLISION_GEOMETRY.md`; `test_collision_narrow.py`, `test_collision_mesh.py`; box-box and box-mesh not implemented |
+| Scene schema v3 (spheres, boxes, planes, static meshes) with explicit errors and limits | Implemented, limited | `control/collision_scene.py`, `SCENE_SCHEMA.md`; `test_collision_scene.py`; no continuous collision detection |
+| Collision tools: `collision.query`, `collision.validate_mesh` | Implemented | `control/operations.py`; `test_collision_scene.py` |
+| Blender OBJ import and collider marking for boxes and meshes | Not started | Phase 6 of the collision milestone |
 | Inspection of one body, one scene, time series, rolling onset, summary | Implemented | `control/inspection.py`; tests |
 | Rolling onset from slip | Implemented, derived | least-squares fit of contact-point slip; SIM-01/02 check it against 2 v0 /(7 mu g) |
 | CPU PNG preview with overlays and numerical description | Implemented | `PREVIEW_SYSTEM.md`; determinism tested |

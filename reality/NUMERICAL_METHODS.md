@@ -92,3 +92,20 @@ enforced in code. The principle is: accuracy and performance trade-offs are expl
 | Orbits | Verlet with fixed dt; close encounters need smaller dt | Adaptive or regularised (Kustaanheimo-Stiefel) integrators |
 | Beams | Closed-form and trapezoidal only; no FEM | Finite-element beams, Timoshenko shear |
 | Acoustics | No spatial propagation solver | FDTD on a staggered grid |
+
+## 10. Collision and contact (general solver)
+
+- Predict, detect at predicted positions, then sequential impulses with Coulomb friction (per-contact 2x2 tangential
+  block), then position projection (two passes), then the quaternion update. The order matches the existing sphere
+  solver, so the two agree (section 5 of `COLLISION_GEOMETRY.md`: below 1e-11 for single bodies and pairs, 2.6e-10 m for a
+  two-sphere stack).
+- Contact normals point from `a` to `b`. Edge and vertex contacts dominated by a strictly closer face contact are removed
+  (internal-edge handling). Normals within cos > 0.999 are merged per contact cluster. The threshold is a modelling
+  choice, not a measured constant.
+- Closest point on a triangle: Voronoi-region method. The test checks 3,000 random triangles over 1e-6 to 1e3 m scales
+  against brute force (asserted relative error below 1e-12). An earlier inline check of 4,000 cases measured 8.5e-16.
+- Mesh BVH: median split, leaf size 4. Agreement with brute force as a set of contacts, rounded to 14 decimals, on the
+  test meshes (section 7 of `COLLISION_GEOMETRY.md`).
+- First-order accuracy: the first-rebound apex error of an elastic bounce is about 4.4 dt metres (4.43e-3 m at dt 1e-3,
+  4.43e-4 m at 1e-4, 4.43e-5 m at 1e-5).
+- No continuous collision detection, no warm starting. Tunnelling is not detected.

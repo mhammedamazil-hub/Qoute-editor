@@ -46,7 +46,8 @@ body-body contact, no thermal or stress fields. These are listed in `AI_CAPABILI
 Same `schema` (`reality.scene`) and `environment`, with these lists:
 
 - `bodies`: each `{id, type: "sphere", radius, position, velocity, omega}` and exactly one of `material`, `mass` or
-  `density`. Mass properties use the same derivation as v1 (`scene.mass_properties`).
+  `density`. Mass properties use the same derivation as v1 (`scene.mass_properties`). Optional `quaternion`
+  `(w, x, y, z)`, unit length, body to world; default identity. The v2 validator rejects a non-unit quaternion.
 - `planes`: each `{id, normal, offset}`. The normal must be non-zero (it is normalised internally).
 - `contacts`: each `{a, b, friction, restitution}`. `a` is a body id. `b` is a plane id (sphere-plane) or another
   body id (sphere-sphere). `friction >= 0`, `restitution` in `[0, 1]`. Each contact has its own coefficients. A pair
@@ -62,6 +63,40 @@ body's state, energies, `momentum_total` and touching `contacts`; `checks` repor
 (tolerance 1e-6 m) and the quaternion norm error; `diagnostics` holds wall time and memory and is not reproducible.
 
 v2 limits: no checkpoint, no sweep, no non-sphere shapes, no meshes, one contact point per pair or plane.
+
+## Schema v3: spheres, boxes, planes, static meshes (`"schema_version": 3`)
+
+Same `schema` and `environment`. Versions 1 and 2 are unchanged. Implementation: `control/collision_scene.py`; the
+geometry is in `src/reality/collision/` (see `COLLISION_GEOMETRY.md`).
+
+- `bodies`: each `{id, type, ...}` with `type` `"sphere"` (`radius`) or `"box"` (`half_extents` = `[hx, hy, hz]`, half
+  the edge lengths along body axes, all > 0). Both: `position`, `velocity`, `omega` (body frame), optional unit
+  `quaternion`, optional `static` (true or false). Dynamic bodies need exactly one of `material`, `mass` or `density`
+  (box volume is `8 hx hy hz`). A static body has no mass: it must not give one, and it must have zero velocity and
+  zero `omega`.
+- `planes`: each `{id, normal, offset}`, the normal not all zero.
+- `meshes`: static triangle meshes, each `{id, vertices, triangles, position?, quaternion?}`. `vertices` are
+  `[x, y, z]` in the mesh frame; `triangles` are three integer indices each. Zero-area triangles are a warning.
+  A triangle that repeats a vertex index is an error. A mesh has at most 200,000 vertices and triangles; the scene has
+  at most 400,000 triangles in total (`collision.MESH_LIMITS`).
+- `contacts`: each `{a, b, friction, restitution}`. `a` is a body. `b` is a body, a plane or a mesh. Not listed means
+  not colliding. A pair may be listed once only, and a body cannot contact itself. Two static bodies cannot form a
+  contact.
+
+Supported pairs: sphere-sphere, sphere-box, sphere-plane, box-plane, sphere-mesh. Box-box and box-mesh are rejected with
+`unsupported` and the pair named in the message. They are not ignored.
+
+Limits: 256 bodies, 64 planes, 2,048 contacts, the mesh limits above. Exceeding a limit is a `schema_error` with the
+count and the limit in the message.
+
+Run document: `reality.collision_run` version 1, produced by `simulate.multibody` when `schema_version` is 3. Each record
+holds every body (dynamic and static: the same keys; a static body has zero velocity and energy and `static: true`),
+the planes' contacts as `plane:<id>`, `body:<id>` or `mesh:<id>` entries, `momentum_total` and `energy_total`.
+`checks` report `max_penetration_m` (tolerance 1e-6 m), `max_quaternion_norm_error` and `finite_state`.
+`diagnostics` holds wall time and memory and is not reproducible.
+
+`collision.query` lists the contacts of a v3 scene at its initial state, without stepping. `collision.validate_mesh`
+checks raw vertices and triangles and reports the BVH size.
 
 ## Validation
 

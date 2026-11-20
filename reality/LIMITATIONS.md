@@ -24,7 +24,7 @@ be read before relying on any result. The project rule is never to claim realism
 | Gravity | Newtonian only. No general relativity. No J2 or other non-spherical terms. Spherical bodies only. |
 | Relativity | Not modelled. Negligible at everyday speeds, but not accounted for at relativistic speeds. |
 | Quantum mechanics | Not simulated. Quantum effects enter only through measured material constants. |
-| Mechanics | Point masses, 1D collisions, and one 3D rigid body's rotation (`rigidbody.py`: torque-free and applied-torque cases). Multi-body: spheres only, sphere-sphere and sphere-plane contacts with one contact point each (`multibody.py`). No joints, no contact manifolds, no continuous collision detection (fast spheres can tunnel), no warm starting, so tall stacks drift. |
+| Mechanics | Point masses, 1D collisions, and one 3D rigid body's rotation (`rigidbody.py`: torque-free and applied-torque cases). Multi-body: spheres only, sphere-sphere and sphere-plane contacts with one contact point each (`multibody.py`). No joints, no contact manifolds, no continuous collision detection (fast spheres can tunnel), no warm starting, so tall stacks drift. Schema v3 adds boxes (box-plane by corner contacts, sphere-box) and static triangle meshes; box-box and box-mesh contacts are not implemented (see section 5b). |
 | Drag | Constant drag coefficient. No Reynolds-number dependence, no lift, no spin, no added mass. |
 | Projectiles | No drag. |
 | Pendulum | Single rigid pendulum, no damping, no driving. |
@@ -86,6 +86,20 @@ be read before relying on any result. The project rule is never to claim realism
 - Blender 5.0.1 only, tested headlessly with the `bpy` module. The viewport panel and GL paths are not verified.
 - Spheres only; no parenting of marked bodies; baking overwrites existing location and rotation keys of those bodies.
 - Physics only. No gameplay systems. Blender's own rigid body world is not coordinated with the add-on.
+
+### 5b. Collision geometry limits (schema v3)
+
+- Box-box and box-mesh contacts are not implemented. Validation refuses them with `unsupported`.
+- Box-plane uses corner contacts only (no face patch). A box on a face is less accurate than a clipped manifold.
+- No continuous collision detection: fast bodies can pass through thin meshes or boxes.
+- No warm starting. Tall stacks drift; the existing two-sphere stack test reports 4e-8 m penetration.
+- Static triangle meshes only. A mesh is not checked for closedness or manifoldness.
+- Resource caps (`collision.MESH_LIMITS`, `collision_scene.LIMITS`) are chosen from measurements in
+  `COLLISION_BENCHMARK.json`; they are not physical limits.
+- Throughput is pure Python: the general solver runs at about 36,000 steps/s for one sphere on a plane and about 2,400
+  steps/s for one box on a plane (measured, `COLLISION_BENCHMARK.json`).
+- Preview draws spheres and planes only, up to 32 spheres per frame. Boxes and meshes are refused, not drawn.
+- Blender OBJ import and collider marking for boxes and meshes are not implemented (Phase 6 of the collision milestone).
 
 ## 6. Safety and use
 

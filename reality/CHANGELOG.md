@@ -6,6 +6,20 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 ## [Unreleased]
 
 ### Added
+- Collision geometry (`src/reality/collision/`, `COLLISION_GEOMETRY.md`): sphere-triangle (Voronoi closest point, edge,
+  vertex and degenerate cases), sphere-box, box-plane (corner contacts), sphere-plane, sphere-sphere. Static triangle
+  meshes with validation, a median-split BVH (checked against brute force), and per-cluster contact reduction.
+  Tests: 32 narrow, 35 mesh, 19 solver, 46 scene, 13 result-path. Box-box and box-mesh are not implemented; scenes with them are refused with `unsupported`.
+- General solver `collision/solver.py` (tensor inertia, box bodies, static bodies, Coulomb friction). It reproduces the
+  existing sphere solver: a single sphere matches `contact.step_sphere` below 1e-11 and the two-sphere stack within 2.6e-10 m.
+  `multibody.step_bodies` and `contact.step_sphere` are unchanged.
+- Scene schema v3 (`control/collision_scene.py`, `SCENE_SCHEMA.md`): spheres, boxes, planes and static meshes, with
+  explicit validation reasons, resource limits and cancellation. Result document `reality.collision_run` v1. Dispatched
+  by `simulate.multibody` on `schema_version`. v1 and v2 are unchanged.
+- Operations `collision.query` (contacts at the initial state) and `collision.validate_mesh` (mesh rules and BVH size).
+  Operation count is now 25.
+- `tools/collision_benchmark.py` and `COLLISION_BENCHMARK.json`: measured mesh build, memory, query and solver throughput.
+- `optional quaternion` documented for schema v2 in `SCENE_SCHEMA.md`.
 - Multi-body sequential-impulse solver (`src/reality/multibody.py`): sphere-sphere and sphere-plane contacts with
   restitution and a Coulomb friction cone. One sphere on one plane matches `contact.step_sphere` to 2e-12 over
   three scenarios, including spin (`tests/test_multibody.py`). Momentum is conserved to machine precision by pair impulses (0 measured in the head-on test).
@@ -58,6 +72,12 @@ separately in `ARCHITECTURE.md` §5 (none so far).
   principal and parallel-axis inertia, weight, kinetic energy, heat capacity, melting state) with validation cases
   OBJ-01..08 and `tests/test_objects.py`. `units.MOMENT_OF_INERTIA` added.
 - `constants.py`: Schott N-BK7 mechanical constants (E, nu, density) stored separately from the soda-lime `glass` row.
+
+### Fixed
+- Ghost contacts on internal edges: a sphere over the seam of a flat mesh received a sideways contact. Edge and vertex
+  contacts dominated by a strictly closer face contact are now dropped (`mesh.drop_dominated_features`).
+- `preview.frame` and `inspect.*` no longer fail with `KeyError: 'bodies'` on v2 results. They accept v2 and v3
+  results; rolling onset reports `available: false` for them. Schema v1 output is unchanged (byte-identical PNG).
 
 ### Corrected
 - Phase 1 was marked Done too early. Its roadmap entry said "37 entries" (the ledger has 38) and "licences checked" (§5.2
