@@ -20,6 +20,7 @@ from ..materials import default_database
 from . import inspection as I
 from . import preview as P
 from . import scene as S
+from . import multibody_scene as MBS
 from . import simulate as SIM
 from .errors import OperationError
 from .resources import DEFAULTS
@@ -169,6 +170,19 @@ def _scene_materials():
      ["scene", "duration"])
 def _simulate_run(scene, duration, dt=1e-4, record_interval=0.01, checkpoint=None, limits=None):
     return SIM.run(scene, duration, dt=dt, record_interval=record_interval, checkpoint=checkpoint, limits=limits)
+
+
+@_op("simulate.multibody",
+     "Run a schema v2 scene (several sphere bodies, planes and per-contact friction and restitution) headless. "
+     "Returns a reality.multibody_run document. Checkpoints and sweeps are not available for v2.",
+     {"scene": {"type": "object", "description": "reality.scene document with schema_version 2"},
+      "duration": {"type": "number", "minimum": 0, "description": "seconds"},
+      "dt": {"type": "number", "minimum": 0, "description": "requested step, seconds (default 1e-4)"},
+      "record_interval": {"type": "number", "minimum": 0, "description": "seconds between samples (default 0.01)"},
+      "limits": LIMITS},
+     ["scene", "duration"])
+def _simulate_multibody(scene, duration, dt=1e-4, record_interval=0.01, limits=None):
+    return MBS.run(scene, duration, dt=dt, record_interval=record_interval, limits=limits)
 
 
 @_op("simulate.sweep_friction",

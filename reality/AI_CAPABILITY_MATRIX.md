@@ -13,6 +13,8 @@ Status values: **Implemented** (code, tests and validation evidence), **Partial*
 | Headless run of one sphere on planes | Implemented | `control/simulate.py`; SIM-01..03 |
 | Checkpoint and resume | Implemented | SIM-03 (exact match); `test_checkpoint_resume_matches_continuous_run` |
 | Parameter sweep (friction) | Implemented | `simulate.sweep_friction`; tests |
+| Blender add-on: mark spheres and planes, bake physics to keyframes (Blender 5.0.1) | Implemented, headless-tested | `blender_addon/`; `tools/blender_smoke.py`; `test_blender_scene_build.py`; viewport not checked |
+| Multi-body spheres, sphere-sphere and sphere-plane contacts (schema v2) | Implemented, limited | `multibody.py`, `control/multibody_scene.py`; `test_multibody.py`, `test_multibody_scene.py`; spheres only, one contact point per pair |
 | Inspection of one body, one scene, time series, rolling onset, summary | Implemented | `control/inspection.py`; tests |
 | Rolling onset from slip | Implemented, derived | least-squares fit of contact-point slip; SIM-01/02 check it against 2 v0 /(7 mu g) |
 | CPU PNG preview with overlays and numerical description | Implemented | `PREVIEW_SYSTEM.md`; determinism tested |

@@ -39,7 +39,29 @@ A scene is one JSON object. It is the input of `simulate.run` and of every scene
 ## Limits of v1
 
 One body per run (the runner refuses more with `unsupported`). Spheres and infinite planes only. No meshes, no
-body-body contact, no thermal or stress fields. These are listed in `AI_CAPABILITY_MATRIX.md`.
+body-body contact, no thermal or stress fields. These are listed in `AI_CAPABILITY_MATRIX.md`. v1 is unchanged.
+
+## Schema v2: several bodies (`"schema_version": 2`)
+
+Same `schema` (`reality.scene`) and `environment`, with these lists:
+
+- `bodies`: each `{id, type: "sphere", radius, position, velocity, omega}` and exactly one of `material`, `mass` or
+  `density`. Mass properties use the same derivation as v1 (`scene.mass_properties`).
+- `planes`: each `{id, normal, offset}`. The normal must be non-zero (it is normalised internally).
+- `contacts`: each `{a, b, friction, restitution}`. `a` is a body id. `b` is a plane id (sphere-plane) or another
+  body id (sphere-sphere). `friction >= 0`, `restitution` in `[0, 1]`. Each contact has its own coefficients. A pair
+  or plane that is not listed does not collide. A pair may be listed once only.
+
+Example (two spheres on a floor): `{"schema": "reality.scene", "schema_version": 2, "name": "stack",
+"environment": {"gravity": [0, 0, -9.80665]}, "bodies": [...], "planes": [{"id": "floor", "normal": [0, 0, 1],
+"offset": 0}], "contacts": [{"a": "bottom", "b": "floor", "friction": 0.5, "restitution": 0}, ...]}`.
+
+`scene.validate` dispatches on `schema_version`, so v2 scenes are checked by the v2 rules. `simulate.run` refuses v2
+scenes and points to `simulate.multibody`. Run documents are `reality.multibody_run` version 1: `records` hold each
+body's state, energies, `momentum_total` and touching `contacts`; `checks` report the largest penetration
+(tolerance 1e-6 m) and the quaternion norm error; `diagnostics` holds wall time and memory and is not reproducible.
+
+v2 limits: no checkpoint, no sweep, no non-sphere shapes, no meshes, one contact point per pair or plane.
 
 ## Validation
 

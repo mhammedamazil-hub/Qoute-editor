@@ -218,6 +218,9 @@ def validate(scene: Dict[str, Any]) -> Dict[str, Any]:
     warnings: List[str] = []
     if not isinstance(scene, dict):
         return {"valid": False, "errors": ["scene must be a JSON object"], "warnings": []}
+    if scene.get("schema_version") == 2:  # multi-body scenes: see multibody_scene.py
+        from .multibody_scene import validate_v2
+        return validate_v2(scene)
     if scene.get("schema") != SCHEMA:
         errors.append(f"schema must be {SCHEMA!r}")
     if scene.get("schema_version") != SCHEMA_VERSION:

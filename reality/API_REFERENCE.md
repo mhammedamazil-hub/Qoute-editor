@@ -35,7 +35,7 @@ listed in `RESOURCE_LIMITS.md` (section "Error codes"). Codes are part of the in
 
 ## Operations
 
-22 operations. Each has an input schema (JSON Schema subset, see `control/schema.py`); unknown or mistyped arguments
+23 operations. Each has an input schema (JSON Schema subset, see `control/schema.py`); unknown or mistyped arguments
 are rejected before the operation runs.
 
 | operation | purpose |
@@ -47,6 +47,7 @@ are rejected before the operation runs.
 | `scene.materials` | material names for `scene.add_sphere` |
 | `simulate.run` | run from t = 0 or from a checkpoint |
 | `simulate.sweep_friction` | one summary per friction value |
+| `simulate.multibody` | run a schema v2 multi-body scene (`reality.multibody_run`) |
 | `inspect.body`, `inspect.scene`, `inspect.series` | read a run at a record or over time |
 | `inspect.rolling_onset`, `inspect.summary` | slide-to-roll time; final state and checks |
 | `preview.frame` | PNG and numerical description of one frame |

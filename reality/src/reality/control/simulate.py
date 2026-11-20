@@ -50,6 +50,8 @@ def run(scene: Dict[str, Any], duration: float, dt: float = 1e-4, record_interva
     """
     lim = ResourceLimits.from_dict(limits)
     S.require_valid(scene)
+    if scene.get("schema_version") != 1:
+        raise OperationError("unsupported", "simulate.run takes schema v1 scenes; use simulate.multibody for v2")
     if len(scene["bodies"]) != 1:
         raise OperationError("unsupported", "a run needs exactly one body in schema v1")
     duration = _check_number(duration, "duration", positive=True)

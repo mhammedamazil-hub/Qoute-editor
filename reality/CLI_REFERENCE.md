@@ -35,6 +35,7 @@ that edit a scene write the file in place unless `--out` is given. All numbers a
 - `simulate run SCENE --duration S [--dt S] [--record-interval S] [--checkpoint RUN_OR_CHECKPOINT] [--out FILE] [--limit NAME=VALUE ...]`
   - Without `--out` the full run document goes to stdout. With `--out` the file holds the run and stdout holds a summary.
   - `--checkpoint` takes an earlier run file (its `final_state` is used) and continues from that time. The scene must be the same one that produced the checkpoint.
+- `call simulate.multibody --args @args.json` runs a schema v2 scene. `args.json` is `{"scene": {...}, "duration": 1.0, "dt": 0.0001, "record_interval": 0.01}`; `limits` is optional. The output is a `reality.multibody_run` document. v2 has no checkpoint or sweep.
 - `simulate sweep-friction SCENE --body ID --plane ID --values MU1 MU2 ... --duration S [--dt S] [--record-interval S] [--limit ...]` - one summary per friction value; at most 100 values.
 
 ## Inspection (`inspect ...`)

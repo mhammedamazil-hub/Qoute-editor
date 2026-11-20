@@ -24,7 +24,7 @@ be read before relying on any result. The project rule is never to claim realism
 | Gravity | Newtonian only. No general relativity. No J2 or other non-spherical terms. Spherical bodies only. |
 | Relativity | Not modelled. Negligible at everyday speeds, but not accounted for at relativistic speeds. |
 | Quantum mechanics | Not simulated. Quantum effects enter only through measured material constants. |
-| Mechanics | Point masses, 1D collisions, and one 3D rigid body's rotation (`rigidbody.py`: torque-free and applied-torque cases). No multi-body dynamics, no joints. |
+| Mechanics | Point masses, 1D collisions, and one 3D rigid body's rotation (`rigidbody.py`: torque-free and applied-torque cases). Multi-body: spheres only, sphere-sphere and sphere-plane contacts with one contact point each (`multibody.py`). No joints, no contact manifolds, no continuous collision detection (fast spheres can tunnel), no warm starting, so tall stacks drift. |
 | Drag | Constant drag coefficient. No Reynolds-number dependence, no lift, no spin, no added mass. |
 | Projectiles | No drag. |
 | Pendulum | Single rigid pendulum, no damping, no driving. |
@@ -80,6 +80,12 @@ be read before relying on any result. The project rule is never to claim realism
   penetration.
 - Explicit 2D conduction (`thermal2d.py`) is second-order in space and first-order in time. Its error at N = 31 is
   1.1e-3 (THER-06).
+
+### 5a. Blender add-on limits
+
+- Blender 5.0.1 only, tested headlessly with the `bpy` module. The viewport panel and GL paths are not verified.
+- Spheres only; no parenting of marked bodies; baking overwrites existing location and rotation keys of those bodies.
+- Physics only. No gameplay systems. Blender's own rigid body world is not coordinated with the add-on.
 
 ## 6. Safety and use
 

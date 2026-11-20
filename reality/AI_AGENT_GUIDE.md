@@ -13,7 +13,8 @@ first: it says what is implemented and what is not.
 6. `inspect.summary` first. Then `inspect.series` or `inspect.body` for the quantity you need.
 7. For a visual check, `preview.frame`. Read the numbers from `description`, not from the picture.
 8. To compare, change one parameter (for example `scene.set_contact` friction), run again, and use `experiment.compare`.
-   To sweep, use `simulate.sweep_friction`.
+   To sweep, use `simulate.sweep_friction`. For several bodies (schema v2, `"schema_version": 2`), use
+   `simulate.multibody`; `simulate.run` refuses v2 scenes.
 9. To save work, `export.bundle` writes the scene, run, report and preview with SHA-256 hashes.
 
 ## Rules for an agent

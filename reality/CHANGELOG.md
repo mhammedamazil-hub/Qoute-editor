@@ -6,6 +6,17 @@ separately in `ARCHITECTURE.md` §5 (none so far).
 ## [Unreleased]
 
 ### Added
+- Multi-body sequential-impulse solver (`src/reality/multibody.py`): sphere-sphere and sphere-plane contacts with
+  restitution and a Coulomb friction cone. One sphere on one plane matches `contact.step_sphere` to 2e-12 over
+  three scenarios, including spin (`tests/test_multibody.py`). Momentum is conserved to machine precision by pair impulses (0 measured in the head-on test).
+  The head-on collision and Newton's cradle checks match the textbook results.
+- Scene schema v2 (`src/reality/control/multibody_scene.py`, `SCENE_SCHEMA.md`): several bodies, planes and
+  per-contact coefficients. Operation `simulate.multibody` (`reality.multibody_run` v1). v1 is unchanged. 22 tests in
+  `tests/test_multibody_scene.py`. Optional per-body `quaternion` (default identity).
+- Blender add-on `blender_addon/reality_physics/` (Blender 5.0.1 only, tested headless): marks spheres and planes,
+  runs the v2 solver, and bakes location and rotation keyframes. OBJ import through Blender's own importer. Core in
+  `scene_build.py` (no `bpy`; 14 tests). Headless smoke test `tools/blender_smoke.py` passes under `bpy` 5.0.1.
+  The viewport panel is not checked on screen. See `blender_addon/README.md`.
 - `engine/` (outside the Python package): a browser real-time runtime for `reality.scene` v1. TypeScript port of the
   sphere-contact stepper, verified against the Python kernel's recorded trajectories (position and velocity identical,
   spin within 7e-16), three.js viewer, transport and live contact controls. 24 engine tests and a Python sync test
