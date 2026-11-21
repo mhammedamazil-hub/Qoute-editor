@@ -1,0 +1,373 @@
+[
+ {
+  "project": "Bevy",
+  "repo": "bevyengine/bevy",
+  "file": "LICENSE-APACHE",
+  "spdx_api": "Apache-2.0",
+  "bytes": 10173,
+  "head": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"License\" ",
+  "status": "ok"
+ },
+ {
+  "project": "Godot",
+  "repo": "godotengine/godot",
+  "file": "LICENSE.txt",
+  "spdx_api": "MIT",
+  "bytes": 1149,
+  "head": "Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur. Permission is hereby granted, free ",
+  "status": "ok"
+ },
+ {
+  "project": "Ambient",
+  "repo": "AmbientRun/Ambient",
+  "file": "LICENSE-APACHE",
+  "spdx_api": "Apache-2.0",
+  "bytes": 10173,
+  "head": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"License\" ",
+  "status": "ok"
+ },
+ {
+  "project": "microStudio",
+  "repo": "pmgl/microstudio",
+  "file": "LICENSE.txt",
+  "spdx_api": "MIT",
+  "bytes": 1074,
+  "head": "MIT License Copyright (c) 2021 Gilles Pommereuil Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated do",
+  "status": "ok"
+ },
+ {
+  "project": "Love2D",
+  "repo": "love2d/love",
+  "file": "license.txt",
+  "spdx_api": "NOASSERTION",
+  "bytes": 74910,
+  "head": "Licensing information ===================== This distribution contains code from the following projects (full license text below): - LOVE Website: https://love2",
+  "status": "ok"
+ },
+ {
+  "project": "ggez",
+  "repo": "ggez/ggez",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1080,
+  "head": "The MIT License (MIT) Copyright (c) 2016-2017 ggez-dev Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associa",
+  "status": "ok"
+ },
+ {
+  "project": "Amethyst",
+  "repo": "amethyst/amethyst",
+  "file": "COPYING",
+  "spdx_api": "NOASSERTION",
+  "bytes": 340,
+  "head": "Copyright 2016 The Amethyst Project Developers Licensed under the Apache License, Version 2.0, <docs/LICENSE-APACHE or http://apache.org/licenses/LICENSE-2.0> o",
+  "status": "ok"
+ },
+ {
+  "project": "Piston",
+  "repo": "PistonDevelopers/piston",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1077,
+  "head": "The MIT License (MIT) Copyright (c) 2014 Sven Nilsen Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associate",
+  "status": "ok"
+ },
+ {
+  "project": "GDevelop",
+  "repo": "4ian/GDevelop",
+  "file": "LICENSE.md",
+  "spdx_api": "NOASSERTION",
+  "bytes": 305,
+  "head": "* The Core library, the game engine, the new IDE, and all extensions (respectively *Core*, *GDJS*, *new IDE* and *Extensions* folders) are under the **MIT licen",
+  "status": "ok"
+ },
+ {
+  "project": "Panda3D",
+  "repo": "panda3d/panda3d",
+  "file": "LICENSE",
+  "spdx_api": "NOASSERTION",
+  "bytes": 1569,
+  "head": "Copyright (c) 2008, Carnegie Mellon University. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permit",
+  "status": "ok"
+ },
+ {
+  "project": "Box2D",
+  "repo": "erincatto/box2d",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1067,
+  "head": "MIT License Copyright (c) 2022 Erin Catto Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documenta",
+  "status": "ok"
+ },
+ {
+  "project": "Rapier",
+  "repo": "dimforge/rapier",
+  "file": "LICENSE",
+  "spdx_api": "Apache-2.0",
+  "bytes": 11346,
+  "head": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"License\" ",
+  "status": "ok"
+ },
+ {
+  "project": "MuJoCo",
+  "repo": "google-deepmind/mujoco",
+  "file": "LICENSE",
+  "spdx_api": "Apache-2.0",
+  "bytes": 11358,
+  "head": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"License\" ",
+  "status": "ok"
+ },
+ {
+  "project": "ReactPhysics3D",
+  "repo": "DanielChappuis/reactphysics3d",
+  "file": "LICENSE",
+  "spdx_api": "Zlib",
+  "bytes": 889,
+  "head": "Copyright (c) 2010-2024 Daniel Chappuis http://www.reactphysics3d.com This software is provided 'as-is', without any express or implied warranty. In no event wi",
+  "status": "ok"
+ },
+ {
+  "project": "Jolt",
+  "repo": "jrouwe/JoltPhysics",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1052,
+  "head": "Copyright 2021 Jorrit Rouwe Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (th",
+  "status": "ok"
+ },
+ {
+  "project": "cannon-es",
+  "repo": "pmndrs/cannon-es",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1125,
+  "head": "/* * Copyright (c) 2015 cannon.js Authors * * Permission is hereby granted, free of charge, to any person * obtaining a copy of this software and associated doc",
+  "status": "ok"
+ },
+ {
+  "project": "Chipmunk",
+  "repo": "slembcke/Chipmunk2D",
+  "file": "LICENSE.txt",
+  "spdx_api": "MIT",
+  "bytes": 1088,
+  "head": "Copyright (c) 2007-2015 Scott Lembcke and Howling Moon Software Permission is hereby granted, free of charge, to any person obtaining a copy of this software an",
+  "status": "ok"
+ },
+ {
+  "project": "Filament",
+  "repo": "google/filament",
+  "file": "LICENSE",
+  "spdx_api": "Apache-2.0",
+  "bytes": 11362,
+  "head": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"License\" ",
+  "status": "ok"
+ },
+ {
+  "project": "Wicked Engine",
+  "repo": "turanszkij/WickedEngine",
+  "file": "LICENSE.txt",
+  "spdx_api": "MIT",
+  "bytes": 1082,
+  "head": "The MIT License (MIT) Copyright (c) 2026 Tur\u00e1nszki J\u00e1nos Permission is hereby granted, free of charge, to any person obtaining a copy of this software and assoc",
+  "status": "ok"
+ },
+ {
+  "project": "OGRE",
+  "repo": "OGRECave/ogre",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1084,
+  "head": "MIT License Copyright (c) 2000-2013 Torus Knot Software Ltd Permission is hereby granted, free of charge, to any person obtaining a copy of this software and as",
+  "status": "ok"
+ },
+ {
+  "project": "CRYENGINE",
+  "repo": "MergHQ/CRYENGINE",
+  "status": "http_404"
+ },
+ {
+  "project": "O3DE",
+  "repo": "o3de/o3de",
+  "file": "LICENSE.txt",
+  "spdx_api": "NOASSERTION",
+  "bytes": 1475,
+  "head": "OPEN 3D ENGINE LICENSING The default license for Open 3D Engine is the Apache License, Version 2.0 (see LICENSE_APACHE2.TXT); you may elect at your option to us",
+  "status": "ok"
+ },
+ {
+  "project": "Flax",
+  "repo": "FlaxEngine/FlaxEngine",
+  "file": "LICENSE.md",
+  "spdx_api": "NOASSERTION",
+  "bytes": 219,
+  "head": "Use of the Flax, provided source code and binary files is governed by the terms of the Flax Engine End User License Agreement, which can be found at [https://fl",
+  "status": "ok"
+ },
+ {
+  "project": "Stride",
+  "repo": "stride3d/stride",
+  "file": "LICENSE.md",
+  "spdx_api": "MIT",
+  "bytes": 1302,
+  "head": "\ufeffThe MIT License (MIT) Copyright (c) 2021 .NET Foundation and Contributors (https://dotnetfoundation.org/) Copyright (c) 2018-2021 Stride contributors (https://",
+  "status": "ok"
+ },
+ {
+  "project": "Defold",
+  "repo": "defold/defold",
+  "file": "LICENSE.txt",
+  "spdx_api": "NOASSERTION",
+  "bytes": 9973,
+  "head": "Defold License Version 1.0, May 2020 https://www.defold.com/opensource TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"License\" sh",
+  "status": "ok"
+ },
+ {
+  "project": "PlayCanvas",
+  "repo": "playcanvas/engine",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1064,
+  "head": "Copyright (c) 2011-2026 PlayCanvas Ltd. Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentati",
+  "status": "ok"
+ },
+ {
+  "project": "Babylon.js",
+  "repo": "BabylonJS/Babylon.js",
+  "file": "license.md",
+  "spdx_api": "Apache-2.0",
+  "bytes": 9226,
+  "head": "# Apache License 2.0 (Apache) Apache License Version 2.0, January 2004 <http://www.apache.org/licenses/> TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIB",
+  "status": "ok"
+ },
+ {
+  "project": "Minetest (Luanti)",
+  "repo": "luanti-org/luanti",
+  "file": "LICENSE.txt",
+  "spdx_api": "NOASSERTION",
+  "bytes": 8792,
+  "head": "License of Luanti textures and sounds --------------------------------------- This applies to textures and sounds contained in the main Luanti distribution. Att",
+  "status": "ok"
+ },
+ {
+  "project": "OpenRA",
+  "repo": "OpenRA/OpenRA",
+  "file": "COPYING",
+  "spdx_api": "GPL-3.0",
+  "bytes": 35151,
+  "head": "GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007 Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/> Everyone is permitted to copy and distri",
+  "status": "ok"
+ },
+ {
+  "project": "VCMI",
+  "repo": "vcmi/vcmi",
+  "file": "license.txt",
+  "spdx_api": "GPL-2.0",
+  "bytes": 15119,
+  "head": "GNU GENERAL PUBLIC LICENSE Version 2, June 1991 Copyright (C) 1989, 1991 Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 ",
+  "status": "ok"
+ },
+ {
+  "project": "Xash3D FWGS",
+  "repo": "FWGS/xash3d-fwgs",
+  "status": "http_404"
+ },
+ {
+  "project": "Quake3e",
+  "repo": "ec-/Quake3e",
+  "file": "COPYING.txt",
+  "spdx_api": "GPL-2.0",
+  "bytes": 15148,
+  "head": "GNU GENERAL PUBLIC LICENSE Version 2, June 1991 Copyright (C) 1989, 1991 Free Software Foundation, Inc. 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA E",
+  "status": "ok"
+ },
+ {
+  "project": "Urho3D",
+  "repo": "urho3d/urho3d",
+  "status": "http_404"
+ },
+ {
+  "project": "jMonkeyEngine",
+  "repo": "jMonkeyEngine/jmonkeyengine",
+  "file": "LICENSE.md",
+  "spdx_api": "BSD-3-Clause",
+  "bytes": 1485,
+  "head": "Copyright (c) 2009-2025 jMonkeyEngine. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the followin",
+  "status": "ok"
+ },
+ {
+  "project": "Macroquad",
+  "repo": "not-fl3/macroquad",
+  "file": "LICENSE-APACHE",
+  "spdx_api": "Apache-2.0",
+  "bytes": 10847,
+  "head": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"License\" ",
+  "status": "ok"
+ },
+ {
+  "project": "pygame",
+  "repo": "pygame/pygame",
+  "status": "http_404"
+ },
+ {
+  "project": "Arcade",
+  "repo": "pythonarcade/arcade",
+  "file": "license.rst",
+  "spdx_api": "NOASSERTION",
+  "bytes": 1197,
+  "head": "License ======= Copyright (c) 2025 Paul Vincent Craven The Arcade library is licensed under the `MIT License`_. Permission is hereby granted, free of charge, to",
+  "status": "ok"
+ },
+ {
+  "project": "Ebiten",
+  "repo": "hajimehoshi/ebiten",
+  "file": "LICENSE",
+  "spdx_api": "Apache-2.0",
+  "bytes": 11357,
+  "head": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION 1. Definitions. \"License\" ",
+  "status": "ok"
+ },
+ {
+  "project": "Excalibur",
+  "repo": "excaliburjs/Excalibur",
+  "file": "LICENSE.md",
+  "spdx_api": "BSD-2-Clause",
+  "bytes": 1318,
+  "head": "BSD 2-Clause License Copyright (c) 2013, Erik Onarheim All rights reserved. Redistribution and use in source and binary forms, with or without modification, are",
+  "status": "ok"
+ },
+ {
+  "project": "LittleJS",
+  "repo": "KilledByAPixel/LittleJS",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1098,
+  "head": "The MIT License Copyright (c) 2021 Frank Force http://www.frankforce.com Permission is hereby granted, free of charge, to any person obtaining a copy of this so",
+  "status": "ok"
+ },
+ {
+  "project": "Pyxel",
+  "repo": "kitao/pyxel",
+  "file": "LICENSE",
+  "spdx_api": "NOASSERTION",
+  "bytes": 1139,
+  "head": "MIT License Copyright (c) 2018-2026 Takashi Kitao This license applies to Pyxel - https://github.com/kitao/pyxel Permission is hereby granted, free of charge, t",
+  "status": "ok"
+ },
+ {
+  "project": "Flame",
+  "repo": "flame-engine/flame",
+  "file": "LICENSE",
+  "spdx_api": "MIT",
+  "bytes": 1067,
+  "head": "MIT License Copyright (c) 2021 Blue Fire Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentat",
+  "status": "ok"
+ },
+ {
+  "project": "UPBGE",
+  "repo": "UPBGE/upbge",
+  "file": "COPYING",
+  "spdx_api": "NOASSERTION",
+  "bytes": 302,
+  "head": "Blender uses the GNU General Public License, which describes the rights to distribute or change the code. Please read this file for the full license. doc/licens",
+  "status": "ok"
+ }
+]
